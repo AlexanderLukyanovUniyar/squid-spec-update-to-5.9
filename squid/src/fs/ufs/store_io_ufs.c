@@ -1,6 +1,6 @@
 
 /*
- * $Id: store_io_ufs.c,v 1.9.2.2 2004/05/31 22:03:31 hno Exp $
+ * $Id: store_io_ufs.c,v 1.9.2.4 2004/07/17 19:44:20 hno Exp $
  *
  * DEBUG: section 79    Storage Manager UFS Interface
  * AUTHOR: Duane Wessels
@@ -108,7 +108,7 @@ storeUfsCreate(SwapDir * SD, StoreEntry * e, STFNCB * file_callback, STIOCB * ca
     debug(79, 3) ("storeUfsCreate: fileno %08X\n", filn);
     fd = file_open(path, mode);
     if (fd < 0) {
-	debug(79, 3) ("storeUfsCreate: got failure (%d)\n", errno);
+	debug(79, 1) ("storeUfsCreate: Failed to create %s (%s)\n", path, xstrerror());
 	return NULL;
     }
     debug(79, 3) ("storeUfsCreate: opened FD %d\n", fd);

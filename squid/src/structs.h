@@ -1,6 +1,6 @@
 
 /*
- * $Id: structs.h,v 1.408.2.24 2004/04/18 23:43:30 hno Exp $
+ * $Id: structs.h,v 1.408.2.30 2004/10/05 22:56:36 hno Exp $
  *
  *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/
@@ -86,6 +86,13 @@ struct _acl_proxy_auth_match_cache {
     dlink_node link;
     int matchrv;
     void *acl_data;
+};
+
+struct _acl_hdr_data {
+    acl_hdr_data *next;
+    relist *reglist;
+    http_hdr_type hdr_id;
+    const char *hdr_name;
 };
 
 struct _auth_user_hash_pointer {
@@ -214,6 +221,9 @@ struct _String {
 struct _header_mangler {
     acl_access *access_list;
     char *replacement;
+    /* What follows is only used by HDR_OTHER to build a list of named headers */
+    char *name;
+    header_mangler *next;
 };
 
 struct _body_size {
@@ -421,6 +431,7 @@ struct _SquidConfig {
     } Timeout;
     size_t maxRequestHeaderSize;
     size_t maxRequestBodySize;
+    size_t maxReplyHeaderSize;
     dlink_list ReplyBodySize;
     struct {
 	u_short icp;
@@ -594,6 +605,7 @@ struct _SquidConfig {
 	int pipeline_prefetch;
 	int request_entities;
 	int detect_broken_server_pconns;
+	int balance_on_multiple_ip;
     } onoff;
     acl *aclList;
     struct {
@@ -976,8 +988,7 @@ struct _http_state_flags {
 struct _HttpStateData {
     StoreEntry *entry;
     request_t *request;
-    char *reply_hdr;
-    size_t reply_hdr_size;
+    MemBuf reply_hdr;
     int reply_hdr_state;
     peer *peer;			/* peer request made to */
     int eof;			/* reached end-of-object? */
@@ -1661,13 +1672,14 @@ struct _request_t {
     struct in_addr my_addr;
     unsigned short my_port;
     HttpHeader header;
-    ConnStateData *body_connection;	/* used by clientReadBody() */
     int content_length;
     HierarchyLogEntry hier;
     err_type err_type;
     char *peer_login;		/* Configured peer login:password */
     time_t lastmod;		/* Used on refreshes */
     const char *vary_headers;	/* Used when varying entities are detected. Changes how the store key is calculated */
+    BODY_HANDLER *body_reader;
+    void *body_reader_data;
 };
 
 struct _cachemgr_passwd {
@@ -1940,6 +1952,7 @@ struct _ClientInfo {
 	int n_denied;
     } cutoff;
     int n_established;		/* number of current established connections */
+    time_t last_seen;
 };
 
 struct _CacheDigest {

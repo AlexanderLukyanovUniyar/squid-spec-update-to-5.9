@@ -7,7 +7,7 @@
 <BODY>
 <H1>Squid 2.5 release notes</H1>
 
-<H2>Squid Developers</H2>$Id: release-2.5.html,v 1.1.2.32 2004/07/08 23:31:28 hno Exp $
+<H2>Squid Developers</H2>$Id: release-2.5.html,v 1.1.2.39 2004/10/11 20:13:43 hno Exp $
 <HR>
 <EM>This document contains the release notes for version 2.5 of Squid.
 Squid is a WWW Cache application developed by the National Laboratory
@@ -132,6 +132,8 @@ exacly where you want to have them in your system.</LI>
 <DT><B>minimum_retry_timeout</B><DD><P>This has been removed - it is not referenced anywhere in the source code.</P>
 <DT><B>short_icon_urls</B><DD><P>New directive to enable an alternative way of referring to icons in FTP directory listings etc.</P>
 <DT><B>acl urllogin</B><DD><P>New acl type to match the login component of Internet style URLs (protocol://user:password@host/path/to/file)</P>
+<DT><B>balance_on_multiple_ip</B><DD><P>New directive to make it possible to disable the automatic round-robin load balancing on multiple IP addresses normally done by Squid.</P>
+<DT><B>reply_header_max_size</B><DD><P>New directive limiting the size of HTTP reply headers, similar to request_header_max_size but in the reply direction (from servers to clients). Default is 20KB.</P>
 </DL>
 </P>
 
@@ -143,10 +145,11 @@ exacly where you want to have them in your system.</LI>
 <DT><B>Bug 
 <A HREF="http://www.squid-cache.org/bugs/show_bug.cgi?id=761">#761</A></B><DD><P>assertion failed: cbdata.c:249: "c-&gt;locks &gt; 0" when using diskd</P>
 <DT><B>Bug 
-<A HREF="http://www.squid-cache.org/bugs/show_bug.cgi?id=910">#910</A></B><DD><P>ntlm auth_user_hash_pointer memory leak if challenge reuses are enabled</P>
-
-<DT><B>Bug 
 <A HREF="http://www.squid-cache.org/bugs/show_bug.cgi?id=779">#779</A></B><DD><P>users going above their allowed IP count no longer logged in cache.log</P>
+<DT><B>Bug 
+<A HREF="http://www.squid-cache.org/bugs/show_bug.cgi?id=1059">#1059</A></B><DD><P>mime.conf and referenced icons must be within chroot</P>
+<DT><B>Bug 
+<A HREF="http://www.squid-cache.org/bugs/show_bug.cgi?id=1033">#1033</A></B><DD><P>CARP ignores cache_peer_access and cache_peer_domain</P>
 <DT><B>Bug 
 <A HREF="http://www.squid-cache.org/bugs/show_bug.cgi?id=692">#692</A></B><DD><P>tcp_outgoing_address using an ident ACL does not work</P>
 <DT><B>Bug 
@@ -288,6 +291,34 @@ using samba.</LI>
 <LI>Processing of Vary: * and Vary on error messages corrected</LI>
 <LI>a large number of minor and cosmetic bugfixes. See the list of 
 <A HREF="http://www.squid-cache.org/Versions/v2/2.5/bugs/#STABLE5">squid-2.5.STABLE5 patches</A> and the 
+<A HREF="ChangeLog">ChangeLog</A> file for details.</LI>
+</UL>
+</P>
+
+<H2><A NAME="s9">9. Key changes squid-2.5.STABLE6 to 2.5.STABLE7:</A></H2>
+
+<P>
+<UL>
+<LI>SNMP related Denial of Service issue corrected (CAN-2004-0918)</LI>
+<LI>NTLM related bugfix noticed by the Samba group</LI>
+<LI>UFS cache_dir bugfix to issue introduced in STABLE6 causing
+no objects to get cached in some configurations.</LI>
+<LI>cache_effective_user now sets supplementary group list
+if cache_effective_group not set</LI>
+<LI>cache_effective_group now used if specified even if not started
+as root. If you do not start Squid as root you may need to remove this
+directive from your squid.conf if not set correctly.</LI>
+<LI>request_header_max_size directive corrected. You may need to increase
+this value after upgrading if set very low. The default have been increased
+from 10 KB to 20 KB which should be sufficient for most uses.</LI>
+<LI>reply_header_max_size directive added</LI>
+<LI>http_header_access &amp; replace now support arbitrary headers,
+not only the well known headers known by Squid</LI>
+<LI>new acl types req_hdr and resp_hdr to match arbitrary HTTP headers,
+useful to block certain malware/spyware etc.</LI>
+<LI>new balance_on_multiple_ip squid.conf directive</LI>
+<LI>a number of other minor and cosmetic bugfixes. See the list of 
+<A HREF="http://www.squid-cache.org/Versions/v2/2.5/bugs/#STABLE6">squid-2.5.STABLE6 patches</A> and the 
 <A HREF="ChangeLog">ChangeLog</A> file for details.</LI>
 </UL>
 </P>

@@ -1,6 +1,6 @@
 
 /*
- * $Id: client_side.c,v 1.561.2.55 2004/05/31 22:57:09 hno Exp $
+ * $Id: client_side.c,v 1.561.2.60 2004/10/05 22:34:42 hno Exp $
  *
  * DEBUG: section 33    Client-side Routines
  * AUTHOR: Duane Wessels
@@ -129,6 +129,8 @@ static int clientReplyBodyTooLarge(clientHttpRequest *, ssize_t clen);
 static int clientRequestBodyTooLarge(int clen);
 static void clientProcessBody(ConnStateData * conn);
 static void clientEatRequestBody(clientHttpRequest *);
+static BODY_HANDLER clientReadBody;
+static void clientAbortBody(request_t * req);
 
 static int
 checkAccelOnly(clientHttpRequest * http)
@@ -360,9 +362,11 @@ clientRedirectDone(void *data, char *result)
 	    new_request->auth_user_request = old_request->auth_user_request;
 	    authenticateAuthUserRequestLock(new_request->auth_user_request);
 	}
-	if (old_request->body_connection) {
-	    new_request->body_connection = old_request->body_connection;
-	    old_request->body_connection = NULL;
+	if (old_request->body_reader) {
+	    new_request->body_reader = old_request->body_reader;
+	    new_request->body_reader_data = old_request->body_reader_data;
+	    old_request->body_reader = NULL;
+	    old_request->body_reader_data = NULL;
 	}
 	new_request->content_length = old_request->content_length;
 	new_request->flags.proxy_keepalive = old_request->flags.proxy_keepalive;
@@ -813,10 +817,7 @@ httpRequestFree(void *data)
     MemObject *mem = NULL;
     debug(33, 3) ("httpRequestFree: %s\n", storeUrl(http->entry));
     if (!clientCheckTransferDone(http)) {
-	if (request && request->body_connection) {
-	    clientAbortBody(request);	/* abort request body transter */
-	    request->body_connection = NULL;
-	}
+	requestAbortBody(request);	/* abort request body transter */
 	/* HN: This looks a bit odd.. why should client_side care about
 	 * the ICP selection status?
 	 */
@@ -1584,15 +1585,6 @@ clientCacheHit(void *data, char *buf, ssize_t size)
     if (checkNegativeHit(e)) {
 	http->log_type = LOG_TCP_NEGATIVE_HIT;
 	clientSendMoreData(data, buf, size);
-    } else if (r->method == METHOD_HEAD) {
-	/*
-	 * RFC 2068 seems to indicate there is no "conditional HEAD"
-	 * request.  We cannot validate a cached object for a HEAD
-	 * request, nor can we return 304.
-	 */
-	if (e->mem_status == IN_MEMORY)
-	    http->log_type = LOG_TCP_MEM_HIT;
-	clientSendMoreData(data, buf, size);
     } else if (!Config.onoff.offline && refreshCheckHTTP(e, r) && !http->flags.internal) {
 	debug(33, 5) ("clientCacheHit: in refreshCheck() block\n");
 	/*
@@ -1673,7 +1665,9 @@ clientCacheHit(void *data, char *buf, ssize_t size)
 	/*
 	 * plain ol' cache hit
 	 */
-	if (e->mem_status == IN_MEMORY)
+	if (e->store_status != STORE_OK)
+	    http->log_type = LOG_TCP_MISS;
+	else if (e->mem_status == IN_MEMORY)
 	    http->log_type = LOG_TCP_MEM_HIT;
 	else if (Config.onoff.offline)
 	    http->log_type = LOG_TCP_OFFLINE_HIT;
@@ -2227,7 +2221,7 @@ clientWriteComplete(int fd, char *bufnotused, size_t size, int errflag, void *da
 	} else if (clientGotNotEnough(http)) {
 	    debug(33, 5) ("clientWriteComplete: client didn't get all it expected\n");
 	    comm_close(fd);
-	} else if (http->request->body_connection) {
+	} else if (http->request->body_reader == clientReadBody) {
 	    debug(33, 5) ("clientWriteComplete: closing, but first we need to read the rest of the request\n");
 	    /* XXX We assumes the reply does fit in the TCP transmit window.
 	     * If not the connection may stall while sending the reply
@@ -2332,13 +2326,23 @@ clientProcessRequest2(clientHttpRequest * http)
 	e = http->entry = storeGetPublicByRequest(r);
     else
 	e = http->entry = NULL;
-    /* Release negatively cached IP-cache entries on reload */
-    if (r->flags.nocache)
+    /* Release IP-cache entries on reload */
+    if (r->flags.nocache) {
+#if USE_DNSSERVERS
 	ipcacheInvalidate(r->host);
+#else
+	ipcacheInvalidateNegative(r->host);
+#endif /* USE_DNSSERVERS */
+    }
 #if HTTP_VIOLATIONS
-    else if (r->flags.nocache_hack)
+    else if (r->flags.nocache_hack) {
+#if USE_DNSSERVERS
 	ipcacheInvalidate(r->host);
-#endif
+#else
+	ipcacheInvalidateNegative(r->host);
+#endif /* USE_DNSSERVERS */
+    }
+#endif /* HTTP_VIOLATIONS */
 #if USE_CACHE_DIGESTS
     http->lookup_type = e ? "HIT" : "MISS";
 #endif
@@ -2594,6 +2598,12 @@ parseHttpRequest(ConnStateData * conn, method_t * method_p, int *status,
     xmemcpy(inbuf, conn->in.buf, req_sz);
     *(inbuf + req_sz) = '\0';
 
+    /* Enforce max_request_size */
+    if (req_sz >= Config.maxRequestHeaderSize) {
+	debug(33, 5) ("parseHttpRequest: Too large request\n");
+	xfree(inbuf);
+	return parseHttpRequestAbort(conn, "error:request-too-large");
+    }
     /* Barf on NULL characters in the headers */
     if (strlen(inbuf) != req_sz) {
 	debug(33, 1) ("parseHttpRequest: Requestheader contains NULL characters\n");
@@ -3103,7 +3113,9 @@ clientReadRequest(int fd, void *data)
 	    /* Do we expect a request-body? */
 	    if (request->content_length > 0) {
 		conn->body.size_left = request->content_length;
-		request->body_connection = conn;
+		request->body_reader = clientReadBody;
+		request->body_reader_data = conn;
+		cbdataLock(conn);
 		/* Is it too large? */
 		if (clientRequestBodyTooLarge(request->content_length)) {
 		    err = errorCon(ERR_TOO_BIG, HTTP_REQUEST_ENTITY_TOO_LARGE);
@@ -3159,15 +3171,20 @@ clientReadRequest(int fd, void *data)
 }
 
 /* file_read like function, for reading body content */
-void
+static void
 clientReadBody(request_t * request, char *buf, size_t size, CBCB * callback, void *cbdata)
 {
-    ConnStateData *conn = request->body_connection;
+    ConnStateData *conn = request->body_reader_data;
+    if (!callback) {
+	clientAbortBody(request);
+	return;
+    }
     if (!conn) {
 	debug(33, 5) ("clientReadBody: no body to read, request=%p\n", request);
 	callback(buf, 0, cbdata);	/* Signal end of body */
 	return;
     }
+    assert(cbdataValid(conn));
     debug(33, 2) ("clientReadBody: start fd=%d body_size=%lu in.offset=%ld cb=%p req=%p\n", conn->fd, (unsigned long int) conn->body.size_left, (long int) conn->in.offset, callback, request);
     conn->body.callback = callback;
     conn->body.cbdata = cbdata;
@@ -3209,7 +3226,7 @@ clientEatRequestBody(clientHttpRequest * http)
     ConnStateData *conn = http->conn;
     cbdataLock(conn);
     if (conn->body.request)
-	clientAbortBody(conn->body.request);
+	requestAbortBody(conn->body.request);
     if (cbdataValid(conn))
 	clientEatRequestBodyHandler(NULL, -1, http);
     cbdataUnlock(conn);
@@ -3252,8 +3269,12 @@ clientProcessBody(ConnStateData * conn)
 	    xmemmove(conn->in.buf, conn->in.buf + size, conn->in.offset);
 	/* Remove request link if this is the last part of the body, as
 	 * clientReadRequest automatically continues to process next request */
-	if (conn->body.size_left <= 0 && request != NULL)
-	    request->body_connection = NULL;
+	if (conn->body.size_left <= 0 && request != NULL) {
+	    request->body_reader = NULL;
+	    if (request->body_reader_data)
+		cbdataUnlock(request->body_reader_data);
+	    request->body_reader_data = NULL;
+	}
 	/* Remove clientReadBody arguments (the call is completed) */
 	conn->body.request = NULL;
 	conn->body.callback = NULL;
@@ -3274,14 +3295,16 @@ clientProcessBody(ConnStateData * conn)
 }
 
 /* Abort a body request */
-void
+static void
 clientAbortBody(request_t * request)
 {
-    ConnStateData *conn = request->body_connection;
+    ConnStateData *conn = request->body_reader_data;
     char *buf;
     CBCB *callback;
     void *cbdata;
     int valid;
+    if (!cbdataValid(conn))
+	return;
     if (!conn->body.callback || conn->body.request != request)
 	return;
     buf = conn->body.buf;

@@ -1,5 +1,5 @@
 /*
- * $Id: auth_basic.c,v 1.14.2.6 2004/04/18 01:29:52 hno Exp $
+ * $Id: auth_basic.c,v 1.14.2.8 2004/09/25 21:03:49 hno Exp $
  *
  * DEBUG: section 29    Authenticator
  * AUTHOR: Duane Wessels
@@ -309,10 +309,11 @@ authBasicCfgDump(StoreEntry * entry, const char *name, authScheme * scheme)
 	storeAppendPrintf(entry, " %s", list->key);
 	list = list->next;
     }
-    storeAppendPrintf(entry, "\n%s %s realm %s\n%s %s children %d\n%s %s credentialsttl %d seconds\n",
+    storeAppendPrintf(entry, "\n%s %s realm %s\n%s %s children %d\n%s %s credentialsttl %d seconds\n%s %s casesensitive %s\n",
 	name, "basic", config->basicAuthRealm,
 	name, "basic", config->authenticateChildren,
-	name, "basic", (int) config->credentialsTTL);
+	name, "basic", (int) config->credentialsTTL,
+	name, "basic", config->casesensitive ? "on" : "off");
 
 }
 
@@ -341,6 +342,8 @@ authBasicParse(authScheme * scheme, int n_configured, char *param_str)
 	parse_eol(&basicConfig->basicAuthRealm);
     } else if (strcasecmp(param_str, "credentialsttl") == 0) {
 	parse_time_t(&basicConfig->credentialsTTL);
+    } else if (strcasecmp(param_str, "casesensitive") == 0) {
+	parse_onoff(&basicConfig->casesensitive);
     } else {
 	debug(28, 0) ("unrecognised basic auth scheme parameter '%s'\n", param_str);
     }
@@ -486,6 +489,8 @@ authenticateBasicDecodeAuth(auth_user_request_t * auth_user_request, const char 
 	local_basic.passwd = xstrndup(cleartext, USER_IDENT_SZ);
     }
 
+    if (!basicConfig->casesensitive)
+	Tolower(local_basic.username);
     /* now lookup and see if we have a matching auth_user structure in memory. */
 
     if ((auth_user = authBasicAuthUserFindUsername(local_basic.username)) == NULL) {

@@ -1,6 +1,6 @@
 
 /*
- * $Id: enums.h,v 1.203.2.10 2004/02/04 17:42:28 hno Exp $
+ * $Id: enums.h,v 1.203.2.13 2004/10/05 21:31:26 hno Exp $
  *
  *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/
@@ -134,6 +134,8 @@ typedef enum {
     ACL_MAXCONN,
     ACL_REQ_MIME_TYPE,
     ACL_REP_MIME_TYPE,
+    ACL_REP_HEADER,
+    ACL_REQ_HEADER,
     ACL_MAX_USER_IP,
     ACL_EXTERNAL,
     ACL_URLLOGIN,
@@ -188,6 +190,7 @@ typedef enum {
     HDR_CACHE_CONTROL,
     HDR_CONNECTION,
     HDR_CONTENT_BASE,
+    HDR_CONTENT_DISPOSITION,
     HDR_CONTENT_ENCODING,
     HDR_CONTENT_LANGUAGE,
     HDR_CONTENT_LENGTH,
@@ -480,7 +483,8 @@ typedef enum {
     HTTP_GATEWAY_TIMEOUT = 504,
     HTTP_HTTP_VERSION_NOT_SUPPORTED = 505,
     HTTP_INSUFFICIENT_STORAGE = 507,	/* RFC2518 section 10.6 */
-    HTTP_INVALID_HEADER = 600	/* Squid header parsing error */
+    HTTP_INVALID_HEADER = 600,	/* Squid header parsing error */
+    HTTP_HEADER_TOO_LARGE = 601	/* Header too large to process */
 } http_status;
 
 /*

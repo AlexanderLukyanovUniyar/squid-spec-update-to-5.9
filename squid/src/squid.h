@@ -1,6 +1,6 @@
 
 /*
- * $Id: squid.h,v 1.216.2.6 2003/03/09 18:41:27 hno Exp $
+ * $Id: squid.h,v 1.216.2.7 2004/08/09 13:54:23 hno Exp $
  *
  * AUTHOR: Duane Wessels
  *
@@ -418,6 +418,10 @@ struct rusage {
 
 #if !HAVE_SNPRINTF
 #include "snprintf.h"
+#endif
+
+#if !HAVE_INITGROUPS
+#include "initgroups.h"
 #endif
 
 #define XMIN(x,y) ((x)<(y)? (x) : (y))

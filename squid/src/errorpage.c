@@ -1,6 +1,6 @@
 
 /*
- * $Id: errorpage.c,v 1.167.2.10 2004/03/29 09:41:36 hno Exp $
+ * $Id: errorpage.c,v 1.167.2.12 2004/08/06 11:05:05 hno Exp $
  *
  * DEBUG: section 4     Error Generation
  * AUTHOR: Duane Wessels
@@ -584,6 +584,7 @@ errorConvert(char token, ErrorState * err)
 	break;
     default:
 	memBufPrintf(&mb, "%%%c", token);
+	do_quote = 0;
 	break;
     }
     if (!p)

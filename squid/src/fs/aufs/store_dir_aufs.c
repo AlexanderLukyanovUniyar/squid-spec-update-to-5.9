@@ -1,6 +1,6 @@
 
 /*
- * $Id: store_dir_aufs.c,v 1.40.2.8 2003/08/06 14:16:26 hno Exp $
+ * $Id: store_dir_aufs.c,v 1.40.2.9 2004/08/25 21:07:25 hno Exp $
  *
  * DEBUG: section 47    Store Directory Routines
  * AUTHOR: Duane Wessels
@@ -320,6 +320,10 @@ storeAufsDirOpenSwapLog(SwapDir * sd)
     char *path;
     int fd;
     path = storeAufsDirSwapLogFile(sd, NULL);
+    if (aioinfo->swaplog_fd >= 0) {
+	debug(50, 1) ("storeAufsDirOpenSwapLog: %s already open\n", path);
+	return;
+    }
     fd = file_open(path, O_WRONLY | O_CREAT | O_BINARY);
     if (fd < 0) {
 	debug(50, 1) ("%s: %s\n", path, xstrerror());
@@ -963,6 +967,10 @@ storeAufsDirWriteCleanStart(SwapDir * sd)
     state->new = xstrdup(storeAufsDirSwapLogFile(sd, ".clean"));
     state->fd = file_open(state->new, O_WRONLY | O_CREAT | O_TRUNC | O_BINARY);
     if (state->fd < 0) {
+	debug(50, 0) ("storeDirWriteCleanStart: %s: open: %s\n",
+	    state->new, xstrerror());
+	debug(50, 0) ("storeDirWriteCleanStart: Current swap logfile "
+	    "not replaced.\n");
 	xfree(state->new);
 	xfree(state);
 	return -1;

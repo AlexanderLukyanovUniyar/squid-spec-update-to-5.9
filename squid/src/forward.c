@@ -1,6 +1,6 @@
 
 /*
- * $Id: forward.c,v 1.82.2.12 2004/02/18 13:44:55 hno Exp $
+ * $Id: forward.c,v 1.82.2.13 2004/10/05 22:34:42 hno Exp $
  *
  * DEBUG: section 17    Request Forwarding
  * AUTHOR: Duane Wessels
@@ -152,7 +152,7 @@ fwdCheckRetriable(FwdState * fwdState)
     /* If there is a request body then Squid can only try once
      * even if the method is indempotent
      */
-    if (fwdState->request->body_connection)
+    if (fwdState->request->body_reader)
 	return 0;
 
     /* RFC2616 9.1 Safe and Idempotent Methods */

@@ -1,6 +1,6 @@
 
 /*
- * $Id: ftp.c,v 1.316.2.14 2004/05/31 23:14:37 hno Exp $
+ * $Id: ftp.c,v 1.316.2.15 2004/10/05 22:34:42 hno Exp $
  *
  * DEBUG: section 9     File Transfer Protocol (FTP)
  * AUTHOR: Harvest Derived
@@ -2309,7 +2309,7 @@ ftpDataWriteCallback(int fd, char *buf, size_t size, int err, void *data)
 	return;
     if (!err) {
 	/* Shedule the rest of the request */
-	clientReadBody(ftpState->request, ftpState->data.buf, ftpState->data.size, ftpRequestBody, ftpState);
+	requestReadBody(ftpState->request, ftpState->data.buf, ftpState->data.size, ftpRequestBody, ftpState);
     } else {
 	debug(9, 1) ("ftpDataWriteCallback: write error: %s\n", xstrerror());
 	ftpFailed(ftpState, ERR_WRITE_ERROR);
@@ -2322,7 +2322,7 @@ ftpDataWrite(int ftp, void *data)
     FtpStateData *ftpState = (FtpStateData *) data;
     debug(9, 3) ("ftpDataWrite\n");
     /* This starts the body transfer */
-    clientReadBody(ftpState->request, ftpState->data.buf, ftpState->data.size, ftpRequestBody, ftpState);
+    requestReadBody(ftpState->request, ftpState->data.buf, ftpState->data.size, ftpRequestBody, ftpState);
 }
 
 static void

@@ -1,6 +1,6 @@
 
 /*
- * $Id: http.c,v 1.384.2.16 2004/06/08 10:54:07 hno Exp $
+ * $Id: http.c,v 1.384.2.19 2004/10/07 18:43:44 hno Exp $
  *
  * DEBUG: section 11    Hypertext Transfer Protocol (HTTP)
  * AUTHOR: Harvest Derived
@@ -65,18 +65,15 @@ httpStateFree(int fd, void *data)
     if (httpState == NULL)
 	return;
     if (httpState->body_buf) {
-	if (httpState->orig_request->body_connection) {
-	    clientAbortBody(httpState->orig_request);
-	}
+	requestAbortBody(httpState->orig_request);
 	if (httpState->body_buf) {
 	    memFree(httpState->body_buf, MEM_8K_BUF);
 	    httpState->body_buf = NULL;
 	}
     }
     storeUnlockObject(httpState->entry);
-    if (httpState->reply_hdr) {
-	memFree(httpState->reply_hdr, MEM_8K_BUF);
-	httpState->reply_hdr = NULL;
+    if (!memBufIsNull(&httpState->reply_hdr)) {
+	memBufClean(&httpState->reply_hdr);
     }
     requestUnlink(httpState->request);
     requestUnlink(httpState->orig_request);
@@ -320,6 +317,7 @@ httpCachableReply(HttpStateData * httpState)
     case HTTP_UNAUTHORIZED:
     case HTTP_PROXY_AUTHENTICATION_REQUIRED:
     case HTTP_INVALID_HEADER:	/* Squid header parsing error */
+    case HTTP_HEADER_TOO_LARGE:
     default:			/* Unknown status code */
 	return 0;
 	/* NOTREACHED */
@@ -371,6 +369,7 @@ httpMakeVaryMark(request_t * request, HttpReply * reply)
     }
     stringClean(&vary);
 #if X_ACCELERATOR_VARY
+    pos = NULL;
     vary = httpHeaderGetList(&reply->header, HDR_X_ACCELERATOR_VARY);
     while (strListGetItem(&vary, ',', &item, &ilen, &pos)) {
 	char *name = xmalloc(ilen + 1);
@@ -395,50 +394,61 @@ httpMakeVaryMark(request_t * request, HttpReply * reply)
 }
 
 /* rewrite this later using new interfaces @?@ */
-void
+static void
 httpProcessReplyHeader(HttpStateData * httpState, const char *buf, int size)
 {
-    char *t = NULL;
     StoreEntry *entry = httpState->entry;
-    int room;
     size_t hdr_len;
+    size_t hdr_size = headersEnd(buf, size);
     HttpReply *reply = entry->mem_obj->reply;
     Ctx ctx;
     debug(11, 3) ("httpProcessReplyHeader: key '%s'\n",
 	storeKeyText(entry->hash.key));
-    if (httpState->reply_hdr == NULL)
-	httpState->reply_hdr = memAllocate(MEM_8K_BUF);
+    if (memBufIsNull(&httpState->reply_hdr))
+	memBufDefInit(&httpState->reply_hdr);
     assert(httpState->reply_hdr_state == 0);
-    hdr_len = httpState->reply_hdr_size;
-    room = 8191 - hdr_len;
-    xmemcpy(httpState->reply_hdr + hdr_len, buf, room < size ? room : size);
-    hdr_len += room < size ? room : size;
-    httpState->reply_hdr[hdr_len] = '\0';
-    httpState->reply_hdr_size = hdr_len;
-    if (hdr_len > 4 && strncmp(httpState->reply_hdr, "HTTP/", 5)) {
-	debug(11, 3) ("httpProcessReplyHeader: Non-HTTP-compliant header: '%s'\n", httpState->reply_hdr);
+    if (hdr_size)
+	memBufAppend(&httpState->reply_hdr, buf, hdr_size);
+    else
+	memBufAppend(&httpState->reply_hdr, buf, size);
+    hdr_len = httpState->reply_hdr.size;
+    if (hdr_len > 4 && strncmp(httpState->reply_hdr.buf, "HTTP/", 5)) {
+	debug(11, 3) ("httpProcessReplyHeader: Non-HTTP-compliant header: '%s'\n", httpState->reply_hdr.buf);
 	httpState->reply_hdr_state += 2;
+	memBufClean(&httpState->reply_hdr);
 	reply->sline.status = HTTP_INVALID_HEADER;
 	return;
     }
-    t = httpState->reply_hdr + hdr_len;
-    /* headers can be incomplete only if object still arriving */
-    if (!httpState->eof) {
-	size_t k = headersEnd(httpState->reply_hdr, 8192);
-	if (0 == k)
-	    return;		/* headers not complete */
-	t = httpState->reply_hdr + k;
+    if (hdr_size != hdr_len)
+	hdr_size = headersEnd(httpState->reply_hdr.buf, hdr_len);
+    if (hdr_size)
+	hdr_len = hdr_size;
+    if (hdr_len > Config.maxReplyHeaderSize) {
+	debug(11, 1) ("httpProcessReplyHeader: Too large reply header\n");
+	if (!memBufIsNull(&httpState->reply_hdr))
+	    memBufClean(&httpState->reply_hdr);
+	reply->sline.status = HTTP_HEADER_TOO_LARGE;
+	return;
     }
-    *t = '\0';
+    /* headers can be incomplete only if object still arriving */
+    if (!hdr_size) {
+	if (httpState->eof)
+	    hdr_size = hdr_len;
+	else
+	    return;		/* headers not complete */
+    }
+    /* Cut away any excess body data (only needed for debug?) */
+    memBufAppend(&httpState->reply_hdr, "\0", 1);
+    httpState->reply_hdr.buf[hdr_size] = '\0';
     httpState->reply_hdr_state++;
     assert(httpState->reply_hdr_state == 1);
     ctx = ctx_enter(entry->mem_obj->url);
     httpState->reply_hdr_state++;
     debug(11, 9) ("GOT HTTP REPLY HDR:\n---------\n%s\n----------\n",
-	httpState->reply_hdr);
+	httpState->reply_hdr.buf);
     /* Parse headers into reply structure */
     /* what happens if we fail to parse here? */
-    httpReplyParse(reply, httpState->reply_hdr, hdr_len);
+    httpReplyParse(reply, httpState->reply_hdr.buf, hdr_size);
     storeTimestampsSet(entry);
     /* Check if object is cacheable or not based on reply code */
     debug(11, 3) ("httpProcessReplyHeader: HTTP CODE: %d\n", reply->sline.status);
@@ -489,7 +499,7 @@ httpProcessReplyHeader(HttpStateData * httpState, const char *buf, int size)
 	if (Config.onoff.detect_broken_server_pconns && httpReplyBodySize(httpState->request->method, reply) == -1) {
 	    debug(11, 1) ("httpProcessReplyHeader: Impossible keep-alive header from '%s'\n", storeUrl(entry));
 	    debug(11, 2) ("GOT HTTP REPLY HDR:\n---------\n%s\n----------\n",
-		httpState->reply_hdr);
+		httpState->reply_hdr.buf);
 	    httpState->flags.keepalive_broken = 1;
 	}
     }
@@ -600,7 +610,7 @@ httpReadReply(int fd, void *data)
 	    clen >>= 1;
 	IOStats.Http.read_hist[bin]++;
     }
-    if (!httpState->reply_hdr && len > 0 && fd_table[fd].uses > 1) {
+    if (!httpState->reply_hdr.size && len > 0 && fd_table[fd].uses > 1) {
 	/* Skip whitespace */
 	while (len > 0 && xisspace(*buf))
 	    xmemmove(buf, buf + 1, len--);
@@ -618,7 +628,7 @@ httpReadReply(int fd, void *data)
 	    commSetSelect(fd, COMM_SELECT_READ, httpReadReply, httpState, 0);
 	} else if (entry->mem_obj->inmem_hi == 0) {
 	    ErrorState *err;
-	    err = errorCon(ERR_READ_ERROR, HTTP_INTERNAL_SERVER_ERROR);
+	    err = errorCon(ERR_READ_ERROR, HTTP_BAD_GATEWAY);
 	    err->request = requestLink((request_t *) request);
 	    err->xerrno = errno;
 	    fwdFail(httpState->fwd, err);
@@ -628,7 +638,7 @@ httpReadReply(int fd, void *data)
 	}
     } else if (len == 0 && entry->mem_obj->inmem_hi == 0) {
 	ErrorState *err;
-	err = errorCon(ERR_ZERO_SIZE_OBJECT, HTTP_SERVICE_UNAVAILABLE);
+	err = errorCon(ERR_ZERO_SIZE_OBJECT, HTTP_BAD_GATEWAY);
 	err->xerrno = errno;
 	err->request = requestLink((request_t *) request);
 	fwdFail(httpState->fwd, err);
@@ -645,11 +655,31 @@ httpReadReply(int fd, void *data)
 	     * we want to process the reply headers.
 	     */
 	    httpProcessReplyHeader(httpState, buf, len);
-	fwdComplete(httpState->fwd);
+	if (entry->mem_obj->reply->sline.status == HTTP_HEADER_TOO_LARGE) {
+	    ErrorState *err;
+	    storeEntryReset(entry);
+	    err = errorCon(ERR_TOO_BIG, HTTP_BAD_GATEWAY);
+	    err->request = requestLink((request_t *) request);
+	    fwdFail(httpState->fwd, err);
+	    httpState->fwd->flags.dont_retry = 1;
+	} else {
+	    fwdComplete(httpState->fwd);
+	}
 	comm_close(fd);
+	return;
     } else {
 	if (httpState->reply_hdr_state < 2) {
 	    httpProcessReplyHeader(httpState, buf, len);
+	    if (entry->mem_obj->reply->sline.status == HTTP_HEADER_TOO_LARGE) {
+		ErrorState *err;
+		storeEntryReset(entry);
+		err = errorCon(ERR_TOO_BIG, HTTP_BAD_GATEWAY);
+		err->request = requestLink((request_t *) request);
+		fwdFail(httpState->fwd, err);
+		httpState->fwd->flags.dont_retry = 1;
+		comm_close(fd);
+		return;
+	    }
 	    if (httpState->reply_hdr_state == 2) {
 		http_status s = entry->mem_obj->reply->sline.status;
 #if WIP_FWD_LOG
@@ -719,7 +749,7 @@ httpSendComplete(int fd, char *bufnotused, size_t size, int errflag, void *data)
 	return;
     if (errflag) {
 	if (entry->mem_obj->inmem_hi == 0) {
-	    err = errorCon(ERR_WRITE_ERROR, HTTP_INTERNAL_SERVER_ERROR);
+	    err = errorCon(ERR_WRITE_ERROR, HTTP_BAD_GATEWAY);
 	    err->xerrno = errno;
 	    err->request = requestLink(httpState->orig_request);
 	    errorAppendEntry(entry, err);
@@ -1002,7 +1032,7 @@ httpSendRequest(HttpStateData * httpState)
     commSetTimeout(fd, Config.Timeout.lifetime, httpTimeout, httpState);
     commSetSelect(fd, COMM_SELECT_READ, httpReadReply, httpState, 0);
 
-    if (httpState->orig_request->body_connection)
+    if (httpState->orig_request->body_reader)
 	sendHeaderDone = httpSendRequestEntry;
     else
 	sendHeaderDone = httpSendComplete;
@@ -1175,7 +1205,7 @@ httpSendRequestEntry(int fd, char *bufnotused, size_t size, int errflag, void *d
 	return;
     if (errflag) {
 	if (entry->mem_obj->inmem_hi == 0) {
-	    err = errorCon(ERR_WRITE_ERROR, HTTP_INTERNAL_SERVER_ERROR);
+	    err = errorCon(ERR_WRITE_ERROR, HTTP_BAD_GATEWAY);
 	    err->xerrno = errno;
 	    err->request = requestLink(httpState->orig_request);
 	    errorAppendEntry(entry, err);
@@ -1188,7 +1218,7 @@ httpSendRequestEntry(int fd, char *bufnotused, size_t size, int errflag, void *d
 	return;
     }
     httpState->body_buf = memAllocate(MEM_8K_BUF);
-    clientReadBody(httpState->orig_request, httpState->body_buf, 8192, httpRequestBodyHandler, httpState);
+    requestReadBody(httpState->orig_request, httpState->body_buf, 8192, httpRequestBodyHandler, httpState);
 }
 
 void

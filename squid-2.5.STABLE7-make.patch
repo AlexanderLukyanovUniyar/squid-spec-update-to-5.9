@@ -29,7 +29,7 @@ diff -Nur squid-2.5.STABLE3.orig/src/Makefile.in squid-2.5.STABLE3/src/Makefile.
 @@ -374,12 +374,12 @@
  DEFAULT_CONFIG_FILE = $(sysconfdir)/squid.conf
  DEFAULT_MIME_TABLE = $(sysconfdir)/mime.conf
- DEFAULT_DNSSERVER = $(libexecdir)/dnsserver$(EXEEXT)
+ DEFAULT_DNSSERVER = $(libexecdir)/`echo dnsserver | sed '$(transform);s/$$/$(EXEEXT)/'`
 -DEFAULT_LOG_PREFIX = $(localstatedir)/logs
 +DEFAULT_LOG_PREFIX = $(localstatedir)/log/squid
  DEFAULT_CACHE_LOG = $(DEFAULT_LOG_PREFIX)/cache.log
@@ -39,6 +39,6 @@ diff -Nur squid-2.5.STABLE3.orig/src/Makefile.in squid-2.5.STABLE3/src/Makefile.
 -DEFAULT_SWAP_DIR = $(localstatedir)/cache
 +DEFAULT_PID_FILE = $(localstatedir)/run/squid.pid
 +DEFAULT_SWAP_DIR = $(localstatedir)/spool/squid
- DEFAULT_PINGER = $(libexecdir)/pinger$(EXEEXT)
- DEFAULT_UNLINKD = $(libexecdir)/unlinkd$(EXEEXT)
- DEFAULT_DISKD = $(libexecdir)/diskd$(EXEEXT)
+ DEFAULT_PINGER = $(libexecdir)/`echo pinger | sed '$(transform);s/$$/$(EXEEXT)/'`
+ DEFAULT_UNLINKD = $(libexecdir)/`echo unlinkd | sed '$(transform);s/$$/$(EXEEXT)/'`
+ DEFAULT_DISKD = $(libexecdir)/`echo diskd | sed '$(transform);s/$$/$(EXEEXT)/'`

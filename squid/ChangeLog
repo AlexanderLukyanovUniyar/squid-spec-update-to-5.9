@@ -1,3 +1,67 @@
+Changes to squid-2.5.STABLE7 (11 Oct 2004)
+
+	- [Medium] No objects cached in ufs cache_dir type in some
+	  configurations. Issue introduced in 2.5.STABLE6 by the patch for
+	  Bug #676. (Bug #1011)
+	- [Minor] LDAP helpers update to correct LDAP connection management
+	  and add support for literal password compare instead of binding
+	- [Minor] A large number of queued DNS lookups for the same domain
+	  (Bug #852)
+	- [Cosmetic] request_header_max_size configuration partly ignored
+	  (Bug #899)
+       	- [Minor] Partial hit results in TCP_HIT, not TCP_MISS. (Bug #1001)
+        - Bug #1012: [Cosmetic] HEAD requests may return stale information
+          (Bug #1012)
+       	- [Cosmetic] Warn if cache_dir ufs can not create files. (Bug #918)
+	- [Minor] case insensitive authentication (Bug #431)
+	- [Cosmetic] Add delay pools information to active_requests. (Bug
+          #882)
+	- [Minor] Apparent memory leak in client_db (Bug #833)
+	- [Minor] NTLM authentication truncated causing failures. (Bug
+	  #1016)
+	- [Cosmetic] Grammatical corrections in squid.conf.default
+	- [Cosmetic] Unknown %X errorpage codes incorrectly quoted. (Bug
+	  #1030)
+	- [Medium] Segfaults and other strange crashes when using heap
+	  policies. (Bug #1009)
+	- [Minor] Supplementary group memberships not set (Bug #1021)
+	- [Cosmetic] ERR_TOO_BIG Portugese translation
+	- [Minor] external_acl does not handle newlines (Bug #1038)
+	- [Major] NTLM authentication denial of service when using msnt_auth
+	  or fake_auth (Bug #1045)
+	- [Medium] Memory leaks when using NTLM authentication without
+	  challenge reuse. (Bug #994)
+	- [Minor] Temporary NTLM memory leak with challenge reuse enabled
+	  (Bug #910)
+	- [Minor] assertion failed: "n_ufs_dirs <=
+	  Config.cacheSwap.n_configured". (Bug #1053)
+	- [Minor] Segfault in authenticateDigestHandleReply. (Bug #1031)
+	- [Minor] acl time fails to parse multiple time specifications
+	  (Bug #1060)
+	- [Minor] cachemgr config dumps mixed up Range and Request-Range 
+	  headers in http_header_access & replace directives. (Bug #1056)
+	- [Minor] Content-Disposition added as a well known header (Bug #961)
+	- [Cosmetic] Don't warn about arp acls not being supported on FreeBSD
+	  (Bug #1074)
+	- [Cosmetic] Limit internal send/receive buffer sizes (Bug #1075)
+	- [Medium] New acl types to match arbitrary HTTP headers. In addition
+	  the http_header_access & replace directivess now support arbitrary
+	  headers and not only the well known ones. (Bug #961)
+	- [Cosmetic] ncsa_auth now accepts Window formatted password files
+	  (Bug #1078)
+	- [Cosmetic] Support the --program-prefix/suffix options or other
+	  configure program name transforms (Bug #1019)
+	- [Minor] Fix race condition in CONNECT and also handle aborts of
+	  CONNECT requests in a more graceful manner. (Bug #859)
+	- [Minor] New balance_on_multiple_ip directive to work around certain
+	  broken load balancers and optimized ipcache on reload requests
+	  (Bug #1058)
+	- [Medium] New reply_header_max_size directive
+	  (Bug #874)
+	- [Minor] Suspected instability on aborted PUT/POST requests
+	  (Bug #1089)
+	- [Security] SNMP Denial of Service fix (CAN-2004-0918)
+
 Changes to squid-2.5.STABLE6 (9 Jul 2004)
 
 	- Bug #937: NTLM assertion error "srv->flags.reserved"

@@ -1,6 +1,6 @@
 
 /*
- * $Id: stat.c,v 1.351.2.9 2003/06/22 21:32:10 wessels Exp $
+ * $Id: stat.c,v 1.351.2.10 2004/07/17 20:09:23 hno Exp $
  *
  * DEBUG: section 18    Cache Manager Statistics
  * AUTHOR: Harvest Derived
@@ -1446,6 +1446,9 @@ statClientRequests(StoreEntry * s)
 	    (long int) http->start.tv_sec,
 	    (int) http->start.tv_usec,
 	    tvSubDsec(http->start, current_time));
+#if DELAY_POOLS
+	storeAppendPrintf(s, "delay_pool %d\n", delayClient(http) >> 16);
+#endif
 	storeAppendPrintf(s, "\n");
     }
 }

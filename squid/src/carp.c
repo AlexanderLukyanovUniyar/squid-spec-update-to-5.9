@@ -1,6 +1,6 @@
 
 /*
- * $Id: carp.c,v 1.15.2.1 2003/06/19 21:06:19 wessels Exp $
+ * $Id: carp.c,v 1.15.2.2 2004/09/30 09:23:30 hno Exp $
  *
  * DEBUG: section 39    Cache Array Routing Protocol
  * AUTHOR: Eric Stern
@@ -119,7 +119,7 @@ carpSelectParent(request_t * request)
     for (tp = Config.peers; tp; tp = tp->next) {
 	if (0.0 == tp->carp.load_factor)
 	    continue;
-	if (tp->tcp_up != PEER_TCP_MAGIC_COUNT)
+	if (!peerHTTPOkay(tp, request))
 	    continue;
 	assert(tp->type == PEER_PARENT);
 	combined_hash = (url_hash ^ tp->carp.hash);

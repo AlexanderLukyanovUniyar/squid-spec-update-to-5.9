@@ -1,6 +1,6 @@
 
 /*
- * $Id: HttpReply.c,v 1.49.2.1 2003/05/06 20:13:02 hno Exp $
+ * $Id: HttpReply.c,v 1.49.2.2 2004/10/05 21:31:25 hno Exp $
  *
  * DEBUG: section 58    HTTP Reply (Response)
  * AUTHOR: Alex Rousskov
@@ -143,16 +143,17 @@ httpReplyParse(HttpReply * rep, const char *buf, ssize_t end)
      * becuase somebody may feed a non NULL-terminated buffer to
      * us.
      */
-    char *headers = memAllocate(MEM_4K_BUF);
+    MemBuf mb = MemBufNull;
     int success;
-    size_t s = XMIN(end + 1, 4096);
     /* reset current state, because we are not used in incremental fashion */
     httpReplyReset(rep);
     /* put a string terminator.  s is how many bytes to touch in
      * 'buf' including the terminating NULL. */
-    xstrncpy(headers, buf, s);
-    success = httpReplyParseStep(rep, headers, 0);
-    memFree(headers, MEM_4K_BUF);
+    memBufDefInit(&mb);
+    memBufAppend(&mb, buf, end);
+    memBufAppend(&mb, "\0", 1);
+    success = httpReplyParseStep(rep, mb.buf, 0);
+    memBufClean(&mb);
     return success == 1;
 }
 

@@ -1,6 +1,6 @@
 
 /*
- * $Id: HttpHeader.c,v 1.74.2.7 2003/07/17 22:06:12 wessels Exp $
+ * $Id: HttpHeader.c,v 1.74.2.9 2004/09/01 13:55:47 hno Exp $
  *
  * DEBUG: section 55    HTTP Header
  * AUTHOR: Alex Rousskov
@@ -77,6 +77,7 @@ static const HttpHeaderFieldAttrs HeadersAttrs[] =
     {"Cache-Control", HDR_CACHE_CONTROL, ftPCc},
     {"Connection", HDR_CONNECTION, ftStr},
     {"Content-Base", HDR_CONTENT_BASE, ftStr},
+    {"Content-Disposition", HDR_CONTENT_DISPOSITION, ftStr},
     {"Content-Encoding", HDR_CONTENT_ENCODING, ftStr},
     {"Content-Language", HDR_CONTENT_LANGUAGE, ftStr},
     {"Content-Length", HDR_CONTENT_LENGTH, ftInt},
@@ -178,9 +179,10 @@ static http_hdr_type GeneralHeadersArr[] =
 /* entity-headers */
 static http_hdr_type EntityHeadersArr[] =
 {
-    HDR_ALLOW, HDR_CONTENT_BASE, HDR_CONTENT_ENCODING, HDR_CONTENT_LANGUAGE,
-    HDR_CONTENT_LENGTH, HDR_CONTENT_LOCATION, HDR_CONTENT_MD5,
-    HDR_CONTENT_RANGE, HDR_CONTENT_TYPE, HDR_ETAG, HDR_EXPIRES, HDR_LAST_MODIFIED, HDR_LINK,
+    HDR_ALLOW, HDR_CONTENT_BASE, HDR_CONTENT_DISPOSITION,
+    HDR_CONTENT_ENCODING, HDR_CONTENT_LANGUAGE, HDR_CONTENT_LENGTH,
+    HDR_CONTENT_LOCATION, HDR_CONTENT_MD5, HDR_CONTENT_RANGE,
+    HDR_CONTENT_TYPE, HDR_ETAG, HDR_EXPIRES, HDR_LAST_MODIFIED, HDR_LINK,
     HDR_OTHER
 };
 
@@ -1243,5 +1245,5 @@ httpHeaderNameById(int id)
     if (!Headers)
 	Headers = httpHeaderBuildFieldsInfo(HeadersAttrs, HDR_ENUM_END);
     assert(id >= 0 && id < HDR_ENUM_END);
-    return HeadersAttrs[id].name;
+    return strBuf(Headers[id].name);
 }

@@ -1,6 +1,6 @@
 
 /*
- * $Id: acl.c,v 1.270.2.27 2004/02/27 16:36:35 wessels Exp $
+ * $Id: acl.c,v 1.270.2.29 2004/09/25 11:56:16 hno Exp $
  *
  * DEBUG: section 28    Access Control
  * AUTHOR: Duane Wessels
@@ -65,6 +65,8 @@ static void aclParseUserMaxIP(void *data);
 static void aclDestroyUserMaxIP(void *data);
 static wordlist *aclDumpUserMaxIP(void *data);
 static int aclMatchUserMaxIP(void *, auth_user_request_t *, struct in_addr);
+static void aclParseHeader(void *data);
+static void aclDestroyHeader(void *data);
 static squid_acl aclStrToType(const char *s);
 static int decode_addr(const char *, struct in_addr *, struct in_addr *);
 static void aclCheck(aclCheck_t * checklist);
@@ -174,6 +176,10 @@ aclStrToType(const char *s)
 	return ACL_REQ_MIME_TYPE;
     if (!strcmp(s, "rep_mime_type"))
 	return ACL_REP_MIME_TYPE;
+    if (!strcmp(s, "rep_header"))
+	return ACL_REP_HEADER;
+    if (!strcmp(s, "req_header"))
+	return ACL_REQ_HEADER;
     if (!strcmp(s, "max_user_ip"))
 	return ACL_MAX_USER_IP;
     if (!strcmp(s, "external"))
@@ -250,6 +256,10 @@ aclTypeToStr(squid_acl type)
 	return "req_mime_type";
     if (type == ACL_REP_MIME_TYPE)
 	return "rep_mime_type";
+    if (type == ACL_REP_HEADER)
+	return "rep_header";
+    if (type == ACL_REQ_HEADER)
+	return "req_header";
     if (type == ACL_MAX_USER_IP)
 	return "max_user_ip";
     if (type == ACL_EXTERNAL)
@@ -503,36 +513,36 @@ aclParseTimeSpec(void *curlist)
     acl_time_data **Tail;
     int h1, m1, h2, m2;
     char *t = NULL;
+    long weekbits = 0;
     for (Tail = curlist; *Tail; Tail = &((*Tail)->next));
-    q = memAllocate(MEM_ACL_TIME_DATA);
     while ((t = strtokFile())) {
 	if (*t < '0' || *t > '9') {
 	    /* assume its day-of-week spec */
 	    while (*t) {
 		switch (*t++) {
 		case 'S':
-		    q->weekbits |= ACL_SUNDAY;
+		    weekbits |= ACL_SUNDAY;
 		    break;
 		case 'M':
-		    q->weekbits |= ACL_MONDAY;
+		    weekbits |= ACL_MONDAY;
 		    break;
 		case 'T':
-		    q->weekbits |= ACL_TUESDAY;
+		    weekbits |= ACL_TUESDAY;
 		    break;
 		case 'W':
-		    q->weekbits |= ACL_WEDNESDAY;
+		    weekbits |= ACL_WEDNESDAY;
 		    break;
 		case 'H':
-		    q->weekbits |= ACL_THURSDAY;
+		    weekbits |= ACL_THURSDAY;
 		    break;
 		case 'F':
-		    q->weekbits |= ACL_FRIDAY;
+		    weekbits |= ACL_FRIDAY;
 		    break;
 		case 'A':
-		    q->weekbits |= ACL_SATURDAY;
+		    weekbits |= ACL_SATURDAY;
 		    break;
 		case 'D':
-		    q->weekbits |= ACL_WEEKDAYS;
+		    weekbits |= ACL_WEEKDAYS;
 		    break;
 		case '-':
 		    /* ignore placeholder */
@@ -553,8 +563,11 @@ aclParseTimeSpec(void *curlist)
 		memFree(q, MEM_ACL_TIME_DATA);
 		return;
 	    }
+	    q = memAllocate(MEM_ACL_TIME_DATA);
 	    q->start = h1 * 60 + m1;
 	    q->stop = h2 * 60 + m2;
+	    q->weekbits = weekbits;
+	    weekbits = 0;
 	    if (q->start > q->stop) {
 		debug(28, 0) ("%s line %d: %s\n",
 		    cfg_filename, config_lineno, config_input_line);
@@ -562,14 +575,20 @@ aclParseTimeSpec(void *curlist)
 		memFree(q, MEM_ACL_TIME_DATA);
 		return;
 	    }
+	    if (q->weekbits == 0)
+		q->weekbits = ACL_ALLWEEK;
+	    *(Tail) = q;
+	    Tail = &q->next;
 	}
     }
-    if (q->start == 0 && q->stop == 0)
-	q->stop = 23 * 60 + 59;
-    if (q->weekbits == 0)
-	q->weekbits = ACL_ALLWEEK;
-    *(Tail) = q;
-    Tail = &q->next;
+    if (weekbits) {
+	q = memAllocate(MEM_ACL_TIME_DATA);
+	q->start = 0 * 60 + 0;
+	q->stop = 24 * 60 + 0;
+	q->weekbits = weekbits;
+	*(Tail) = q;
+	Tail = &q->next;
+    }
 }
 
 void
@@ -606,6 +625,81 @@ aclParseRegexList(void *curlist)
 	*(Tail) = q;
 	Tail = &q->next;
     }
+}
+
+static void
+aclParseHeader(void *data)
+{
+    char *t;
+    acl_hdr_data **hd = data;
+    acl_hdr_data *q;
+
+    t = strtokFile();
+    if (NULL == t) {
+	debug(28, 0) ("%s line %d: %s\n", cfg_filename, config_lineno, config_input_line);
+	debug(28, 0) ("aclParseHeader: No data defined '%s'\n", t);
+	return;
+    }
+    q = xcalloc(1, sizeof(acl_hdr_data));
+    q->hdr_name = xstrdup(t);
+    q->hdr_id = httpHeaderIdByNameDef(t, strlen(t));
+    aclParseRegexList(q->reglist);
+    if (!q->reglist) {
+	debug(28, 0) ("%s line %d: %s\n", cfg_filename, config_lineno, config_input_line);
+	debug(28, 0) ("aclParseHeader: No pattern defined '%s'\n", t);
+	aclDestroyHeader(&q);
+	return;
+    }
+    while (*hd)
+	hd = &(*hd)->next;
+    *hd = q;
+}
+
+static int
+aclMatchHeader(acl_hdr_data * hdrs, const HttpHeader * hdr)
+{
+    acl_hdr_data *hd;
+    for (hd = hdrs; hd; hd = hd->next) {
+	int ret;
+	String header;
+	if (hd->hdr_id != -1)
+	    header = httpHeaderGetStrOrList(hdr, hd->hdr_id);
+	else
+	    header = httpHeaderGetByName(hdr, hd->hdr_name);
+	if (!strBuf(header))
+	    continue;
+	ret = aclMatchRegex(hd->reglist, strBuf(header));
+	stringClean(&header);
+	if (ret)
+	    return 1;
+    }
+    return 0;
+}
+
+void
+aclDestroyHeader(void *data)
+{
+    acl_hdr_data **acldata = data;
+    while (*acldata) {
+	acl_hdr_data *q = *acldata;
+	*acldata = q->next;
+	if (q->reglist)
+	    aclDestroyRegexList((*acldata)->reglist);
+	safe_free(q);
+    }
+}
+
+static wordlist *
+aclDumpHeader(acl_hdr_data * hd)
+{
+    wordlist *W = NULL;
+    relist *data = hd->reglist;
+    wordlistAdd(&W, httpHeaderNameById(hd->hdr_id));
+    while (data != NULL) {
+	wordlistAdd(&W, data->pattern);
+	data = data->next;
+    }
+    return aclDumpRegexList(hd->reglist);
 }
 
 #if SQUID_SNMP
@@ -753,6 +847,10 @@ aclParseAclLine(acl ** head)
     case ACL_REQ_MIME_TYPE:
     case ACL_REP_MIME_TYPE:
 	aclParseRegexList(&A->data);
+	break;
+    case ACL_REP_HEADER:
+    case ACL_REQ_HEADER:
+	aclParseHeader(&A->data);
 	break;
     case ACL_SRC_ASN:
     case ACL_MAXCONN:
@@ -1473,6 +1571,8 @@ aclMatchAcl(acl * ae, aclCheck_t * checklist)
     case ACL_PROXY_AUTH_REGEX:
     case ACL_REP_MIME_TYPE:
     case ACL_REQ_MIME_TYPE:
+    case ACL_REP_HEADER:
+    case ACL_REQ_HEADER:
     case ACL_URLPATH_REGEX:
     case ACL_URL_PORT:
     case ACL_URL_REGEX:
@@ -1692,6 +1792,14 @@ aclMatchAcl(acl * ae, aclCheck_t * checklist)
 	if (NULL == header)
 	    header = "";
 	return aclMatchRegex(ae->data, header);
+	/* NOTREACHED */
+    case ACL_REP_HEADER:
+	if (!checklist->reply)
+	    return 0;
+	return aclMatchHeader(ae->data, &checklist->reply->header);
+	/* NOTREACHED */
+    case ACL_REQ_HEADER:
+	return aclMatchHeader(ae->data, &checklist->request->header);
 	/* NOTREACHED */
     case ACL_EXTERNAL:
 	return aclMatchExternal(ae->data, checklist);
@@ -2163,6 +2271,10 @@ aclDestroyAcls(acl ** head)
 	case ACL_REQ_MIME_TYPE:
 	    aclDestroyRegexList(a->data);
 	    break;
+	case ACL_REP_HEADER:
+	case ACL_REQ_HEADER:
+	    aclDestroyHeader(a->data);
+	    break;
 	case ACL_PROTO:
 	case ACL_METHOD:
 	case ACL_SRC_ASN:
@@ -2578,6 +2690,9 @@ aclDumpGeneric(const acl * a)
     case ACL_REQ_MIME_TYPE:
     case ACL_REP_MIME_TYPE:
 	return aclDumpRegexList(a->data);
+    case ACL_REQ_HEADER:
+    case ACL_REP_HEADER:
+	return aclDumpHeader(a->data);
     case ACL_SRC_ASN:
     case ACL_MAXCONN:
     case ACL_DST_ASN:

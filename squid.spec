@@ -1,6 +1,6 @@
 Name: squid
-Version: 2.5.STABLE6
-Release: alt3
+Version: 2.5.STABLE7
+Release: alt1
 
 Summary: The Squid proxy caching server
 License: GPL
@@ -15,8 +15,10 @@ Source2: %name.init
 Source3: %name.logrotate
 
 # Other patches
-Patch1: %name-2.5-make.patch
-Patch2: %name-2.5-config.patch
+# rediffed for 2.5.S7
+Patch1: %name-2.5.STABLE7-make.patch
+# rediffed for 2.5.S7
+Patch2: %name-2.5.STABLE7-config.patch
 Patch3: %name-2.4.STABLE6-alt-without-bind.patch
 Patch4: %name-2.5-perlpath.patch
 Patch5: %name-2.5-automake.patch
@@ -24,37 +26,7 @@ Patch6: %name-errrors-belarusian.patch
 Patch7: patch-aa.patch
 
 #Official patches to Squid
-Patch10: squid-2.5.STABLE6-active_requests_delaypool.patch
-Patch11: squid-2.5.STABLE6-ntlm_noreuse_leak.patch
-Patch12: squid-2.5.STABLE6-basic_auth_caseinsensitive.patch
-Patch13: squid-2.5.STABLE6-partial_hit_is_miss.patch
-Patch14: squid-2.5.STABLE6-client_db_gc.patch
-Patch15: squid-2.5.STABLE6-request_header_max_size.patch
-Patch16: squid-2.5.STABLE6-concurrent_dns_lookups.patch
-Patch17: squid-2.5.STABLE6-HEAD.patch
-Patch18: squid-2.5.STABLE6-ufs_create_error.patch
-# Updated to 2004-08-10 version
-Patch19: squid-2.5.STABLE6-ldap_helpers.patch
-Patch20: squid-2.5.STABLE6-ufs_no_valid_dir.patch
-Patch21: squid-2.5.STABLE6-ntlm_challengereuse_leak.patch
-Patch22: squid-2.5.STABLE6-ntlmtruncated.patch
-Patch23: squid-2.5.STABLE6-errorpage_quote.patch
-Patch24: squid-2.5.STABLE6-heap_segfault.patch
-# Fails due to ALT-specific defaults (2 extra lines)
-# Rediffed.
-Patch25: squid-2.5.STABLE6-initgroups-alt.patch
-# Indentation changed. Rediffed.
-Patch26: squid-2.5.STABLE6-external_acl_newlines-alt.patch
-Patch27: squid-2.5.STABLE6-ntlm_fetch_string.patch
-# same issue, but 2 patches changed after patch 27
-#Patch28: squid-2.5.STABLE6-ntlm_noreuse_leak.patch
-#Patch29: squid-2.5.STABLE6-ntlm_challengereuse_leak.patch
-Patch30: squid-2.5.STABLE6-rotate_error.patch
-Patch31: squid-2.5.STABLE6-digest_crash.patch
-Patch32: squid-2.5.STABLE6-acl_times.patch
-Patch33: squid-2.5.STABLE6-http_header_range.patch
-Patch34: squid-2.5.STABLE6-Content-Disposition.patch
-
+# merged into 2.5.STABLE7
 
 
 Obsoletes: %name-novm
@@ -97,32 +69,6 @@ ICMP messages directly
 %patch5 -p1
 %patch6 -p1
 %patch7 -p1
-
-%patch10 -p1
-%patch11 -p1
-%patch12 -p1
-%patch13 -p1
-%patch14 -p1
-%patch15 -p1
-%patch16 -p1
-%patch17 -p1
-%patch18 -p1
-%patch19 -p1
-%patch20 -p1
-%patch21 -p1
-%patch22 -p1
-%patch23 -p1
-%patch24 -p1
-%patch25 -p1
-%patch26 -p1
-%patch27 -p1
-#%patch28 -p1
-#%patch29 -p1
-%patch30 -p1
-%patch31 -p1
-%patch32 -p1
-%patch33 -p1
-%patch34 -p1
 
 %build
 %set_autoconf_version 2.5
@@ -283,6 +229,11 @@ popd
 %attr(4710,root,%name) %_libdir/%name/pinger
 
 %changelog
+* Tue Oct 12 2004 Denis Ovsienko <pilot@altlinux.ru> 2.5.STABLE7-alt1
+- 2.5.STABLE7 (security fix)
+- updated FAQ to 1.235 2004/10/04
+- rediffed patches
+
 * Sat Sep 04 2004 Denis Ovsienko <pilot@altlinux.ru> 2.5.STABLE6-alt3
 - more patches
 

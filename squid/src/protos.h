@@ -1,6 +1,6 @@
 
 /*
- * $Id: protos.h,v 1.420.2.22 2004/02/04 17:42:28 hno Exp $
+ * $Id: protos.h,v 1.420.2.25 2004/10/05 22:34:42 hno Exp $
  *
  *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/
@@ -141,8 +141,6 @@ extern void clientOpenListenSockets(void);
 extern void clientHttpConnectionsClose(void);
 extern StoreEntry *clientCreateStoreEntry(clientHttpRequest *, method_t, request_flags);
 extern int isTcpHit(log_type);
-extern void clientReadBody(request_t * req, char *buf, size_t size, CBCB * callback, void *data);
-extern void clientAbortBody(request_t * req);
 
 extern int commSetNonBlocking(int fd);
 extern int commUnsetNonBlocking(int fd);
@@ -304,8 +302,6 @@ extern void whoisStart(FwdState *);
 /* http.c */
 extern int httpCachable(method_t);
 extern void httpStart(FwdState *);
-extern void httpParseReplyHeaders(const char *, http_reply *);
-extern void httpProcessReplyHeader(HttpStateData *, const char *, int);
 extern mb_size_t httpBuildRequestPrefix(request_t * request,
     request_t * orig_request,
     StoreEntry * entry,
@@ -521,6 +517,8 @@ extern void httpRequestPack(const request_t * req, Packer * p);
 extern int httpRequestPrefixLen(const request_t * req);
 extern int httpRequestHdrAllowed(const HttpHeaderEntry * e, String * strConnection);
 extern int httpRequestHdrAllowedByName(http_hdr_type id);
+extern void requestReadBody(request_t * request, char *buf, size_t size, CBCB * callback, void *cbdata);
+extern void requestAbortBody(request_t * request);
 
 extern void icmpOpen(void);
 extern void icmpClose(void);
@@ -585,10 +583,9 @@ extern void ipcache_nbgethostbyname(const char *name,
 extern EVH ipcache_purgelru;
 extern const ipcache_addrs *ipcache_gethostbyname(const char *, int flags);
 extern void ipcacheInvalidate(const char *);
-extern void ipcacheReleaseInvalid(const char *);
+extern void ipcacheInvalidateNegative(const char *);
 extern void ipcache_init(void);
 extern void stat_ipcache_get(StoreEntry *);
-extern int ipcacheQueueDrain(void);
 extern void ipcacheCycleAddr(const char *name, ipcache_addrs *);
 extern void ipcacheMarkBadAddr(const char *name, struct in_addr);
 extern void ipcacheMarkGoodAddr(const char *name, struct in_addr);

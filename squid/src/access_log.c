@@ -1,6 +1,6 @@
 
 /*
- * $Id: access_log.c,v 1.72.2.5 2004/06/07 21:20:34 hno Exp $
+ * $Id: access_log.c,v 1.72.2.6 2004/09/27 22:34:19 wessels Exp $
  *
  * DEBUG: section 46    Access Log
  * AUTHOR: Duane Wessels
@@ -389,7 +389,7 @@ accessLogInit(void)
     logfile = logfileOpen(Config.Log.access, MAX_URL << 1, 1);
     LogfileStatus = LOG_ENABLE;
 #if HEADERS_LOG
-    headerslog = logfileOpen("/usr/local/squid/logs/headers.log", 512);
+    headerslog = logfileOpen("/usr/local/squid/logs/headers.log", MAX_URL << 1, 0);
     assert(NULL != headerslog);
 #endif
 #if FORW_VIA_DB

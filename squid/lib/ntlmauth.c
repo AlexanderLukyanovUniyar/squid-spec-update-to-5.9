@@ -1,5 +1,5 @@
 /*
- * $Id: ntlmauth.c,v 1.5.2.2 2002/07/22 02:06:31 hno Exp $
+ * $Id: ntlmauth.c,v 1.5.2.3 2004/08/20 08:09:58 hno Exp $
  *
  * * * * * * * * Legal stuff * * * * * * *
  *
@@ -84,7 +84,7 @@ ntlm_fetch_string(char *packet, int32_t length, strhdr * str)
     o = WSWAP(str->offset);
     /* debug("fetch_string(plength=%d,l=%d,o=%d)\n",length,l,o); */
 
-    if (l < 0 || l > MAX_FIELD_LENGTH || o + l > length || o == 0) {
+    if (l < 0 || o <= 0 || l > MAX_FIELD_LENGTH || o + l > length) {
 	/* debug("ntlmssp: insane data (l: %d, o: %d)\n", l,o); */
 	return rv;
     }

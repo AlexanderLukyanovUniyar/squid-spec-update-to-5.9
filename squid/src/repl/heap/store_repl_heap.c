@@ -1,6 +1,6 @@
 
 /*
- * $Id: store_repl_heap.c,v 1.8.2.1 2002/07/22 00:07:17 hno Exp $
+ * $Id: store_repl_heap.c,v 1.8.2.2 2004/08/05 20:23:01 hno Exp $
  *
  * DEBUG: section ?     HEAP based removal policies
  * AUTHOR: Henrik Nordstrom
@@ -191,6 +191,7 @@ heap_purgeNext(RemovalPurgeWalker * walker)
     age = heap_peepminkey(heap->heap);
     entry = heap_extractmin(heap->heap);
     if (storeEntryLocked(entry)) {
+	storeLockObject(entry);
 	linklistPush(&heap_walker->locked_entries, entry);
 	goto try_again;
     }
@@ -220,6 +221,7 @@ heap_purgeDone(RemovalPurgeWalker * walker)
     while ((entry = linklistShift(&heap_walker->locked_entries))) {
 	heap_node *node = heap_insert(heap->heap, entry);
 	SET_POLICY_NODE(entry, node);
+	storeUnlockObject(entry);
     }
     safe_free(walker->_data);
     cbdataFree(walker);

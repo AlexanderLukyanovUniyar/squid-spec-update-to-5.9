@@ -1,6 +1,6 @@
 
 /*
- * $Id: typedefs.h,v 1.132.2.4 2004/02/04 17:42:29 hno Exp $
+ * $Id: typedefs.h,v 1.132.2.6 2004/10/05 22:34:42 hno Exp $
  *
  *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/
@@ -66,6 +66,7 @@ typedef struct _auth_user_request_t auth_user_request_t;
 typedef struct _auth_user_hash_pointer auth_user_hash_pointer;
 typedef struct _auth_user_ip_t auth_user_ip_t;
 typedef struct _acl_proxy_auth_match_cache acl_proxy_auth_match_cache;
+typedef struct _acl_hdr_data acl_hdr_data;
 typedef struct _authscheme_entry authscheme_entry_t;
 typedef struct _authScheme authScheme;
 typedef struct _acl_user_data acl_user_data;
@@ -235,6 +236,7 @@ typedef int DEFER(int fd, void *data);
 typedef int READ_HANDLER(int, char *, int);
 typedef int WRITE_HANDLER(int, const char *, int);
 typedef void CBCB(char *buf, ssize_t size, void *data);
+typedef void BODY_HANDLER(request_t * req, char *, size_t, CBCB *, void *);
 
 typedef void STIOCB(void *their_data, int errflag, storeIOState *);
 typedef void STFNCB(void *their_data, int errflag, storeIOState *);

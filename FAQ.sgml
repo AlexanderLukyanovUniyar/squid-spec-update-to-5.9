@@ -151,7 +151,7 @@ maintains the native NT port of Squid and is actively working on having the need
 <url url="http://www.logisense.com/" name="LogiSense">
 has ported Squid to Windows NT and sells a supported
 version.  You can also download the source from
-<url url="ftp://ftp.logisense.com/cachexpress/" name="their FTP site">.
+<url url="ftp://ftp.logisense.com/pub/cachexpress/" name="their FTP site">.
 Thanks to LogiSense for making the code available as required by the GPL terms.
 
 <sect1>What Squid mailing lists are available?
@@ -261,7 +261,7 @@ Yeah, its extremely incomplete.  I assure you this is the most recent version.
 <item><url url="/Versions/1.0/Release-Notes-1.0.txt" name="Squid-1.0 Release Notes">
 <item><url url="/Versions/1.1/Release-Notes-1.1.txt" name="Squid-1.1 Release Notes">
 <item><url url="http://www.squid-cache.org/Doc/Hierarchy-Tutorial/" name="Tutorial on Configuring Hierarchical Squid Caches">
-<item><url url="ftp://ftp.isi.edu/in-notes/rfc2616.txt" name="RFC 2186"> ICPv2 -- Protocol
+<item><url url="ftp://ftp.isi.edu/in-notes/rfc2186.txt" name="RFC 2186"> ICPv2 -- Protocol
 <item><url url="ftp://ftp.isi.edu/in-notes/rfc2187.txt" name="RFC 2187"> ICPv2 -- Application
 <item><url url="ftp://ftp.isi.edu/in-notes/rfc1016.txt" name="RFC 1016">
 </itemize>
@@ -3483,8 +3483,9 @@ which you should consult for more information.
 </verb>
 
 <sect1>I want to restart Squid with a clean cache
+<label id="cleancache">
 <p>
-<em>Note: The information here is current for version 2.2.</em>
+<em>Note: The information here is current for version 2.2 and later.</em>
 <P>
 First of all, you must stop Squid of course.  You can use
 the command:
@@ -3862,6 +3863,7 @@ The procedure is similar to recreate the directory.
 Edit <em/squid.conf/ and add a new <em/cache_dir/ line.
 <item>
 Shutdown Squid  (squid -k shutdown)
+</item>
 <item>
 Initialize the new directory by running
 <verb>
@@ -7524,6 +7526,21 @@ by Grzegorz Janoszka
    10kB is too low, so you can increase this value.
 
 
+<sect1>Negative or very large numbers in Store Directory Statistics, or constant complaints about cache above limit
+
+<p>
+   In some situations where swap.state has been corrupted Squid can be
+   very confused about how much data it has in the cache. Such corruption
+   may happen after a power failure or similar fatal event.
+   To recover first stop Squid, then delete the swap.state files from
+   each cache directory and then start Squid again. Squid will automatically
+   rebuild the swap.state index from the cached files reasonably well.
+
+<P>
+   If this does not work or causes too high load on your server due to
+   the reindexing of the cache then delete the cache content as explained
+   in <ref id="cleancache" name="I want to restart Squid with a clean cache">.
+
 <!-- %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% -->
 
 <sect>How does Squid work?
@@ -9166,8 +9183,8 @@ diff -p -u -r1.40 -r1.41
   * SUCH DAMAGE.
   *
   *	@(#)uipc_socket.c	8.3 (Berkeley) 4/15/94
-- *	$Id: FAQ.sgml,v 1.231 2004/08/10 20:01:22 wessels Exp $
-+ *	$Id: FAQ.sgml,v 1.231 2004/08/10 20:01:22 wessels Exp $
+- *	$Id: FAQ.sgml,v 1.235 2004/10/04 20:38:05 wessels Exp $
++ *	$Id: FAQ.sgml,v 1.235 2004/10/04 20:38:05 wessels Exp $
   */
 
  #include <sys/param.h>
@@ -11650,7 +11667,7 @@ to be compiled as a module and loaded on your system to function.
 Do not attempt to build this in as a static part of your kernel.
 
 <P>
-Download the <url url="../../WCCP-support/Linux/ip_wccp.c" name="Linux WCCP module">
+Download the <url url="../../WCCP-support/Linux/" name="Linux WCCP module">
 and compile it as you would any Linux network module.
   
 <P>
@@ -11659,6 +11676,11 @@ Copy the module to <em>/lib/modules/kernel-version/ipv4/ip_wccp.o</em>. Edit
 
 <verb>
 	/lib/modules/kernel-version/ipv4/ip_wccp.o:
+</verb>
+
+or run
+<verb>
+	depmod -a
 </verb>
 
 <P>
@@ -11723,6 +11745,50 @@ gid=`id -g proxy`
 iptables -t nat -A OUTPUT -p tcp --dport 80 -m owner --gid-owner $gid -j ACCEPT
 iptables -t nat -A OUTPUT -p tcp --dport 80 -j DNAT --to-destination 192.168.0.2:8080
 </verb>
+
+<sect1>Interception caching with an Alcatel OmnySwitch 7700
+<p>
+by Pedro A M Vazquez
+<p>
+On the switch define a network group to be intercepted:
+<verb>
+ policy network group MyGroup 10.1.1.0 mask 255.255.255.0
+</verb>
+<p>
+Define the tcp services to be intercepted:
+<verb>
+ policy service web80 destination tcp port 80 
+ policy service web8080 destination tcp port 8080
+</verb>
+<p>
+Define a group of services  using the services above:
+<verb>
+ policy service group WebPorts web80 web8080
+</verb>
+<p>
+And use these to create an intercept condition:
+<verb>
+ policy condition WebFlow source network group MyGroup service group WebPorts
+</verb>
+<p>
+Now, define an action to redirect the traffic to the host running squid:
+<verb>
+ policy action Redir alternate gateway ip 10.1.2.3 
+</verb>
+<p>
+Finally, create a rule using this condition and the corresponding action: 
+<verb>
+ policy rule Intercept  condition WebFlow action Redir
+</verb>
+<p>
+Apply the rules to the QoS system to make them effective
+<verb>
+ qos apply
+</verb>
+<p>
+Don't forget that you still need to configure Squid and Squid's
+operating system to handle the intercepted connections.  See above
+for Squid and OS-specific details.
 
 <!-- %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% -->
 
@@ -12041,7 +12107,7 @@ Configure the external authenticator in <em/squid.conf/.
 For <em/ncsa_auth/ you need to give the pathname to the executable and
 the password file as an argument.  For example:
 <verb>
-	auth_param basic /usr/local/squid/bin/ncsa_auth /usr/local/squid/etc/passwd
+	auth_param basic program /usr/local/squid/bin/ncsa_auth /usr/local/squid/etc/passwd
 </verb>
 </enum>
 
@@ -13833,7 +13899,7 @@ want to make a cron job that regularly verifies that your proxy blocks
 access to port 25.
 
 <verb>
-$Id: FAQ.sgml,v 1.231 2004/08/10 20:01:22 wessels Exp $
+$Id: FAQ.sgml,v 1.235 2004/10/04 20:38:05 wessels Exp $
 </verb>
 </article>
 <!--  LocalWords:  SSL MSIE Netmanage Chameleon WebSurfer unchecking remotehost

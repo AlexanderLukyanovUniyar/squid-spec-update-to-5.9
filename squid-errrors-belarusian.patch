@@ -1,0 +1,802 @@
+diff -Nur squid-2.5.STABLE3.orig/errors/Belarusian/ERR_ACCESS_DENIED squid-2.5.STABLE3/errors/Belarusian/ERR_ACCESS_DENIED
+--- squid-2.5.STABLE3.orig/errors/Belarusian/ERR_ACCESS_DENIED	1970-01-01 05:00:00 +0500
++++ squid-2.5.STABLE3/errors/Belarusian/ERR_ACCESS_DENIED	2002-08-02 20:13:12 +0600
+@@ -0,0 +1,22 @@
++<HTML><HEAD><meta HTTP-EQUIV="CONTENT-TYPE" CONTENT="text/html; charset=windows-1251">
++<TITLE>ПАМЫЛКА: Запытаны URL ня можа быць дастаўлены</TITLE>
++</HEAD><BODY>
++<H1>ПАМЫЛКА</H1>
++<H2>Запытаны URL ня можа быць дастаўлены</H2>
++<HR>
++<P>
++Пад час дастаўкі URL:
++<A HREF="%U">%U</A>
++<P>
++Адбылася наступная памылка:
++<UL>
++<LI>
++<STRONG>
++Доступ забаронены.
++</STRONG>
++<P>
++Настройкі кантролю доступу ня даюць мажлівасьці выканаць Ваш запыт у дадзены час.
++Калі ласка, зьвяжыцеся з Вашым пастаўшчыком паслуг Інтэрнэт,
++калі Вы лічыце гэта памылковым.
++</UL>
++<P>Адміністратар Вашага кэшу <A HREF="mailto:%w">%w</A>. 
+diff -Nur squid-2.5.STABLE3.orig/errors/Belarusian/ERR_CACHE_ACCESS_DENIED squid-2.5.STABLE3/errors/Belarusian/ERR_CACHE_ACCESS_DENIED
+--- squid-2.5.STABLE3.orig/errors/Belarusian/ERR_CACHE_ACCESS_DENIED	1970-01-01 05:00:00 +0500
++++ squid-2.5.STABLE3/errors/Belarusian/ERR_CACHE_ACCESS_DENIED	2002-08-02 20:13:52 +0600
+@@ -0,0 +1,31 @@
++<HTML><HEAD><meta HTTP-EQUIV="CONTENT-TYPE" CONTENT="text/html; charset=windows-1251">
++<TITLE>ПАМЫЛКА: Доступ да кэшу забаронены</TITLE>
++</HEAD>
++<BODY>
++<H1>ПАМЫЛКА</H1>
++<H2>Доступ да кэшу забаронены</H2>
++<HR>
++<P>
++Пад час дастаўкі URL:
++<A HREF="%U">%U</A>
++<P>
++Адбылася наступная памылка:
++<UL>
++<LI>
++<STRONG>
++Доступ до кэшу забаронены
++</STRONG>
++</UL>
++</P>
++
++<P>Выбачайце, Вы ня можаце запытаць:
++<PRE> %U</PRE> з таго кэшу, покуль ня пройдзеце аўтэнтыфікацыю.
++</P>
++
++<P>
++ Для гэтага Вам неабходны Netscape вэрсыі 2.0 альбо вышэй, ці Microsoft Internet
++Explorer 3.0, альбо HTTP/1.1 сумяшчальны аглядальнік. Калі ласка зьвяжыцеся 
++з <A HREF="mailto:%w">адміністратарам кэшу</a>, калі ў Вас узьніклі праблемы 
++з аўтарызацыяй, альбо <A HREF="http://%h/cgi-bin/chpasswd. cgi\">зьмяніце</a> 
++Ваш пароль па-змаўчаньню.
++</P>
+diff -Nur squid-2.5.STABLE3.orig/errors/Belarusian/ERR_CACHE_MGR_ACCESS_DENIED squid-2.5.STABLE3/errors/Belarusian/ERR_CACHE_MGR_ACCESS_DENIED
+--- squid-2.5.STABLE3.orig/errors/Belarusian/ERR_CACHE_MGR_ACCESS_DENIED	1970-01-01 05:00:00 +0500
++++ squid-2.5.STABLE3/errors/Belarusian/ERR_CACHE_MGR_ACCESS_DENIED	2002-08-02 20:13:58 +0600
+@@ -0,0 +1,30 @@
++<HTML><HEAD><meta HTTP-EQUIV="CONTENT-TYPE" CONTENT="text/html; charset=windows-1251">
++<TITLE>ПАМЫЛКА: Доступ да кіраваньня кэшам забаронены</TITLE>
++</HEAD>
++<BODY>
++<H1>ПАМЫЛКА</H1>
++<H2>Доступ да кіраваньня кэшам забаронены</H2>
++<HR>
++<P>
++Пад час дастаўкі URL:
++<A HREF="%U">%U</A>
++<P>
++Адбылася наступная памылка:
++<UL>
++<LI>
++<STRONG>
++Доступ да кіраваньня кэшам забаронены.
++</STRONG>
++</UL>
++</P>
++
++<P>Выбачайце, Вы ня можаце запытаць:
++<PRE> %U</PRE> з сыстэмы кіраваньня кэшу, покуль ня пройдзіце аўтэнтыфікацыю.
++</P>
++<P>
++ Для гэтага Вам неабходны Netscape вэрсыі 2.0 альбо вышэй, ці Microsoft Internet
++Explorer 3.0, альбо HTTP/1.1 сумяшчальны аглядальнік. Калі ласка зьвяжыцеся 
++з <A HREF="mailto:%w">адміністратарам кэшу</a>, калі у Вас узьніклі праблемы 
++з аўтэнтыфікацыяй, калі ж <em> Вы </em> адміністратар,
++ прачытайце дакумэнтацыю Squid па йнтэрфэйсе кіраваньня кэшам і прагледзьце
++ лог-файл на прадмет больш дэталёвых паведамленьняў пра памылкі.</P>
+diff -Nur squid-2.5.STABLE3.orig/errors/Belarusian/ERR_CANNOT_FORWARD squid-2.5.STABLE3/errors/Belarusian/ERR_CANNOT_FORWARD
+--- squid-2.5.STABLE3.orig/errors/Belarusian/ERR_CANNOT_FORWARD	1970-01-01 05:00:00 +0500
++++ squid-2.5.STABLE3/errors/Belarusian/ERR_CANNOT_FORWARD	2002-08-02 20:14:44 +0600
+@@ -0,0 +1,27 @@
++<HTML><HEAD><meta HTTP-EQUIV="CONTENT-TYPE" CONTENT="text/html; charset=windows-1251">
++<TITLE>ПАМЫЛКА: Запытаны URL ня можа быць дастаўлены</TITLE>
++</HEAD><BODY>
++<H1>ПАМЫЛКА</H1>
++<H2>Запытаны URL ня можа быць дастаўлены</H2>
++<HR>
++<P>
++Пад час дастаўкі URL:
++<A HREF="%U">%U</A>
++<P>
++Адбылася наступная памылка:
++<UL>
++<LI>
++<STRONG>
++Немагчыма пераслаць запыт у дадзены момант.
++</STRONG>
++</UL>
++
++<P>
++Гэты запыт ня можы быць перасланы на паслужнік-крыніцу ці на кэш-паслужнік, які знаходзіцца вышэй па гіерархіі.
++Найбольш імаверная прычына памылкі:
++<UL>
++ <LI>Адміністратар гэтага паслужніку забараніў прамое злучэньне з
++    паслужнікамі-крыніцамі й
++ <LI>усе кэш-сэрвэры, якія знаходзяцца вышэй па гіерархіі, у дадзены момант недаступныя.
++</UL>
++<P>Адміністратар Вашага кэшу <A HREF="mailto:%w">%w</A>. 
+diff -Nur squid-2.5.STABLE3.orig/errors/Belarusian/ERR_CONNECT_FAIL squid-2.5.STABLE3/errors/Belarusian/ERR_CONNECT_FAIL
+--- squid-2.5.STABLE3.orig/errors/Belarusian/ERR_CONNECT_FAIL	1970-01-01 05:00:00 +0500
++++ squid-2.5.STABLE3/errors/Belarusian/ERR_CONNECT_FAIL	2002-08-02 20:14:54 +0600
+@@ -0,0 +1,25 @@
++<HTML><HEAD><meta HTTP-EQUIV="CONTENT-TYPE" CONTENT="text/html; charset=windows-1251">
++<TITLE>ПАМЫЛКА: Запытаны URL ня можа быць дастаўлены</TITLE>
++</HEAD><BODY>
++<H1>ПАМЫЛКА</H1>
++<H2>Запытаны URL ня можа быць дастаўлены</H2>
++<HR>
++<P>
++Пад час дастаўкі URL:
++<A HREF="%U">%U</A>
++<P>
++Адбылася наступная памылка:
++<UL>
++<LI>
++<STRONG>
++Ня атрымалася ўсталяваць злучэньне.
++</STRONG>
++</UL>
++
++<P>
++Быў атрыманы адказ:
++<PRE><I>      %E</I></PRE>
++
++<P>
++Аддалены вузел ці сетка ня адказваюць. Калі ласка, яшчэ раз праверце запыт.
++<P>Адміністратар Вашага кэшу <A HREF="mailto:%w">%w</A>.
+diff -Nur squid-2.5.STABLE3.orig/errors/Belarusian/ERR_DNS_FAIL squid-2.5.STABLE3/errors/Belarusian/ERR_DNS_FAIL
+--- squid-2.5.STABLE3.orig/errors/Belarusian/ERR_DNS_FAIL	1970-01-01 05:00:00 +0500
++++ squid-2.5.STABLE3/errors/Belarusian/ERR_DNS_FAIL	2002-08-02 20:15:02 +0600
+@@ -0,0 +1,30 @@
++<HTML><HEAD><meta HTTP-EQUIV="CONTENT-TYPE" CONTENT="text/html; charset=windows-1251">
++<TITLE>ПАМЫЛКА: Запытаны URL ня можа быць дастаўлены</TITLE>
++</HEAD><BODY>
++<H1>ПАМЫЛКА</H1>
++<H2>Запытаны URL ня можа быць дастаўлена</H2>
++<HR>
++<P>
++Пад час дастаўкі URL:<br>
++<A HREF="%U">%U</A>
++<P>
++Адбылася наступная памылка:
++<BLOCKQUOTE>
++Немагчыма вызначыць IP адрэсу вузла
++<I>%H</I>
++</BLOCKQUOTE>
++</UL>
++
++<P>
++Паслужнік адрэсаў адказаў:
++<BLOCKQUOTE>
++ %z
++</BLOCKQUOTE>
++
++<P>
++Што азначае:
++<PRE>
++ Кэш ня ў стане вызначыць вузел, адзначаны ў URL.
++ Праверце правільнасьць напісаньня адрэсы.
++</PRE>
++<P>Адміністратар Вашага кэшу <A HREF="mailto:%w">%w</A>. 
+diff -Nur squid-2.5.STABLE3.orig/errors/Belarusian/ERR_FORWARDING_DENIED squid-2.5.STABLE3/errors/Belarusian/ERR_FORWARDING_DENIED
+--- squid-2.5.STABLE3.orig/errors/Belarusian/ERR_FORWARDING_DENIED	1970-01-01 05:00:00 +0500
++++ squid-2.5.STABLE3/errors/Belarusian/ERR_FORWARDING_DENIED	2002-08-02 20:15:16 +0600
+@@ -0,0 +1,22 @@
++<HTML><HEAD><meta HTTP-EQUIV="CONTENT-TYPE" CONTENT="text/html; charset=windows-1251">
++<TITLE>ПАМЫЛКА: Запытаны URL ня можа быць дастаўлены</TITLE>
++</HEAD><BODY>
++<H1>ПАМЫЛКА</H1>
++<H2>Запытаны URL ня можа быць дастаўлены.</H2>
++<HR>
++<P>
++Пад час дастаўкі URL:
++<A HREF="%U">%U</A>
++<P>
++Адбылася наступная памылка:
++<UL>
++<LI>
++<STRONG>
++Перасылка забаронена.
++</STRONG>
++</UL>
++
++<P>
++Гэты кэш ня будзе перасылаць Ваш запыт праз усталяваньне ўзаемаадносін тыпу sibling.
++Худчэй за ўсе кліент %i - памылкова зканфігураваны кэш.
++<P>Адміністратар Вашага кэшу <A HREF="mailto:%w">%w</A>. 
+diff -Nur squid-2.5.STABLE3.orig/errors/Belarusian/ERR_FTP_DISABLED squid-2.5.STABLE3/errors/Belarusian/ERR_FTP_DISABLED
+--- squid-2.5.STABLE3.orig/errors/Belarusian/ERR_FTP_DISABLED	1970-01-01 05:00:00 +0500
++++ squid-2.5.STABLE3/errors/Belarusian/ERR_FTP_DISABLED	2002-08-02 20:15:28 +0600
+@@ -0,0 +1,21 @@
++<HTML><HEAD><meta HTTP-EQUIV="CONTENT-TYPE" CONTENT="text/html; charset=windows-1251">
++<TITLE>ПАМЫЛКА: Запытаны URL ня можа быць дастаўлены</TITLE>
++</HEAD><BODY>
++<H1>ПАМЫЛКА</H1>
++<H2>Запытаны URL ня можа быць дастаўлены.</H2>
++<HR>
++<P>
++Пад час дастаўкі URL:
++<A HREF="%U">%U</A>
++<P>
++Адбылася наступная памылка:
++<UL>
++<LI>
++<STRONG>
++Пратакол FTP забаронены.
++</STRONG>
++</UL>
++
++<P>
++Гэты кэш ня падтрымлівае пратакол FTP.
++<P>Адміністратар Вашага кэшу <A HREF="mailto:%w">%w</A>. 
+diff -Nur squid-2.5.STABLE3.orig/errors/Belarusian/ERR_FTP_FAILURE squid-2.5.STABLE3/errors/Belarusian/ERR_FTP_FAILURE
+--- squid-2.5.STABLE3.orig/errors/Belarusian/ERR_FTP_FAILURE	1970-01-01 05:00:00 +0500
++++ squid-2.5.STABLE3/errors/Belarusian/ERR_FTP_FAILURE	2002-08-02 20:15:42 +0600
+@@ -0,0 +1,19 @@
++<HTML><HEAD><meta HTTP-EQUIV="CONTENT-TYPE" CONTENT="text/html; charset=windows-1251">
++<TITLE>ПАМЫЛКА: Запытаны URL ня можа быць дастаўлены</TITLE>
++</HEAD><BODY>
++<H1>ПАМЫЛКА</H1>
++<H2>Запытаны URL ня можа быць дастаўлены.</H2>
++<HR>
++<P>
++Адбылася памылка пратаколу FTP пад час дастаўкі URL:
++<A HREF="%U">%U</A>
++<P>
++Squid даслаў наступную каманду FTP:
++<blockquote><strong><pre>%f</pre></strong></blockquote>
++й атрымаў адказ
++<blockquote><strong><pre>%F</pre></strong></blockquote>
++<blockquote><strong><pre>%g</pre></strong></blockquote>
++<P>
++Гэта можа быць выклікана адрэсай з абсалютным шляхам (якая ня адпавядае стандарту RFC 1738).
++У гэтым выпадку, файл можа быць адшуканы па адрэсе <A HREF="%B">%B</A>.
++<P>Адміністратар Вашага кэшу <A HREF="mailto:%w">%w</A>. 
+diff -Nur squid-2.5.STABLE3.orig/errors/Belarusian/ERR_FTP_FORBIDDEN squid-2.5.STABLE3/errors/Belarusian/ERR_FTP_FORBIDDEN
+--- squid-2.5.STABLE3.orig/errors/Belarusian/ERR_FTP_FORBIDDEN	1970-01-01 05:00:00 +0500
++++ squid-2.5.STABLE3/errors/Belarusian/ERR_FTP_FORBIDDEN	2002-08-02 20:15:56 +0600
+@@ -0,0 +1,16 @@
++<HTML><HEAD><meta HTTP-EQUIV="CONTENT-TYPE" CONTENT="text/html; charset=windows-1251">
++<TITLE>ПАМЫЛКА: Запытаны URL ня можа быць дастаўлены</TITLE>
++</HEAD><BODY>
++<H1>ПАМЫЛКА</H1>
++<H2>Запытаны URL ня можа быць дастаўлены.</H2>
++<HR>
++<P>
++Адбылася памылка FTP аўтэнтыфікаціі пад час спробы запытаць URL:
++<A HREF="%U">%U</A>
++<P>
++Squid даслаў наступную каманду FTP:
++<blockquote><strong><pre>%f</pre></strong></blockquote>
++й атрымаў адказ
++<blockquote><strong><pre>%F</pre></strong></blockquote>
++<blockquote><strong><pre>%g</pre></strong></blockquote>
++<P>Адміністратар Вашага кэшу <A HREF="mailto:%w">%w</A>. 
+diff -Nur squid-2.5.STABLE3.orig/errors/Belarusian/ERR_FTP_NOT_FOUND squid-2.5.STABLE3/errors/Belarusian/ERR_FTP_NOT_FOUND
+--- squid-2.5.STABLE3.orig/errors/Belarusian/ERR_FTP_NOT_FOUND	1970-01-01 05:00:00 +0500
++++ squid-2.5.STABLE3/errors/Belarusian/ERR_FTP_NOT_FOUND	2002-08-02 20:16:06 +0600
+@@ -0,0 +1,20 @@
++<HTML><HEAD><meta HTTP-EQUIV="CONTENT-TYPE" CONTENT="text/html; charset=windows-1251">
++<TITLE>ПАМЫЛКА: Запытаны URL ня можа быць дастаўлены</TITLE>
++</HEAD><BODY>
++<H1>ПАМЫЛКА</H1>
++<H2>Запытаны URL ня можа быць дастаўлены.</H2>
++<HR>
++<P>
++Адбылася памылка FTP аўтэнтыфікаціі пад час спробы запытаць URL:
++<A HREF="%U">%U</A>
++<P>
++Squid даслаў наступную каманду FTP:
++<blockquote><strong><pre>%f</pre></strong></blockquote>
++й атрымаў адказ
++<blockquote><strong><pre>%F</pre></strong></blockquote>
++<blockquote><strong><pre>%g</pre></strong></blockquote>
++<P>
++Гэта можа быць выклікана адрэсай з абсалютным шляхам
++(яка ня адпавядае стандарту RFC 1738).
++У гэтым выпадку, файл можа быць адшуканы па адрэсе <A HREF="%B">%B</A>.
++<P>Адміністратар Вашага кэшу <A HREF="mailto:%w">%w</A>.
+diff -Nur squid-2.5.STABLE3.orig/errors/Belarusian/ERR_FTP_PUT_CREATED squid-2.5.STABLE3/errors/Belarusian/ERR_FTP_PUT_CREATED
+--- squid-2.5.STABLE3.orig/errors/Belarusian/ERR_FTP_PUT_CREATED	1970-01-01 05:00:00 +0500
++++ squid-2.5.STABLE3/errors/Belarusian/ERR_FTP_PUT_CREATED	2002-08-02 20:16:14 +0600
+@@ -0,0 +1,8 @@
++<HTML><HEAD><meta HTTP-EQUIV="CONTENT-TYPE" CONTENT="text/html; charset=windows-1251">
++<TITLE>FTP PUT завершана пасьпяхова: Файл створаны</TITLE>
++</HEAD><BODY>
++<H1>Апэрацыя завершана пасьпяхова</H1>
++<H2>Файл створаны</H2>
++<HR>
++<P>
++</P>
+diff -Nur squid-2.5.STABLE3.orig/errors/Belarusian/ERR_FTP_PUT_ERROR squid-2.5.STABLE3/errors/Belarusian/ERR_FTP_PUT_ERROR
+--- squid-2.5.STABLE3.orig/errors/Belarusian/ERR_FTP_PUT_ERROR	1970-01-01 05:00:00 +0500
++++ squid-2.5.STABLE3/errors/Belarusian/ERR_FTP_PUT_ERROR	2002-08-02 20:16:22 +0600
+@@ -0,0 +1,24 @@
++<HTML><HEAD><meta HTTP-EQUIV="CONTENT-TYPE" CONTENT="text/html; charset=windows-1251">
++<TITLE>ПАМЫЛКА: FTP PUT/upload завершана няўдала</TITLE>
++</HEAD><BODY>
++<H1>ПАМЫЛКА</H1>
++<H2>FTP PUT/upload завершана няўдала.</H2>
++<HR>
++<P>
++Пад час дастаўкі файлу па адрэсе:
++<A HREF="%U">%U</A>
++<P>
++Кэш даслаў наступную FTP каманду:
++<PRE><STRONG>
++         %f
++</STRONG></PRE>
++і атрымаў адказ
++<PRE><STRONG>
++         %F
++</STRONG></PRE>
++<P>
++Гэта азначае:
++<PRE>
++ Праверце шлях, правы доступу, вольнае мейсца й паспрабуйце нанова.
++</PRE>
++<P>Адміністратар Вашага кэшу <A HREF="mailto:%w">%w</A>. 
+diff -Nur squid-2.5.STABLE3.orig/errors/Belarusian/ERR_FTP_PUT_MODIFIED squid-2.5.STABLE3/errors/Belarusian/ERR_FTP_PUT_MODIFIED
+--- squid-2.5.STABLE3.orig/errors/Belarusian/ERR_FTP_PUT_MODIFIED	1970-01-01 05:00:00 +0500
++++ squid-2.5.STABLE3/errors/Belarusian/ERR_FTP_PUT_MODIFIED	2002-08-02 20:16:36 +0600
+@@ -0,0 +1,8 @@
++<HTML><HEAD><meta HTTP-EQUIV="CONTENT-TYPE" CONTENT="text/html; charset=windows-1251">
++<TITLE>FTP PUT завершана пасьпяхова: Файл абноўлены</TITLE>
++</HEAD><BODY>
++<H1>Апэрацыя завершана пасьпяхова.</H1>
++<H2>Файл абноўлены.</H2>
++<HR>
++<P>
++</P>
+diff -Nur squid-2.5.STABLE3.orig/errors/Belarusian/ERR_FTP_UNAVAILABLE squid-2.5.STABLE3/errors/Belarusian/ERR_FTP_UNAVAILABLE
+--- squid-2.5.STABLE3.orig/errors/Belarusian/ERR_FTP_UNAVAILABLE	1970-01-01 05:00:00 +0500
++++ squid-2.5.STABLE3/errors/Belarusian/ERR_FTP_UNAVAILABLE	2002-08-02 20:16:50 +0600
+@@ -0,0 +1,16 @@
++<HTML><HEAD><meta HTTP-EQUIV="CONTENT-TYPE" CONTENT="text/html; charset=windows-1251">
++<TITLE>ПАМЫЛКА: Запытаны URL ня можа быць дастаўлены</TITLE>
++</HEAD><BODY>
++<H1>ПАМЫЛКА</H1>
++<H2>Запытаны URL ня можа быць дастаўлены.</H2>
++<HR>
++<P>
++Аддалены FTP сэрвэр перагружаны й ня здолеў даставіць запытаны URL:
++<A HREF="%U">%U</A>
++<P>
++Squid даслаў наступную FTP каманду:
++<blockquote><strong><pre>%f</pre></strong></blockquote>
++і атрымаў наступны адказ
++<blockquote><strong><pre>%F</pre></strong></blockquote>
++<blockquote><strong><pre>%g</pre></strong></blockquote>
++<P>Адміністратар Вашага кэшу <A HREF="mailto:%w">%w</A>. 
+diff -Nur squid-2.5.STABLE3.orig/errors/Belarusian/ERR_INVALID_REQ squid-2.5.STABLE3/errors/Belarusian/ERR_INVALID_REQ
+--- squid-2.5.STABLE3.orig/errors/Belarusian/ERR_INVALID_REQ	1970-01-01 05:00:00 +0500
++++ squid-2.5.STABLE3/errors/Belarusian/ERR_INVALID_REQ	2002-08-02 20:17:04 +0600
+@@ -0,0 +1,31 @@
++<HTML><HEAD><meta HTTP-EQUIV="CONTENT-TYPE" CONTENT="text/html; charset=windows-1251">
++<TITLE>ПАМЫЛКА: Запытаны URL ня можа быць дастаўлены</TITLE>
++</HEAD><BODY>
++<H1>ПАМЫЛКА</H1>
++<H2>Запытаны URL ня можа быць дастаўлены</H2>
++<HR>
++<P>
++Пад час апрацоўкі запыту:
++<PRE>
++ %R
++</PRE>
++<P>
++Адбылася наступная памылка:
++<UL>
++<LI>
++<STRONG>
++Памылковы запыт.
++</STRONG>
++</UL>
++
++<P>
++Нейкія асьпекты HTTP запыту памылковыя. Мажлівыя праблемы:
++<UL>
++<LI>Адсутнічае ці невядомы мэтад запыту (GET, POST)
++<LI>Адсутнічае URL
++<LI>Адсутнічае HTTP ідэнтыфікатар (HTTP/1.0)
++<LI>Запыт занадта вялікі
++<LI>Ня вызначаны Content-Length для запытаў POST ці PUT
++<LI>Нядапушчальны сымбаль у назве вузла; падкрэсьленьне - гэта памылка
++</UL>
++<P>Адміністратар Вашага кэшу <A HREF="mailto:%w">%w</A>. 
+diff -Nur squid-2.5.STABLE3.orig/errors/Belarusian/ERR_INVALID_URL squid-2.5.STABLE3/errors/Belarusian/ERR_INVALID_URL
+--- squid-2.5.STABLE3.orig/errors/Belarusian/ERR_INVALID_URL	1970-01-01 05:00:00 +0500
++++ squid-2.5.STABLE3/errors/Belarusian/ERR_INVALID_URL	2002-08-02 20:17:12 +0600
+@@ -0,0 +1,27 @@
++<HTML><HEAD><meta HTTP-EQUIV="CONTENT-TYPE" CONTENT="text/html; charset=windows-1251">
++<TITLE>ПАМЫЛКА: Запытаны URL ня можа быць дастаўлены</TITLE>
++</HEAD><BODY>
++<H1>ПАМЫЛКА</H1>
++<H2>Запытаны URL ня можа быць дастаўлены</H2>
++<HR>
++<P>
++Пад час дастаўкі URL:
++<A HREF="%U">%U</A>
++<P>
++Адбылася наступная памылка:
++<UL>
++<LI>
++<STRONG>
++Памылковы URL
++</STRONG>
++</UL>
++
++<P>
++Нейкія асьпекты HTTP запыту памылковыя. Мажлівыя праблемы:
++<UL>
++<LI>Адсутнічае альбо памылковы пратакол доступу (павінны быць 'http://'' альбо падобны)
++<LI>Адсутнічае назва вузла
++<LI>Некарэктны падвойны сымбаль кіраваньня ў URL-шляху
++<LI>Недапушчальны сымбаль у назве вузла; падкрэсьленьні недапушчальныя
++</UL>
++<P>Адміністратар Вашага кэшу <A HREF="mailto:%w">%w</A>. 
+diff -Nur squid-2.5.STABLE3.orig/errors/Belarusian/ERR_LIFETIME_EXP squid-2.5.STABLE3/errors/Belarusian/ERR_LIFETIME_EXP
+--- squid-2.5.STABLE3.orig/errors/Belarusian/ERR_LIFETIME_EXP	1970-01-01 05:00:00 +0500
++++ squid-2.5.STABLE3/errors/Belarusian/ERR_LIFETIME_EXP	2002-08-02 20:17:20 +0600
+@@ -0,0 +1,21 @@
++<HTML><HEAD><meta HTTP-EQUIV="CONTENT-TYPE" CONTENT="text/html; charset=windows-1251">
++<TITLE>ПАМЫЛКА: Запытаны URL ня можа быць дастаўлены</TITLE>
++</HEAD><BODY>
++<H1>ПАМЫЛКА</H1>
++<H2>Запытаны URL ня можа быць дастаўлены</H2>
++<HR>
++<P>
++Пад час дастаўкі URL:
++<A HREF="%U">%U</A>
++<P>
++Адбылася наступная памылка:
++<UL>
++<LI>
++<STRONG>
++Час злучэньня вычарпаны.
++</STRONG>
++</UL>
++
++<P>
++Кэш перарваў запыт праз перавышэньне максымальнага часу злучэньня.
++<P>Адміністратар Вашага кэшу <A HREF="mailto:%w">%w</A>. 
+diff -Nur squid-2.5.STABLE3.orig/errors/Belarusian/ERR_NO_RELAY squid-2.5.STABLE3/errors/Belarusian/ERR_NO_RELAY
+--- squid-2.5.STABLE3.orig/errors/Belarusian/ERR_NO_RELAY	1970-01-01 05:00:00 +0500
++++ squid-2.5.STABLE3/errors/Belarusian/ERR_NO_RELAY	2002-08-02 20:17:36 +0600
+@@ -0,0 +1,22 @@
++<HTML><HEAD><meta HTTP-EQUIV="CONTENT-TYPE" CONTENT="text/html; charset=windows-1251">
++<TITLE>ПАМЫЛКА: Запытаны URL ня можа быць дастаўлены</TITLE>
++</HEAD><BODY>
++<H1>ПАМЫЛКА</H1>
++<H2>Запытаны URL ня можа быць дастаўлены</H2>
++<HR>
++<P>
++Пад час дастаўкі URL:
++<A HREF="%U">%U</A>
++<P>
++Адбылася наступная памылка:
++<UL>
++<LI>
++<STRONG>
++WAIS Relay ня вызначаны.
++</STRONG>
++</UL>
++
++<P>
++Для гэтага Кэшу ня вызначаны паслужнік WAIS Relay.
++Паведаміце, калі ласка, адміністратару.
++<P>Адміністратар Вашага кэшу <A HREF="mailto:%w">%w</A>. 
+diff -Nur squid-2.5.STABLE3.orig/errors/Belarusian/ERR_ONLY_IF_CACHED_MISS squid-2.5.STABLE3/errors/Belarusian/ERR_ONLY_IF_CACHED_MISS
+--- squid-2.5.STABLE3.orig/errors/Belarusian/ERR_ONLY_IF_CACHED_MISS	1970-01-01 05:00:00 +0500
++++ squid-2.5.STABLE3/errors/Belarusian/ERR_ONLY_IF_CACHED_MISS	2002-08-02 20:17:42 +0600
+@@ -0,0 +1,23 @@
++<HTML><HEAD><meta HTTP-EQUIV="CONTENT-TYPE" CONTENT="text/html; charset=windows-1251">
++<TITLE>ПАМЫЛКА: Запытаны URL ня можа быць дастаўлены</TITLE>
++</HEAD><BODY>
++<H1>ПАМЫЛКА</H1>
++<H2>Запытаны URL ня можа быць дастаўлены</H2>
++<HR>
++<P>
++Пад час дастаўкі URL:
++<A HREF="%U">%U</A>
++<P>
++Адбылася наступная памылка:
++<UL>
++<LI>
++<STRONG>
++Правільны дакумэнт ня адшуканы ў кэшы й была вызначана дырэктыва
++<code>only-if-cached</code>.
++</STRONG>
++</UL>
++
++<P>
++Вы даслалі запыт з дэрыктывай кэш-кантролю <code>only-if-cached</code>.
++Правільны дакумэнт ня адшуканы ў кэшы, <em>альбо</em> ён патрабуе абнаўленьня, якое забаронена дырэктывай <code>only-if-cached</code>.
++<P>Адміністратар Вашага кэшу <A HREF="mailto:%w">%w</A>. 
+diff -Nur squid-2.5.STABLE3.orig/errors/Belarusian/ERR_READ_ERROR squid-2.5.STABLE3/errors/Belarusian/ERR_READ_ERROR
+--- squid-2.5.STABLE3.orig/errors/Belarusian/ERR_READ_ERROR	1970-01-01 05:00:00 +0500
++++ squid-2.5.STABLE3/errors/Belarusian/ERR_READ_ERROR	2002-08-02 20:17:54 +0600
+@@ -0,0 +1,25 @@
++<HTML><HEAD><meta HTTP-EQUIV="CONTENT-TYPE" CONTENT="text/html; charset=windows-1251">
++<TITLE>ПАМЫЛКА: Запытаны URL ня можа быць дастаўлены</TITLE>
++</HEAD><BODY>
++<H1>ПАМЫЛКА</H1>
++<H2>Запытаны URL ня можа быць дастаўлены</H2>
++<HR>
++<P>
++Пад час дастаўкі URL:
++<A HREF="%U">%U</A>
++<P>
++Адбылася наступная памылка:
++<UL>
++<LI>
++<STRONG>
++Памылка чытаньня
++</STRONG>
++</UL>
++
++<P>
++Сыстэма паведаміла:
++<PRE><I> %E</I></PRE>
++
++<P>
++Пад час чытаньня дадзеных з сеціва адбылася памылка. Калі ласка, выканайце Ваш запыт зноў.
++<P>Адміністратар Вашага кэшу <A HREF="mailto:%w">%w</A>. 
+diff -Nur squid-2.5.STABLE3.orig/errors/Belarusian/ERR_READ_TIMEOUT squid-2.5.STABLE3/errors/Belarusian/ERR_READ_TIMEOUT
+--- squid-2.5.STABLE3.orig/errors/Belarusian/ERR_READ_TIMEOUT	1970-01-01 05:00:00 +0500
++++ squid-2.5.STABLE3/errors/Belarusian/ERR_READ_TIMEOUT	2002-08-02 20:18:04 +0600
+@@ -0,0 +1,26 @@
++<HTML><HEAD><meta HTTP-EQUIV="CONTENT-TYPE" CONTENT="text/html; charset=windows-1251">
++<TITLE>ПАМЫЛКА: Запытаны URL ня можа быць дастаўлены</TITLE>
++</HEAD><BODY>
++<H1>ПАМЫЛКА</H1>
++<H2>Запытаны URL ня можа быць дастаўлены</H2>
++<HR>
++<P>
++Пад час дастаўкі URL:
++<A HREF="%U">%U</A>
++<P>
++Адбылася наступная памылка:
++<UL>
++<LI>
++<STRONG>
++Перавышаны час чаканьня адказу.
++</STRONG>
++</UL>
++
++<P>
++Сыстэма паведаміла:
++<PRE><I> %E</I></PRE>
++
++<P>
++Перавышаны час чаканьня адказу пад час чытаньня дадзеных з сеціва.
++Сеціва ці вузел ня працуюць альбо перагружаны. Калі ласка, выканайце запыт паўторна.
++<P>Адміністратар Вашага кэшу <A HREF="mailto:%w">%w</A>. 
+diff -Nur squid-2.5.STABLE3.orig/errors/Belarusian/ERR_SHUTTING_DOWN squid-2.5.STABLE3/errors/Belarusian/ERR_SHUTTING_DOWN
+--- squid-2.5.STABLE3.orig/errors/Belarusian/ERR_SHUTTING_DOWN	1970-01-01 05:00:00 +0500
++++ squid-2.5.STABLE3/errors/Belarusian/ERR_SHUTTING_DOWN	2002-08-02 20:18:12 +0600
+@@ -0,0 +1,16 @@
++<HTML><HEAD><meta HTTP-EQUIV="CONTENT-TYPE" CONTENT="text/html; charset=windows-1251">
++<TITLE>ПАМЫЛКА: Запытаны URL ня можа быць дастаўлены</TITLE>
++</HEAD><BODY>
++<H1>ПАМЫЛКА</H1>
++<H2>Запытаны URL ня можа быць дастаўлены</H2>
++<HR>
++<P>
++Пад час дастаўкі URL:
++<A HREF="%U">%U</A>
++<P>
++Адбылася наступная памылка:
++</P>
++<P>
++Гэты кэш зараз у працэсе завяршэньня працы й няздольны абслугоўваць Вашы запыты.
++Калі ласка, паўтарыце запыт пазьней.
++<P>Адміністратар Вашага кэшу <A HREF="mailto:%w">%w</A>. 
+diff -Nur squid-2.5.STABLE3.orig/errors/Belarusian/ERR_SOCKET_FAILURE squid-2.5.STABLE3/errors/Belarusian/ERR_SOCKET_FAILURE
+--- squid-2.5.STABLE3.orig/errors/Belarusian/ERR_SOCKET_FAILURE	1970-01-01 05:00:00 +0500
++++ squid-2.5.STABLE3/errors/Belarusian/ERR_SOCKET_FAILURE	2002-08-02 20:18:20 +0600
+@@ -0,0 +1,27 @@
++<HTML><HEAD><meta HTTP-EQUIV="CONTENT-TYPE" CONTENT="text/html; charset=windows-1251">
++<TITLE>ПАМЫЛКА: Запытаны URL ня можа быць дастаўлены</TITLE>
++</HEAD><BODY>
++<H1>ПАМЫЛКА</H1>
++<H2>Запытаны URL ня можа быць дастаўлены</H2>
++<HR>
++<P>
++Пад час дастаўкі URL:
++<A HREF="%U">%U</A>
++<P>
++Адбылася наступная памылка:
++<UL>
++<LI>
++<STRONG>
++Памылка TCP сокету.
++</STRONG>
++</UL>
++
++<P>
++Сыстэма паведаміла:
++<PRE><I> %E</I></PRE>
++
++<P>
++Кеш ня можа стварыць TCP сокет, хутчэй за ўсё праз вельмі высокую загружанасьць паслужніку.
++Калі ласка, выканайце запыт паўторна.
++Калі сытуацыя ня зьменіцца - абавязкова паведаміце адміністратару кэша.
++<P>Адміністратар Вашага кэшу <A HREF="mailto:%w">%w</A>. 
+diff -Nur squid-2.5.STABLE3.orig/errors/Belarusian/ERR_TOO_BIG squid-2.5.STABLE3/errors/Belarusian/ERR_TOO_BIG
+--- squid-2.5.STABLE3.orig/errors/Belarusian/ERR_TOO_BIG	1970-01-01 05:00:00 +0500
++++ squid-2.5.STABLE3/errors/Belarusian/ERR_TOO_BIG	2002-08-02 20:18:28 +0600
+@@ -0,0 +1,27 @@
++<HTML><HEAD><meta HTTP-EQUIV="CONTENT-TYPE" CONTENT="text/html; charset=windows-1251">
++<TITLE>ПАМЫЛКА: Запытаны URL ня можа быць дастаўлены</TITLE>
++</HEAD><BODY>
++<H1>ПАМЫЛКА</H1>
++<H2>Запытаны URL ня можа быць дастаўлены</H2>
++<HR>
++<P>
++Пад час дастаўкі URL:
++<A HREF="%U">%U</A>
++<P>
++Адбылася наступная памылка:
++<UL>
++<LI>
++<STRONG>
++Запыт ці адказ завялікія.
++</STRONG>
++<P>
++Праблемы ўзьнікаюць калі:
++<UL>
++<LI>Калі Вы выконваеце запыт мэтадамі POST альбо PUT, тады завялікі аб'ём запыту (пры спробе адправіць дадзеныя).
++<LI>Калі Вы выконваеце запыт мэтадам GET, тады завялікі аб'ём дадзеных адказу (пры спробе атрымаць дадзеныя).
++</UL>
++Гэтыя абмежаваньні накладзены Вашым пастаўшчыком паслуг Інтэрнэт, які кіруе гэтым кэшам.
++Калі ласка, зьвяжыцеся непасрэдна з ім, калі Вы лічыце гэта няправільным.
++</UL>
++<P>
++<P>Адміністратар Вашага кэшу <A HREF="mailto:%w">%w</A>.
+diff -Nur squid-2.5.STABLE3.orig/errors/Belarusian/ERR_UNSUP_REQ squid-2.5.STABLE3/errors/Belarusian/ERR_UNSUP_REQ
+--- squid-2.5.STABLE3.orig/errors/Belarusian/ERR_UNSUP_REQ	1970-01-01 05:00:00 +0500
++++ squid-2.5.STABLE3/errors/Belarusian/ERR_UNSUP_REQ	2002-08-02 20:18:34 +0600
+@@ -0,0 +1,22 @@
++<HTML><HEAD><meta HTTP-EQUIV="CONTENT-TYPE" CONTENT="text/html; charset=windows-1251">
++<TITLE>ПАМЫЛКА: Запытаны URL ня можа быць дастаўлены</TITLE>
++</HEAD><BODY>
++<H1>ПАМЫЛКА</H1>
++<H2>Запытаны URL ня можа быць дастаўлены</H2>
++<HR>
++<P>
++Пад час дастаўкі URL:
++<A HREF="%U">%U</A>
++<P>
++Адбылася наступная памылка:
++<UL>
++<LI>
++<STRONG>
++Мэтад і пратакол запыту ня падтрымліваюцца.
++</STRONG>
++</UL>
++
++<P>
++Дадзены кэш ня падтрымлівае усе мэтады запыту для ўсіх пратаколаў.
++Напрыклад, для пратаколу Gopher Вы ня можаце выканаць запыт POST.
++<P>Адміністратар Вашага кэшу <A HREF="mailto:%w">%w</A>. 
+diff -Nur squid-2.5.STABLE3.orig/errors/Belarusian/ERR_URN_RESOLVE squid-2.5.STABLE3/errors/Belarusian/ERR_URN_RESOLVE
+--- squid-2.5.STABLE3.orig/errors/Belarusian/ERR_URN_RESOLVE	1970-01-01 05:00:00 +0500
++++ squid-2.5.STABLE3/errors/Belarusian/ERR_URN_RESOLVE	2002-08-02 20:18:46 +0600
+@@ -0,0 +1,22 @@
++<HTML><HEAD><meta HTTP-EQUIV="CONTENT-TYPE" CONTENT="text/html; charset=windows-1251">
++<TITLE>ПАМЫЛКА: Запытаны URN ня можа быць дастаўлены</TITLE>
++</HEAD><BODY>
++<H1>ПАМЫЛКА</H1>
++<H2>URL для запытанага URN ня можа быць атрыманы</H2>
++<HR>
++<P>
++Пад час дастаўкі URN:
++<A HREF="%U">%U</A>
++<P>
++Адбылася наступная памылка:
++<UL>
++<LI>
++<STRONG>
++Немагчыма вызначыць URL для дадзенага URN.<br>
++(Cannot Resolve URN)
++</STRONG>
++</UL>
++
++<P>
++Гей, ня варта шмат чакаць ад гэтае тэхналёгії (URN) на %T :)
++<P>Адміністратар Вашага кэшу <A HREF="mailto:%w">%w</A>. 
+diff -Nur squid-2.5.STABLE3.orig/errors/Belarusian/ERR_WRITE_ERROR squid-2.5.STABLE3/errors/Belarusian/ERR_WRITE_ERROR
+--- squid-2.5.STABLE3.orig/errors/Belarusian/ERR_WRITE_ERROR	1970-01-01 05:00:00 +0500
++++ squid-2.5.STABLE3/errors/Belarusian/ERR_WRITE_ERROR	2002-08-02 20:18:52 +0600
+@@ -0,0 +1,25 @@
++<HTML><HEAD><meta HTTP-EQUIV="CONTENT-TYPE" CONTENT="text/html; charset=windows-1251">
++<TITLE>ПАМЫЛКА: Запытаны URL ня можа быць дастаўлены</TITLE>
++</HEAD><BODY>
++<H1>ПАМЫЛКА</H1>
++<H2>Запытаны URL ня можа быць дастаўлены</H2>
++<HR>
++<P>
++Пад час дастаўкі URL:
++<A HREF="%U">%U</A>
++<P>
++Адбылася наступная памылка:
++<UL>
++<LI>
++<STRONG>
++Памылка запісу
++</STRONG>
++</UL>
++
++<P>
++Сыстэма паведаміла:
++<PRE><I> %E</I></PRE>
++
++<P>
++Пад час адпраўленьня інфармаціі ў сеціва ўзьнікла памылка. Калі ласка, выканайце запыт паўторна.
++<P>Адміністратар Вашага кэшу <A HREF="mailto:%w">%w</A>. 
+diff -Nur squid-2.5.STABLE3.orig/errors/Belarusian/ERR_ZERO_SIZE_OBJECT squid-2.5.STABLE3/errors/Belarusian/ERR_ZERO_SIZE_OBJECT
+--- squid-2.5.STABLE3.orig/errors/Belarusian/ERR_ZERO_SIZE_OBJECT	1970-01-01 05:00:00 +0500
++++ squid-2.5.STABLE3/errors/Belarusian/ERR_ZERO_SIZE_OBJECT	2002-08-02 20:19:00 +0600
+@@ -0,0 +1,21 @@
++<HTML><HEAD><meta HTTP-EQUIV="CONTENT-TYPE" CONTENT="text/html; charset=windows-1251">
++<TITLE>ПАМЫЛКА: Запытаны URL ня можа быць дастаўлены</TITLE>
++</HEAD><BODY>
++<H1>ПАМЫЛКА</H1>
++<H2>Запытаны URL ня можа быць дастаўлены</H2>
++<HR>
++<P>
++Пад час дастаўкі URL:
++<A HREF="%U">%U</A>
++<P>
++Адбылася наступная памылка:
++<UL>
++<LI>
++<STRONG>
++Адказ нулявога памеру
++</STRONG>
++</UL>
++
++<P>
++Кеш ня атрымаў аніякіх дадзеных у адказ на гэты запыт.
++<P>Адміністратар Вашага кэшу <A HREF="mailto:%w">%w</A>. 
+diff -Nur squid-2.5.STABLE3.orig/errors/Belarusian/readme squid-2.5.STABLE3/errors/Belarusian/readme
+--- squid-2.5.STABLE3.orig/errors/Belarusian/readme	1970-01-01 05:00:00 +0500
++++ squid-2.5.STABLE3/errors/Belarusian/readme	2002-08-02 20:09:42 +0600
+@@ -0,0 +1 @@
++Translated by Vital Khilko (dojlid@mova.org)
+\ ч ЛПОГЕ ЖБКМБ ОЕФ ОПЧПК УФТПЛЙ
+diff -Nur squid-2.5.STABLE3.orig/errors/Makefile.am squid-2.5.STABLE3/errors/Makefile.am
+--- squid-2.5.STABLE3.orig/errors/Makefile.am	2003-07-14 17:44:39 +0600
++++ squid-2.5.STABLE3/errors/Makefile.am	2003-07-14 17:45:18 +0600
+@@ -38,7 +38,8 @@
+ 		Spanish \
+ 		Swedish \
+ 		Traditional_Chinese \
+-		Turkish 
++		Turkish \
++		Belarusian
+ 
+ install-data-local: 
+ 	@for l in $(INSTALL_LANGUAGES); do \
+diff -Nur squid-2.5.STABLE3.orig/errors/Makefile.in squid-2.5.STABLE3/errors/Makefile.in
+--- squid-2.5.STABLE3.orig/errors/Makefile.in	2003-07-14 17:44:39 +0600
++++ squid-2.5.STABLE3/errors/Makefile.in	2003-07-14 17:45:25 +0600
+@@ -148,7 +148,8 @@
+ 		Spanish \
+ 		Swedish \
+ 		Traditional_Chinese \
+-		Turkish 
++		Turkish \
++		Belarusian
+ 
+ subdir = errors
+ mkinstalldirs = $(SHELL) $(top_srcdir)/cfgaux/mkinstalldirs

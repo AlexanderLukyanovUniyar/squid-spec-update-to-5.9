@@ -1,0 +1,108 @@
+diff -Nur squid-2.5.STABLE1.orig/scripts/access-log-matrix.pl squid-2.5.STABLE1/scripts/access-log-matrix.pl
+--- squid-2.5.STABLE1.orig/scripts/access-log-matrix.pl	2002-10-22 08:57:02 +0600
++++ squid-2.5.STABLE1/scripts/access-log-matrix.pl	2002-10-23 09:51:13 +0600
+@@ -1,4 +1,4 @@
+-#!/usr/local/bin/perl
++#!/usr/bin/perl
+ 
+ # access-log-matrix.pl
+ # 
+diff -Nur squid-2.5.STABLE1.orig/scripts/AnnounceCache.pl squid-2.5.STABLE1/scripts/AnnounceCache.pl
+--- squid-2.5.STABLE1.orig/scripts/AnnounceCache.pl	2002-10-22 08:57:02 +0600
++++ squid-2.5.STABLE1/scripts/AnnounceCache.pl	2002-10-23 09:51:08 +0600
+@@ -1,4 +1,4 @@
+-#!/usr/local/bin/perl
++#!/usr/bin/perl
+ 
+ $|=1;
+ 
+diff -Nur squid-2.5.STABLE1.orig/scripts/cache-compare.pl squid-2.5.STABLE1/scripts/cache-compare.pl
+--- squid-2.5.STABLE1.orig/scripts/cache-compare.pl	2002-10-22 08:57:02 +0600
++++ squid-2.5.STABLE1/scripts/cache-compare.pl	2002-10-23 09:51:18 +0600
+@@ -1,4 +1,4 @@
+-#!/usr/local/bin/perl
++#!/usr/bin/perl
+ 
+ # cache-compare.pl
+ #
+diff -Nur squid-2.5.STABLE1.orig/scripts/cachetrace.pl squid-2.5.STABLE1/scripts/cachetrace.pl
+--- squid-2.5.STABLE1.orig/scripts/cachetrace.pl	2002-10-22 08:57:02 +0600
++++ squid-2.5.STABLE1/scripts/cachetrace.pl	2002-10-23 09:51:22 +0600
+@@ -1,4 +1,4 @@
+-#!/usr/local/bin/perl
++#!/usr/bin/perl
+ 
+ require 'sys/socket.ph';
+ 
+diff -Nur squid-2.5.STABLE1.orig/scripts/check_cache.pl squid-2.5.STABLE1/scripts/check_cache.pl
+--- squid-2.5.STABLE1.orig/scripts/check_cache.pl	2002-10-22 08:57:02 +0600
++++ squid-2.5.STABLE1/scripts/check_cache.pl	2002-10-23 09:51:26 +0600
+@@ -1,4 +1,4 @@
+-#!/usr/local/bin/perl
++#!/usr/bin/perl
+ 
+ # check_cache.pl 
+ #
+diff -Nur squid-2.5.STABLE1.orig/scripts/fileno-to-pathname.pl squid-2.5.STABLE1/scripts/fileno-to-pathname.pl
+--- squid-2.5.STABLE1.orig/scripts/fileno-to-pathname.pl	2002-10-22 08:57:02 +0600
++++ squid-2.5.STABLE1/scripts/fileno-to-pathname.pl	2002-10-23 09:51:33 +0600
+@@ -1,4 +1,4 @@
+-#!/usr/local/bin/perl
++#!/usr/bin/perl
+ 
+ # $Id: fileno-to-pathname.pl,v 1.2 1997/07/16 20:31:55 wessels Exp $
+ # Convert hexadecimal cache file numbers (from swap log) into full pathnames.  
+diff -Nur squid-2.5.STABLE1.orig/scripts/flag_truncs.pl squid-2.5.STABLE1/scripts/flag_truncs.pl
+--- squid-2.5.STABLE1.orig/scripts/flag_truncs.pl	2002-10-22 08:57:02 +0600
++++ squid-2.5.STABLE1/scripts/flag_truncs.pl	2002-10-23 09:51:36 +0600
+@@ -1,4 +1,4 @@
+-#!/usr/local/bin/perl
++#!/usr/bin/perl
+ 
+ # flag_truncs.pl - martin hamilton <m.t.hamilton@lut.ac.uk>
+ #
+diff -Nur squid-2.5.STABLE1.orig/scripts/icpserver.pl squid-2.5.STABLE1/scripts/icpserver.pl
+--- squid-2.5.STABLE1.orig/scripts/icpserver.pl	2002-10-22 08:57:02 +0600
++++ squid-2.5.STABLE1/scripts/icpserver.pl	2002-10-23 09:51:44 +0600
+@@ -1,4 +1,4 @@
+-#!/usr/local/bin/perl
++#!/usr/bin/perl
+ 
+ # parse and answer ICP type 1 requests via unicast/multicast UDP
+ # cf. <URL:http://excalibur.usc.edu/icpdoc/icp.html>
+diff -Nur squid-2.5.STABLE1.orig/scripts/icp-test.pl squid-2.5.STABLE1/scripts/icp-test.pl
+--- squid-2.5.STABLE1.orig/scripts/icp-test.pl	2002-10-22 08:57:02 +0600
++++ squid-2.5.STABLE1/scripts/icp-test.pl	2002-10-23 09:51:40 +0600
+@@ -1,4 +1,4 @@
+-#!/usr/local/bin/perl
++#!/usr/bin/perl
+ 
+ # icp-test.pl 
+ #
+diff -Nur squid-2.5.STABLE1.orig/scripts/tcp-banger.pl squid-2.5.STABLE1/scripts/tcp-banger.pl
+--- squid-2.5.STABLE1.orig/scripts/tcp-banger.pl	2002-10-22 08:57:02 +0600
++++ squid-2.5.STABLE1/scripts/tcp-banger.pl	2002-10-23 09:51:48 +0600
+@@ -1,4 +1,4 @@
+-#!/usr/local/bin/perl
++#!/usr/bin/perl
+ 
+ # tcp-banger.pl	
+ #
+diff -Nur squid-2.5.STABLE1.orig/scripts/udp-banger.pl squid-2.5.STABLE1/scripts/udp-banger.pl
+--- squid-2.5.STABLE1.orig/scripts/udp-banger.pl	2002-10-22 08:57:02 +0600
++++ squid-2.5.STABLE1/scripts/udp-banger.pl	2002-10-23 09:51:52 +0600
+@@ -1,4 +1,4 @@
+-#!/usr/local/bin/perl
++#!/usr/bin/perl
+ 
+ # udp-banger.pl 
+ #
+diff -Nur squid-2.5.STABLE1.orig/scripts/upgrade-1.0-store.pl squid-2.5.STABLE1/scripts/upgrade-1.0-store.pl
+--- squid-2.5.STABLE1.orig/scripts/upgrade-1.0-store.pl	2002-10-22 08:57:02 +0600
++++ squid-2.5.STABLE1/scripts/upgrade-1.0-store.pl	2002-10-23 09:51:56 +0600
+@@ -1,4 +1,4 @@
+-#!/usr/local/bin/perl
++#!/usr/bin/perl
+ 
+ # $Id: upgrade-1.0-store.pl,v 1.2 1996/10/11 19:56:06 wessels Exp $
+ 

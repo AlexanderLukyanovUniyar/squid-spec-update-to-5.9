@@ -1,0 +1,74 @@
+diff -Nur squid-2.5.STABLE4.orig/src/cf.data.pre squid-2.5.STABLE4/src/cf.data.pre
+--- squid-2.5.STABLE4.orig/src/cf.data.pre	2003-10-22 11:47:31 +0600
++++ squid-2.5.STABLE4/src/cf.data.pre	2003-10-22 11:48:41 +0600
+@@ -2043,6 +2043,7 @@
+ acl localhost src 127.0.0.1/255.255.255.255
+ acl to_localhost dst 127.0.0.0/8
+ acl SSL_ports port 443 563
++acl Jabber_ports port 5222
+ acl Safe_ports port 80		# http
+ acl Safe_ports port 21		# ftp
+ acl Safe_ports port 443 563	# https, snews
+@@ -2089,7 +2090,7 @@
+ # Deny requests to unknown ports
+ http_access deny !Safe_ports
+ # Deny CONNECT to other than SSL ports
+-http_access deny CONNECT !SSL_ports
++http_access deny CONNECT !SSL_ports !Jabber_ports
+ #
+ # We strongly recommend to uncomment the following to protect innocent
+ # web applications running on the proxy server who think that the only
+@@ -2105,6 +2106,7 @@
+ #http_access allow our_networks
+ 
+ # And finally deny all other access to this proxy
++http_access allow localhost
+ http_access deny all
+ NOCOMMENT_END
+ DOC_END
+@@ -2153,7 +2155,7 @@
+ 
+ NOCOMMENT_START
+ #Allow ICP queries from everyone
+-icp_access allow all
++#icp_access allow all
+ NOCOMMENT_END
+ DOC_END
+ 
+@@ -2325,13 +2327,13 @@
+ 
+ NAME: cache_effective_user
+ TYPE: string
+-DEFAULT: nobody
++DEFAULT: squid
+ LOC: Config.effectiveUser
+ DOC_NONE
+ 
+ NAME: cache_effective_group
+ TYPE: string
+-DEFAULT: none
++DEFAULT: squid
+ LOC: Config.effectiveGroup
+ DOC_START
+ 
+@@ -2559,7 +2561,7 @@
+ 
+ NAME: logfile_rotate
+ TYPE: int
+-DEFAULT: 10
++DEFAULT: 0
+ LOC: Config.Log.rotateNumber
+ DOC_START
+ 	Specifies the number of logfile rotations to make when you
+diff -Nur squid-2.5.STABLE4.orig/src/defines.h squid-2.5.STABLE4/src/defines.h
+--- squid-2.5.STABLE4.orig/src/defines.h	2003-10-22 11:47:31 +0600
++++ squid-2.5.STABLE4/src/defines.h	2003-10-22 11:47:42 +0600
+@@ -219,7 +219,7 @@
+ 
+ /* were to look for errors if config path fails */
+ #ifndef DEFAULT_SQUID_ERROR_DIR
+-#define DEFAULT_SQUID_ERROR_DIR "/usr/local/squid/etc/errors"
++#define DEFAULT_SQUID_ERROR_DIR "/usr/share/squid/errors/English"
+ #endif
+ 
+ /* gb_type operations */

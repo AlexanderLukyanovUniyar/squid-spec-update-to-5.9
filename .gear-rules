@@ -1,0 +1,5 @@
+copy: *.init
+copy: *.logrotate
+copy: *.patch
+copy: *.sgml
+tar.bz2: squid

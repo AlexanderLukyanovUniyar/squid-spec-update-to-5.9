@@ -1,6 +1,6 @@
 Name: squid
 Version: 2.5.STABLE7
-Release: alt5
+Release: alt6
 
 Summary: The Squid proxy caching server
 License: GPL
@@ -42,6 +42,14 @@ Patch21: squid-2.5.STABLE7-close_other.patch
 Patch22: squid-2.5.STABLE7-fakeauth_auth.patch
 Patch23: squid-2.5.STABLE7-gopher_html_parsing.patch
 Patch24: squid-2.5.STABLE7-wccp_denial_of_service.patch
+Patch25: squid-2.5.STABLE7-dns_memleak.patch
+Patch26: squid-2.5.STABLE7-fqdn_truncated.patch
+Patch27: squid-2.5.STABLE7-ldap_spaces.patch
+Patch28: squid-2.5.STABLE7-header_parsing.patch
+Patch29: squid-2.5.STABLE7-httpd_accel_no_pmtu_disc.patch
+Patch30: squid-2.5.STABLE7-ftp_datachannel.patch
+Patch31: squid-2.5.STABLE7-short_icons_urls.patch
+Patch32: squid-2.5.STABLE7-response_splitting.patch
 
 Obsoletes: %name-novm
 
@@ -99,6 +107,14 @@ ICMP messages directly
 %patch22 -p1
 %patch23 -p1
 %patch24 -p1
+%patch25 -p1
+%patch26 -p1
+%patch27 -p1
+%patch28 -p1
+%patch29 -p1
+%patch30 -p1
+%patch31 -p1
+%patch32 -p1
 
 %build
 %set_autoconf_version 2.5
@@ -263,6 +279,17 @@ popd
 %attr(4710,root,%name) %_libdir/%name/pinger
 
 %changelog
+* Mon Jan 24 2005 Denis Ovsienko <pilot@altlinux.ru> 2.5.STABLE7-alt6
+- applied current patches:
+ + 2005-01-21 12:43 (Security issue) Strengthen Squid from HTTP response splitting cache pollution attack
+ + 2005-01-21 12:10 (Minor) Icons fails to load on non-anonymous FTP when using short_icons_url directive
+ + 2005-01-21 12:10 (Minor) FTP data connection fails on some FTP servers when requesting directory without a trailing slash
+ + 2005-01-21 12:10 (Minor) Disable Path-MTU discovery on intercepted requests
+ + 2005-01-24 14:29 (Security issue) Reject malformed HTTP requests and responses that conflict with the HTTP specifications
+ + 2005-01-17 04:29 (Minor Secuity issue) Sanity check usernames in squid_ldap_auth
+ + 2005-01-17 02:52 (Minor) FQDN names truncated on compressed DNS responses
+ + 2005-01-17 02:52 (Minor) Internal DNS memory leak on malformed responses
+
 * Thu Jan 13 2005 Denis Ovsienko <pilot@altlinux.ru> 2.5.STABLE7-alt5
 - applied current patches:
  + 2005-01-12 17:21 (Security issue) Denial of service with forged WCCP messages

@@ -1,0 +1,117 @@
+Index: squid/src/cf.data.pre
+diff -c squid/src/cf.data.pre:1.245.2.80 squid/src/cf.data.pre:1.245.2.81
+*** squid/src/cf.data.pre:1.245.2.80	Tue Jan  4 21:17:46 2005
+--- squid/src/cf.data.pre	Fri Jan 21 04:48:25 2005
+***************
+*** 2623,2629 ****
+  COMMENT: on|off
+  TYPE: onoff
+  DEFAULT: off
+! LOC: opt_accel_uses_host
+  DOC_START
+  	HTTP/1.1 requests include a Host: header which is basically the
+  	hostname from the URL.  The Host: header is used for domain based
+--- 2623,2629 ----
+  COMMENT: on|off
+  TYPE: onoff
+  DEFAULT: off
+! LOC: Config.onoff.accel_uses_host_header
+  DOC_START
+  	HTTP/1.1 requests include a Host: header which is basically the
+  	hostname from the URL.  The Host: header is used for domain based
+***************
+*** 2642,2647 ****
+--- 2642,2663 ----
+  	require the Host: header will not be properly cached.
+  DOC_END
+  
++ NAME: httpd_accel_no_pmtu_disc
++ COMMENT: on|off
++ TYPE: onoff
++ DEFAULT: off
++ LOC: Config.onoff.accel_no_pmtu_disc
++ DOC_START
++ 	In many setups of transparently intercepting proxies Path-MTU
++ 	discovery can not work on traffic towards the clients. This is
++ 	the case when the intercepting device does not fully track
++ 	connections and fails to forward ICMP must fragment messages
++ 	to the cache server. 
++ 	
++ 	If you have such setup and experience that certain clients
++ 	sporadically hang or never complete requests set this to on.
++ DOC_END
++ 
+  COMMENT_START
+   MISCELLANEOUS
+   -----------------------------------------------------------------------------
+Index: squid/src/client_side.c
+diff -c squid/src/client_side.c:1.561.2.67 squid/src/client_side.c:1.561.2.68
+*** squid/src/client_side.c:1.561.2.67	Mon Jan 17 15:13:04 2005
+--- squid/src/client_side.c	Fri Jan 21 04:48:25 2005
+***************
+*** 2722,2728 ****
+      /* see if we running in Config2.Accel.on, if so got to convert it to URL */
+      else if (Config2.Accel.on && *url == '/') {
+  	/* prepend the accel prefix */
+! 	if (opt_accel_uses_host && (t = mime_get_header(req_hdr, "Host"))) {
+  	    int vport;
+  	    char *q;
+  	    const char *protocol_name = "http";
+--- 2722,2728 ----
+      /* see if we running in Config2.Accel.on, if so got to convert it to URL */
+      else if (Config2.Accel.on && *url == '/') {
+  	/* prepend the accel prefix */
+! 	if (Config.onoff.accel_uses_host_header && (t = mime_get_header(req_hdr, "Host"))) {
+  	    int vport;
+  	    char *q;
+  	    const char *protocol_name = "http";
+***************
+*** 2882,2887 ****
+--- 2882,2899 ----
+  	    snprintf(http->uri, url_sz, "%s%s", Config2.Accel.prefix, url);
+  	}
+  	http->flags.accel = 1;
++ 	if (Config.onoff.accel_no_pmtu_disc) {
++ #if defined(IP_MTU_DISCOVER) && defined(IP_PMTUDISC_DONT)
++ 	    int i = IP_PMTUDISC_DONT;
++ 	    setsockopt(conn->fd, SOL_IP, IP_MTU_DISCOVER, &i, sizeof i);
++ #else
++ 	    static int reported = 0;
++ 	    if (!reported) {
++ 		debug(33, 1) ("Notice: httpd_accel_no_pmtu_disc not supported on your platform\n");
++ 		reported = 1;
++ 	    }
++ #endif
++ 	}
+      } else {
+  	/* URL may be rewritten later, so make extra room */
+  	url_sz = strlen(url) + Config.appendDomainLen + 5;
+Index: squid/src/globals.h
+diff -c squid/src/globals.h:1.108.2.3 squid/src/globals.h:1.108.2.4
+*** squid/src/globals.h:1.108.2.3	Mon Jan 13 16:01:13 2003
+--- squid/src/globals.h	Fri Jan 21 04:48:25 2005
+***************
+*** 79,85 ****
+  extern int opt_reuseaddr;	/* 1 */
+  extern int icmp_sock;		/* -1 */
+  extern int neighbors_do_private_keys;	/* 1 */
+- extern int opt_accel_uses_host;	/* 0 */
+  extern int opt_catch_signals;	/* 1 */
+  extern int opt_debug_stderr;	/* -1 */
+  extern int opt_dns_tests;	/* 1 */
+--- 79,84 ----
+Index: squid/src/structs.h
+diff -c squid/src/structs.h:1.408.2.34 squid/src/structs.h:1.408.2.35
+*** squid/src/structs.h:1.408.2.34	Mon Jan 10 08:30:09 2005
+--- squid/src/structs.h	Fri Jan 21 04:48:25 2005
+***************
+*** 606,611 ****
+--- 606,613 ----
+  	int detect_broken_server_pconns;
+  	int balance_on_multiple_ip;
+  	int relaxed_header_parser;
++ 	int accel_uses_host_header;
++ 	int accel_no_pmtu_disc;
+      } onoff;
+      acl *aclList;
+      struct {

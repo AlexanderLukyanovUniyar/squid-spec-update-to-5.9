@@ -1,6 +1,6 @@
 Name: squid
 Version: 2.5.STABLE5
-Release: alt1.1
+Release: alt2
 
 Summary: The Squid proxy caching server
 License: GPL
@@ -26,6 +26,23 @@ Patch7: %name-2.5.sasl.patch
 #Official patches to Squid
 Patch10: %name-2.5.STABLE5-ldap.patch
 Patch11: %name-2.5.STABLE5-ntlm_assert.patch
+Patch12: %name-2.5.STABLE5-cache_swap_log.patch
+Patch13: %name-2.5.STABLE5-CONNECT_timeout.patch
+Patch14: %name-2.5.STABLE5-deny_info.patch
+Patch15: %name-2.5.STABLE5-digest_blank.patch
+Patch16: %name-2.5.STABLE5-digest_ERR.patch
+Patch17: %name-2.5.STABLE5-helper_warning.patch
+Patch18: %name-2.5.STABLE5-lin22_poll.patch
+Patch19: %name-2.5.STABLE5-ntlm_warning.patch
+Patch20: %name-2.5.STABLE5-pkgconfig.patch
+Patch21: %name-2.5.STABLE5-post_assert.patch
+Patch22: %name-2.5.STABLE5-range_offset_limit.patch
+Patch23: %name-2.5.STABLE5-rfc1035NameUnpack.patch
+Patch24: %name-2.5.STABLE5-spelling.patch
+Patch25: %name-2.5.STABLE5-turkish_ERR_DNS_FAIL.patch
+Patch26: %name-2.5.STABLE5-vary_negatively.patch
+Patch27: %name-2.5.STABLE5-vary.patch
+Patch28: %name-2.5.STABLE5-version.patch
 
 Obsoletes: %name-novm
 
@@ -70,6 +87,23 @@ ICMP messages directly
 
 %patch10 -p1
 %patch11 -p1
+%patch12 -p1
+%patch13 -p1
+%patch14 -p1
+%patch15 -p1
+%patch16 -p1
+%patch17 -p1
+%patch18 -p1
+%patch19 -p1
+%patch20 -p1
+%patch21 -p1
+%patch22 -p1
+%patch23 -p1
+%patch24 -p1
+%patch25 -p1
+%patch26 -p1
+%patch27 -p1
+%patch28 -p1
 
 %build
 %set_autoconf_version 2.5
@@ -105,6 +139,7 @@ ICMP messages directly
 	--enable-storeio="aufs coss diskd null ufs" \
 	--enable-default-err-language="English"
 
+%__subst 's/^#define SQUID_MAXFD 1024/#define SQUID_MAXFD 8192/' include/autoconf.h
 %make_build
 
 %__mkdir faq
@@ -229,6 +264,10 @@ popd
 %attr(4710,root,%name) %_libdir/%name/pinger
 
 %changelog
+* Fri May 14 2004 Konstantin Timoshenko <kt@altlinux.ru> 2.5.STABLE5-alt2
+- build with 8192 file descriptors
+- Official bugfixes from www.%name-cache.org.
+
 * Wed May 12 2004 ALT QA Team Robot <qa-robot@altlinux.org> 2.5.STABLE5-alt1.1
 - Rebuilt with openssl-0.9.7d.
 

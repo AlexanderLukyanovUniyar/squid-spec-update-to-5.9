@@ -47,7 +47,8 @@ start()
 	     /usr/sbin/squid -z -F 2>/dev/null
 	 fi
 	done
-
+	
+	ulimit -n 8192
 	start_daemon --pidfile "$PIDFILE" --lockfile "$LOCKFILE" --expect-user root -- squid $SQUID_OPTS
 	RETVAL=$?
 	return $RETVAL

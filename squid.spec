@@ -1,6 +1,6 @@
 Name: squid
 Version: 2.5.STABLE7
-Release: alt6
+Release: alt7
 
 Summary: The Squid proxy caching server
 License: GPL
@@ -50,6 +50,7 @@ Patch29: squid-2.5.STABLE7-httpd_accel_no_pmtu_disc.patch
 Patch30: squid-2.5.STABLE7-ftp_datachannel.patch
 Patch31: squid-2.5.STABLE7-short_icons_urls.patch
 Patch32: squid-2.5.STABLE7-response_splitting.patch
+Patch33: squid-2.5.STABLE7-wccp_buffer_overflow.patch
 
 Obsoletes: %name-novm
 
@@ -115,6 +116,7 @@ ICMP messages directly
 %patch30 -p1
 %patch31 -p1
 %patch32 -p1
+%patch33 -p1
 
 %build
 %set_autoconf_version 2.5
@@ -279,6 +281,11 @@ popd
 %attr(4710,root,%name) %_libdir/%name/pinger
 
 %changelog
+* Sat Jan 29 2005 Denis Ovsienko <pilot@altlinux.ru> 2.5.STABLE7-alt7
+- updated squid-2.5.STABLE7-header_parsing.patch once more
+- applied:
+ + 2005-01-28 23:16 (Security issue) Buffer overflow in WCCP recvfrom() call
+
 * Mon Jan 24 2005 Denis Ovsienko <pilot@altlinux.ru> 2.5.STABLE7-alt6
 - applied current patches:
  + 2005-01-21 12:43 (Security issue) Strengthen Squid from HTTP response splitting cache pollution attack

@@ -1,7 +1,7 @@
 Index: squid/src/HttpHeader.c
-diff -c squid/src/HttpHeader.c:1.74.2.9 squid/src/HttpHeader.c:1.74.2.22
+diff -c squid/src/HttpHeader.c:1.74.2.9 squid/src/HttpHeader.c:1.74.2.23
 *** squid/src/HttpHeader.c:1.74.2.9	Wed Sep  1 07:55:47 2004
---- squid/src/HttpHeader.c	Fri Jan 21 18:15:48 2005
+--- squid/src/HttpHeader.c	Tue Jan 25 06:36:52 2005
 ***************
 *** 404,443 ****
   int
@@ -44,7 +44,7 @@ diff -c squid/src/HttpHeader.c:1.74.2.9 squid/src/HttpHeader.c:1.74.2.22
       }
       return 1;			/* even if no fields where found, it is a valid header */
   }
---- 404,481 ----
+--- 404,482 ----
   int
   httpHeaderParse(HttpHeader * hdr, const char *header_start, const char *header_end)
   {
@@ -115,9 +115,10 @@ diff -c squid/src/HttpHeader.c:1.74.2.9 squid/src/HttpHeader.c:1.74.2.22
 ! 	}
 ! 	if (e->id == HDR_OTHER && stringHasWhitespace(strBuf(e->name))) {
 ! 	    debug(55, 1) ("WARNING: found whitespace in HTTP header name {%s}\n", getStringPrefix(field_start, field_end));
-! 	    httpHeaderEntryDestroy(e);
-! 	    if (!Config.onoff.relaxed_header_parser)
+! 	    if (!Config.onoff.relaxed_header_parser) {
+! 		httpHeaderEntryDestroy(e);
 ! 		return httpHeaderReset(hdr);
+! 	    }
 ! 	}
 ! 	httpHeaderAddEntry(hdr, e);
       }
@@ -133,7 +134,7 @@ diff -c squid/src/HttpHeader.c:1.74.2.9 squid/src/HttpHeader.c:1.74.2.22
       const char *value_start = field_start + name_len + 1;	/* skip ':' */
       /* note: value_end == field_end */
   
---- 1086,1093 ----
+--- 1087,1094 ----
       HttpHeaderEntry *e;
       int id;
       /* note: name_start == field_start */
@@ -144,7 +145,7 @@ diff -c squid/src/HttpHeader.c:1.74.2.9 squid/src/HttpHeader.c:1.74.2.22
   
 ***************
 *** 1063,1068 ****
---- 1101,1113 ----
+--- 1102,1114 ----
   	debug(55, 1) ("WARNING: ignoring header name of %d bytes\n", name_len);
   	return NULL;
       }
@@ -160,7 +161,7 @@ diff -c squid/src/HttpHeader.c:1.74.2.9 squid/src/HttpHeader.c:1.74.2.22
       debug(55, 9) ("creating entry %p: near '%s'\n", e, getStringPrefix(field_start, field_end));
 ***************
 *** 1080,1085 ****
---- 1125,1132 ----
+--- 1126,1133 ----
       /* trim field value */
       while (value_start < field_end && xisspace(*value_start))
   	value_start++;
@@ -401,7 +402,7 @@ diff -c squid/src/mime.c:1.102.2.3 squid/src/mime.c:1.102.2.4
   		state = 0;
 Index: squid/errors/Bulgarian/ERR_INVALID_RESP
 diff -c /dev/null squid/errors/Bulgarian/ERR_INVALID_RESP:1.1.2.1
-*** /dev/null	Mon Jan 24 07:29:25 2005
+*** /dev/null	Tue Jan 25 06:37:10 2005
 --- squid/errors/Bulgarian/ERR_INVALID_RESP	Mon Jan 17 15:13:00 2005
 ***************
 *** 0 ****
@@ -437,7 +438,7 @@ diff -c /dev/null squid/errors/Bulgarian/ERR_INVALID_RESP:1.1.2.1
 + <P>Your cache administrator is <A HREF="mailto:%w">%w</A>. 
 Index: squid/errors/Catalan/ERR_INVALID_RESP
 diff -c /dev/null squid/errors/Catalan/ERR_INVALID_RESP:1.1.2.1
-*** /dev/null	Mon Jan 24 07:29:25 2005
+*** /dev/null	Tue Jan 25 06:37:10 2005
 --- squid/errors/Catalan/ERR_INVALID_RESP	Mon Jan 17 15:13:00 2005
 ***************
 *** 0 ****
@@ -473,7 +474,7 @@ diff -c /dev/null squid/errors/Catalan/ERR_INVALID_RESP:1.1.2.1
 + <P>Your cache administrator is <A HREF="mailto:%w">%w</A>. 
 Index: squid/errors/Czech/ERR_INVALID_RESP
 diff -c /dev/null squid/errors/Czech/ERR_INVALID_RESP:1.1.2.1
-*** /dev/null	Mon Jan 24 07:29:25 2005
+*** /dev/null	Tue Jan 25 06:37:10 2005
 --- squid/errors/Czech/ERR_INVALID_RESP	Mon Jan 17 15:13:00 2005
 ***************
 *** 0 ****
@@ -509,7 +510,7 @@ diff -c /dev/null squid/errors/Czech/ERR_INVALID_RESP:1.1.2.1
 + <P>Your cache administrator is <A HREF="mailto:%w">%w</A>. 
 Index: squid/errors/Danish/ERR_INVALID_RESP
 diff -c /dev/null squid/errors/Danish/ERR_INVALID_RESP:1.1.2.1
-*** /dev/null	Mon Jan 24 07:29:25 2005
+*** /dev/null	Tue Jan 25 06:37:10 2005
 --- squid/errors/Danish/ERR_INVALID_RESP	Mon Jan 17 15:13:00 2005
 ***************
 *** 0 ****
@@ -545,7 +546,7 @@ diff -c /dev/null squid/errors/Danish/ERR_INVALID_RESP:1.1.2.1
 + <P>Your cache administrator is <A HREF="mailto:%w">%w</A>. 
 Index: squid/errors/Dutch/ERR_INVALID_RESP
 diff -c /dev/null squid/errors/Dutch/ERR_INVALID_RESP:1.1.2.1
-*** /dev/null	Mon Jan 24 07:29:25 2005
+*** /dev/null	Tue Jan 25 06:37:10 2005
 --- squid/errors/Dutch/ERR_INVALID_RESP	Mon Jan 17 15:13:00 2005
 ***************
 *** 0 ****
@@ -581,7 +582,7 @@ diff -c /dev/null squid/errors/Dutch/ERR_INVALID_RESP:1.1.2.1
 + <P>Your cache administrator is <A HREF="mailto:%w">%w</A>. 
 Index: squid/errors/English/ERR_INVALID_RESP
 diff -c /dev/null squid/errors/English/ERR_INVALID_RESP:1.1.2.1
-*** /dev/null	Mon Jan 24 07:29:25 2005
+*** /dev/null	Tue Jan 25 06:37:10 2005
 --- squid/errors/English/ERR_INVALID_RESP	Mon Jan 17 15:13:00 2005
 ***************
 *** 0 ****
@@ -617,7 +618,7 @@ diff -c /dev/null squid/errors/English/ERR_INVALID_RESP:1.1.2.1
 + <P>Your cache administrator is <A HREF="mailto:%w">%w</A>. 
 Index: squid/errors/Estonian/ERR_INVALID_RESP
 diff -c /dev/null squid/errors/Estonian/ERR_INVALID_RESP:1.1.2.1
-*** /dev/null	Mon Jan 24 07:29:25 2005
+*** /dev/null	Tue Jan 25 06:37:10 2005
 --- squid/errors/Estonian/ERR_INVALID_RESP	Mon Jan 17 15:13:00 2005
 ***************
 *** 0 ****
@@ -653,7 +654,7 @@ diff -c /dev/null squid/errors/Estonian/ERR_INVALID_RESP:1.1.2.1
 + <P>Your cache administrator is <A HREF="mailto:%w">%w</A>. 
 Index: squid/errors/Finnish/ERR_INVALID_RESP
 diff -c /dev/null squid/errors/Finnish/ERR_INVALID_RESP:1.1.2.1
-*** /dev/null	Mon Jan 24 07:29:25 2005
+*** /dev/null	Tue Jan 25 06:37:10 2005
 --- squid/errors/Finnish/ERR_INVALID_RESP	Mon Jan 17 15:13:00 2005
 ***************
 *** 0 ****
@@ -689,7 +690,7 @@ diff -c /dev/null squid/errors/Finnish/ERR_INVALID_RESP:1.1.2.1
 + <P>Your cache administrator is <A HREF="mailto:%w">%w</A>. 
 Index: squid/errors/French/ERR_INVALID_RESP
 diff -c /dev/null squid/errors/French/ERR_INVALID_RESP:1.1.2.1
-*** /dev/null	Mon Jan 24 07:29:25 2005
+*** /dev/null	Tue Jan 25 06:37:10 2005
 --- squid/errors/French/ERR_INVALID_RESP	Mon Jan 17 15:13:00 2005
 ***************
 *** 0 ****
@@ -725,7 +726,7 @@ diff -c /dev/null squid/errors/French/ERR_INVALID_RESP:1.1.2.1
 + <P>Your cache administrator is <A HREF="mailto:%w">%w</A>. 
 Index: squid/errors/German/ERR_INVALID_RESP
 diff -c /dev/null squid/errors/German/ERR_INVALID_RESP:1.1.2.1
-*** /dev/null	Mon Jan 24 07:29:25 2005
+*** /dev/null	Tue Jan 25 06:37:10 2005
 --- squid/errors/German/ERR_INVALID_RESP	Mon Jan 17 15:13:00 2005
 ***************
 *** 0 ****
@@ -761,7 +762,7 @@ diff -c /dev/null squid/errors/German/ERR_INVALID_RESP:1.1.2.1
 + <P>Your cache administrator is <A HREF="mailto:%w">%w</A>. 
 Index: squid/errors/Hebrew/ERR_INVALID_RESP
 diff -c /dev/null squid/errors/Hebrew/ERR_INVALID_RESP:1.1.2.1
-*** /dev/null	Mon Jan 24 07:29:25 2005
+*** /dev/null	Tue Jan 25 06:37:10 2005
 --- squid/errors/Hebrew/ERR_INVALID_RESP	Mon Jan 17 15:13:01 2005
 ***************
 *** 0 ****
@@ -797,7 +798,7 @@ diff -c /dev/null squid/errors/Hebrew/ERR_INVALID_RESP:1.1.2.1
 + <P>Your cache administrator is <A HREF="mailto:%w">%w</A>. 
 Index: squid/errors/Hungarian/ERR_INVALID_RESP
 diff -c /dev/null squid/errors/Hungarian/ERR_INVALID_RESP:1.1.2.1
-*** /dev/null	Mon Jan 24 07:29:25 2005
+*** /dev/null	Tue Jan 25 06:37:10 2005
 --- squid/errors/Hungarian/ERR_INVALID_RESP	Mon Jan 17 15:13:01 2005
 ***************
 *** 0 ****
@@ -833,7 +834,7 @@ diff -c /dev/null squid/errors/Hungarian/ERR_INVALID_RESP:1.1.2.1
 + <P>Your cache administrator is <A HREF="mailto:%w">%w</A>. 
 Index: squid/errors/Italian/ERR_INVALID_RESP
 diff -c /dev/null squid/errors/Italian/ERR_INVALID_RESP:1.1.2.2
-*** /dev/null	Mon Jan 24 07:29:25 2005
+*** /dev/null	Tue Jan 25 06:37:10 2005
 --- squid/errors/Italian/ERR_INVALID_RESP	Mon Jan 24 06:22:24 2005
 ***************
 *** 0 ****
@@ -869,7 +870,7 @@ diff -c /dev/null squid/errors/Italian/ERR_INVALID_RESP:1.1.2.2
 + <P>L'amministratore della vostra cache &egrave; <A HREF="mailto:%w">%w</A>. 
 Index: squid/errors/Japanese/ERR_INVALID_RESP
 diff -c /dev/null squid/errors/Japanese/ERR_INVALID_RESP:1.1.2.1
-*** /dev/null	Mon Jan 24 07:29:25 2005
+*** /dev/null	Tue Jan 25 06:37:10 2005
 --- squid/errors/Japanese/ERR_INVALID_RESP	Mon Jan 17 15:13:02 2005
 ***************
 *** 0 ****
@@ -905,7 +906,7 @@ diff -c /dev/null squid/errors/Japanese/ERR_INVALID_RESP:1.1.2.1
 + <P>Your cache administrator is <A HREF="mailto:%w">%w</A>. 
 Index: squid/errors/Russian-1251/ERR_INVALID_RESP
 diff -c /dev/null squid/errors/Russian-1251/ERR_INVALID_RESP:1.1.2.1
-*** /dev/null	Mon Jan 24 07:29:25 2005
+*** /dev/null	Tue Jan 25 06:37:10 2005
 --- squid/errors/Russian-1251/ERR_INVALID_RESP	Mon Jan 17 15:13:03 2005
 ***************
 *** 0 ****
@@ -941,7 +942,7 @@ diff -c /dev/null squid/errors/Russian-1251/ERR_INVALID_RESP:1.1.2.1
 + <P>Your cache administrator is <A HREF="mailto:%w">%w</A>. 
 Index: squid/errors/Russian-koi8-r/ERR_INVALID_RESP
 diff -c /dev/null squid/errors/Russian-koi8-r/ERR_INVALID_RESP:1.1.2.1
-*** /dev/null	Mon Jan 24 07:29:25 2005
+*** /dev/null	Tue Jan 25 06:37:10 2005
 --- squid/errors/Russian-koi8-r/ERR_INVALID_RESP	Mon Jan 17 15:13:03 2005
 ***************
 *** 0 ****
@@ -977,7 +978,7 @@ diff -c /dev/null squid/errors/Russian-koi8-r/ERR_INVALID_RESP:1.1.2.1
 + <P>Your cache administrator is <A HREF="mailto:%w">%w</A>. 
 Index: squid/errors/Serbian/ERR_INVALID_RESP
 diff -c /dev/null squid/errors/Serbian/ERR_INVALID_RESP:1.1.2.1
-*** /dev/null	Mon Jan 24 07:29:25 2005
+*** /dev/null	Tue Jan 25 06:37:10 2005
 --- squid/errors/Serbian/ERR_INVALID_RESP	Mon Jan 17 15:13:03 2005
 ***************
 *** 0 ****
@@ -1013,7 +1014,7 @@ diff -c /dev/null squid/errors/Serbian/ERR_INVALID_RESP:1.1.2.1
 + <P>Your cache administrator is <A HREF="mailto:%w">%w</A>. 
 Index: squid/errors/Simplify_Chinese/ERR_INVALID_RESP
 diff -c /dev/null squid/errors/Simplify_Chinese/ERR_INVALID_RESP:1.1.2.1
-*** /dev/null	Mon Jan 24 07:29:25 2005
+*** /dev/null	Tue Jan 25 06:37:10 2005
 --- squid/errors/Simplify_Chinese/ERR_INVALID_RESP	Mon Jan 17 15:13:04 2005
 ***************
 *** 0 ****
@@ -1049,7 +1050,7 @@ diff -c /dev/null squid/errors/Simplify_Chinese/ERR_INVALID_RESP:1.1.2.1
 + <P>Your cache administrator is <A HREF="mailto:%w">%w</A>. 
 Index: squid/errors/Slovak/ERR_INVALID_RESP
 diff -c /dev/null squid/errors/Slovak/ERR_INVALID_RESP:1.1.2.1
-*** /dev/null	Mon Jan 24 07:29:25 2005
+*** /dev/null	Tue Jan 25 06:37:10 2005
 --- squid/errors/Slovak/ERR_INVALID_RESP	Mon Jan 17 15:13:04 2005
 ***************
 *** 0 ****
@@ -1085,7 +1086,7 @@ diff -c /dev/null squid/errors/Slovak/ERR_INVALID_RESP:1.1.2.1
 + <P>Your cache administrator is <A HREF="mailto:%w">%w</A>. 
 Index: squid/errors/Spanish/ERR_INVALID_RESP
 diff -c /dev/null squid/errors/Spanish/ERR_INVALID_RESP:1.1.2.1
-*** /dev/null	Mon Jan 24 07:29:25 2005
+*** /dev/null	Tue Jan 25 06:37:10 2005
 --- squid/errors/Spanish/ERR_INVALID_RESP	Mon Jan 17 15:13:04 2005
 ***************
 *** 0 ****
@@ -1121,7 +1122,7 @@ diff -c /dev/null squid/errors/Spanish/ERR_INVALID_RESP:1.1.2.1
 + <P>Your cache administrator is <A HREF="mailto:%w">%w</A>. 
 Index: squid/errors/Swedish/ERR_INVALID_RESP
 diff -c /dev/null squid/errors/Swedish/ERR_INVALID_RESP:1.1.2.2
-*** /dev/null	Mon Jan 24 07:29:25 2005
+*** /dev/null	Tue Jan 25 06:37:10 2005
 --- squid/errors/Swedish/ERR_INVALID_RESP	Mon Jan 24 07:28:59 2005
 ***************
 *** 0 ****
@@ -1158,7 +1159,7 @@ diff -c /dev/null squid/errors/Swedish/ERR_INVALID_RESP:1.1.2.2
 + 
 Index: squid/errors/Traditional_Chinese/ERR_INVALID_RESP
 diff -c /dev/null squid/errors/Traditional_Chinese/ERR_INVALID_RESP:1.1.2.1
-*** /dev/null	Mon Jan 24 07:29:25 2005
+*** /dev/null	Tue Jan 25 06:37:10 2005
 --- squid/errors/Traditional_Chinese/ERR_INVALID_RESP	Mon Jan 17 15:13:04 2005
 ***************
 *** 0 ****
@@ -1194,7 +1195,7 @@ diff -c /dev/null squid/errors/Traditional_Chinese/ERR_INVALID_RESP:1.1.2.1
 + <P>Your cache administrator is <A HREF="mailto:%w">%w</A>. 
 Index: squid/errors/Turkish/ERR_INVALID_RESP
 diff -c /dev/null squid/errors/Turkish/ERR_INVALID_RESP:1.1.2.1
-*** /dev/null	Mon Jan 24 07:29:25 2005
+*** /dev/null	Tue Jan 25 06:37:10 2005
 --- squid/errors/Turkish/ERR_INVALID_RESP	Mon Jan 17 15:13:04 2005
 ***************
 *** 0 ****

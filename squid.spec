@@ -1,12 +1,12 @@
 Name: squid
 Version: 2.5.STABLE4
-Release: alt3
+Release: alt4
 
 Summary: The Squid proxy caching server
 License: GPL
 Group: System/Servers
 
-Packager: Squid Development Team  <squid@packages.altlinux.org>
+Packager: Squid Development Team <squid@packages.altlinux.org>
 URL:http://www.%name-cache.org/Squid
 
 Source: %url/v2/%name-%version.tar.bz2
@@ -27,6 +27,21 @@ Patch10: %name-2.5.STABLE4-digest_auth_pwchange.patch
 Patch11: %name-2.5.STABLE4-reconfigure_message.patch
 Patch12: %name-2.5.STABLE4-redirect_login_space.patch
 Patch13: %name-2.5.STABLE4-fqdnnegcache.patch
+Patch14: %name-2.5.STABLE4-xpi_mime.patch
+Patch15: %name-2.5.STABLE4_auth_param_doc.patch
+Patch16: pam_auth-2.2.patch
+Patch17: %name-2.5.STABLE4-error_load_text.patch
+Patch18: %name-2.5.STABLE4-errorpages.patch
+Patch19: %name-2.5.STABLE4-extacl_auth_loop.patch
+Patch20: %name-2.5.STABLE4-fqdn.patch
+Patch21: %name-2.5.STABLE4-gopherhtml.patch
+Patch22: %name-2.5.STABLE4-netroute.patch
+Patch23: %name-2.5.STABLE4-positive_dns_ttl.patch
+Patch24: %name-2.5.STABLE4-size_overflow.patch
+Patch25: %name-2.5.STABLE4-squid_ldap_group.patch
+Patch26: %name-2.5.STABLE4-synflood.patch
+Patch27: %name-2.5.STABLE4-connect_cleanup.patch
+
 Obsoletes: %name-novm
 
 BuildConflicts: bind-devel
@@ -70,6 +85,21 @@ ICMP messages directly
 %patch10 -p1
 %patch11 -p1
 %patch12 -p1
+%patch13 -p1
+%patch14 -p1
+%patch15 -p1
+%patch16 -p1
+%patch17 -p1
+%patch18 -p1
+%patch19 -p1
+%patch20 -p1
+%patch21 -p1
+%patch22 -p1
+%patch23 -p1
+%patch24 -p1
+%patch25 -p1
+%patch26 -p1
+%patch27 -p1
 
 %build
 %set_autoconf_version 2.5
@@ -114,8 +144,8 @@ sgml2html FAQ.sgml
 popd
 
 %install
-%make install DESTDIR=$RPM_BUILD_ROOT
-%make install-pinger DESTDIR=$RPM_BUILD_ROOT
+%make_build install DESTDIR=$RPM_BUILD_ROOT
+%make_build install-pinger DESTDIR=$RPM_BUILD_ROOT
 
 %__mkdir_p $RPM_BUILD_ROOT%_initdir
 %__mkdir_p $RPM_BUILD_ROOT%_sysconfdir/logrotate.d
@@ -156,7 +186,7 @@ popd
 
 %pre
 /usr/sbin/groupadd -r -f %name >/dev/null 2>&1
-/usr/sbin/useradd -r -n -g %name -d /var/spool/%name -s /dev/null %name >/dev/null 2>&1 ||:
+/usr/sbin/useradd -r -n -g %name -d %_spooldir/%name -s /dev/null %name >/dev/null 2>&1 ||:
 
 %__chown %name:%name %_logdir/%name/*.log >/dev/null 2>&1 ||:
 %__chmod 660 %_logdir/%name/*.log >/dev/null 2>&1 ||:
@@ -229,6 +259,10 @@ popd
 %attr(4710,root,%name) %_libdir/%name/pinger
 
 %changelog
+* Mon Dec 08 2003 Konstantin Timoshenko <kt@altlinux.ru> 2.5.STABLE4-alt4
+- Official bugfixes from www.%name-cache.org.
+- cosmetics spec file
+
 * Tue Nov 04 2003 Konstantin Timoshenko <kt@altlinux.ru> 2.5.STABLE4-alt3
 - Fixed %%pre script.
 

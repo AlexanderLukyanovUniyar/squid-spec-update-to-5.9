@@ -1,6 +1,6 @@
 Name: squid
-Version: 2.5.STABLE5
-Release: alt4
+Version: 2.5.STABLE6
+Release: alt1
 
 Summary: The Squid proxy caching server
 License: GPL
@@ -21,48 +21,29 @@ Patch3: %name-2.4.STABLE6-alt-without-bind.patch
 Patch4: %name-2.5-perlpath.patch
 Patch5: %name-2.5-automake.patch
 Patch6: %name-errrors-belarusian.patch
+Patch7: patch-aa.patch
 
 #Official patches to Squid
-Patch10: %name-2.5.STABLE5-ldap.patch
-Patch11: %name-2.5.STABLE5-ntlm_assert.patch
-Patch12: %name-2.5.STABLE5-cache_swap_log.patch
-Patch13: %name-2.5.STABLE5-CONNECT_timeout.patch
-Patch14: %name-2.5.STABLE5-deny_info.patch
-Patch15: %name-2.5.STABLE5-digest_blank.patch
-Patch16: %name-2.5.STABLE5-digest_ERR.patch
-Patch17: %name-2.5.STABLE5-helper_warning.patch
-Patch18: %name-2.5.STABLE5-lin22_poll.patch
-Patch19: %name-2.5.STABLE5-ntlm_warning.patch
-Patch20: %name-2.5.STABLE5-pkgconfig.patch
-Patch21: %name-2.5.STABLE5-post_assert.patch
-Patch22: %name-2.5.STABLE5-range_offset_limit.patch
-Patch23: %name-2.5.STABLE5-rfc1035NameUnpack.patch
-Patch24: %name-2.5.STABLE5-spelling.patch
-Patch25: %name-2.5.STABLE5-turkish_ERR_DNS_FAIL.patch
-Patch26: %name-2.5.STABLE5-vary_negatively.patch
-Patch27: %name-2.5.STABLE5-vary.patch
-Patch28: %name-2.5.STABLE5-version.patch
-Patch29: %name-2.5.STABLE5-sasl_auth_SASL2.patch
-Patch30: %name-2.5.STABLE5-large_cache_mem.patch
-Patch31: %name-2.5.STABLE5-proxy_abuse.patch
-Patch32: %name-2.5.STABLE5-CONNECT_log_size.patch
-Patch33: %name-2.5.STABLE5-least-load.patch
-Patch34: %name-2.5.STABLE5-cacheCurrentUnlinkRequests.patch
-Patch35: %name-2.5.STABLE5-debug_client_ip.patch
-Patch36: %name-2.5.STABLE5-libntlmssp.c.patch
-Patch37: %name-2.5.STABLE5-va_copy.patch
-Patch38: %name-2.5.STABLE5-dns_localhost.patch
-Patch39: %name-2.5.STABLE5-msnt_auth_doc.patch
-Patch40: %name-2.5.STABLE5-ftp_html_doctype.patch
-Patch41: %name-2.5.STABLE5-openbsd_m88k.patch
+Patch10: %name-2.5.STABLE6-active_requests_delaypool.patch
+Patch11: %name-2.5.STABLE6-ntlm_noreuse_leak.patch
+Patch12: %name-2.5.STABLE6-basic_auth_caseinsensitive.patch
+Patch13: %name-2.5.STABLE6-partial_hit_is_miss.patch
+Patch14: %name-2.5.STABLE6-client_db_gc.patch
+Patch15: %name-2.5.STABLE6-request_header_max_size.patch
+Patch16: %name-2.5.STABLE6-concurrent_dns_lookups.patch
+Patch17: %name-2.5.STABLE6-HEAD.patch
+Patch18: %name-2.5.STABLE6-ufs_create_error.patch
+Patch19: %name-2.5.STABLE6-ldap_helpers.patch
+Patch20: %name-2.5.STABLE6-ufs_no_valid_dir.patch
+Patch21: %name-2.5.STABLE6-ntlm_challengereuse_leak.patch
 
 Obsoletes: %name-novm
 
 BuildConflicts: bind-devel
 BuildPreReq: rpm-build >= 4.0.4-alt10, autoconf >= 2.54
 
-# Automatically added by buildreq on Wed Mar 03 2004 (-bi)
-BuildRequires: OpenSP libldap-devel libpam-devel libsasl2-devel libssl-devel perl-Authen-Smb sgml-tools
+# Automatically added by buildreq on Fri Jul 23 2004 (-bi)
+BuildRequires: OpenSP glib2 libldap-devel libpam-devel libsasl2-devel libssl-devel perl-Authen-Smb pkgconfig sgml-tools squid
 
 %description
 Squid is a high-performance proxy caching server for Web clients,
@@ -95,6 +76,7 @@ ICMP messages directly
 %patch4 -p1
 %patch5 -p1
 %patch6 -p1
+%patch7 -p1
 
 %patch10 -p1
 %patch11 -p1
@@ -108,26 +90,6 @@ ICMP messages directly
 %patch19 -p1
 %patch20 -p1
 %patch21 -p1
-%patch22 -p1
-%patch23 -p1
-%patch24 -p1
-%patch25 -p1
-%patch26 -p1
-%patch27 -p1
-%patch28 -p1
-%patch29 -p1
-%patch30 -p1
-%patch31 -p1
-%patch32 -p1
-%patch33 -p1
-%patch34 -p1
-%patch35 -p1
-%patch36 -p1
-%patch37 -p1
-%patch38 -p1
-%patch39 -p1
-%patch40 -p1
-%patch41 -p1
 
 %build
 %set_autoconf_version 2.5
@@ -288,6 +250,12 @@ popd
 %attr(4710,root,%name) %_libdir/%name/pinger
 
 %changelog
+* Fri Jul 23 2004 Konstantin Timoshenko <kt@altlinux.ru> 2.5.STABLE6-alt1
+- 2.5.STABLE6
+- Official bugfixes from www.%name-cache.org.
+- add patch-aa.patch: makes squid write info in access.log by pieces as far as the
+  receipt of data but not after downloading whole file. See -x options.
+
 * Thu Jun 10 2004 Konstantin Timoshenko <kt@altlinux.ru> 2.5.STABLE5-alt4
 - Official bugfixes from www.%name-cache.org.
 - fix bugs id #4330

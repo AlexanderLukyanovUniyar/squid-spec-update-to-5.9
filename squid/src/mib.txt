@@ -2,7 +2,7 @@
 
 SQUID-MIB DEFINITIONS ::= BEGIN
 --
--- $Id: mib.txt,v 1.25.4.2 2003/05/02 09:48:42 hno Exp $
+-- $Id: mib.txt,v 1.25.4.3 2004/05/31 22:39:00 hno Exp $
 --
 
 IMPORTS
@@ -228,7 +228,7 @@ squid MODULE-IDENTITY
         ::= { cacheSysPerf 8 }
 
         cacheCurrentUnlinkRequests OBJECT-TYPE
-                SYNTAX Gauge32
+                SYNTAX Counter32
                 MAX-ACCESS read-only
                 STATUS current
 		DESCRIPTION

@@ -1,6 +1,6 @@
 
 /*
- * $Id: auth_ntlm.c,v 1.17.2.9 2004/02/24 17:11:52 hno Exp $
+ * $Id: auth_ntlm.c,v 1.17.2.12 2004/04/18 01:29:52 hno Exp $
  *
  * DEBUG: section 29    NTLM Authenticator
  * AUTHOR: Robert Collins
@@ -481,7 +481,6 @@ authenticateNTLMHandleReply(void *data, void *srv, char *reply)
 	debug(29, 2) ("AuthenticateNTLMHandleReply: invalid callback data. Releasing helper '%p'.\n", srv);
 	cbdataUnlock(r->data);
 	authenticateStateFree(r);
-	helperStatefulReleaseServer(srv);
 	return;
     }
     if (!reply) {
@@ -657,7 +656,7 @@ authenticateNTLMStart(auth_user_request_t * auth_user_request, RH * handler, voi
     assert(ntlm_request);
     assert(handler);
     assert(data);
-    assert(auth_user->auth_type = AUTH_NTLM);
+    assert(auth_user->auth_type == AUTH_NTLM);
     debug(29, 9) ("authenticateNTLMStart: auth state '%d'\n", ntlm_request->auth_state);
     switch (ntlm_request->auth_state) {
     case AUTHENTICATE_STATE_NEGOTIATE:
@@ -672,7 +671,7 @@ authenticateNTLMStart(auth_user_request_t * auth_user_request, RH * handler, voi
 	fatal("Invalid authenticate state for NTLMStart");
     }
 
-    while (!xisspace(*sent_string))	/*trim NTLM */
+    while (xisgraph(*sent_string))	/*trim NTLM */
 	sent_string++;
 
     while (xisspace(*sent_string))	/*trim leading spaces */

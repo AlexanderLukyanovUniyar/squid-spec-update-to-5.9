@@ -1,6 +1,6 @@
 
 /*
- * $Id: authenticate.c,v 1.36.2.14 2004/02/18 18:51:16 hno Exp $
+ * $Id: authenticate.c,v 1.36.2.15 2004/04/18 01:29:51 hno Exp $
  *
  * DEBUG: section 29    Authenticator
  * AUTHOR: Duane Wessels
@@ -94,7 +94,11 @@ authenticateDecodeAuth(const char *proxy_auth, auth_user_request_t * auth_user_r
 	/* we're configured to use this scheme - but is it active ? */
 	if ((i = authenticateAuthSchemeId(proxy_auth)) != -1) {
 	    authscheme_list[i].decodeauth(auth_user_request, proxy_auth);
-	    auth_user_request->auth_user->auth_module = i + 1;
+	    if (auth_user_request->auth_user) {
+		auth_user_request->auth_user->auth_module = i + 1;
+	    } else {
+		debug(29, 1) ("authenticateDecodeAuth: Invalid proxy-auth header, '%s'\n", proxy_auth);
+	    }
 	    return;
 	}
     }

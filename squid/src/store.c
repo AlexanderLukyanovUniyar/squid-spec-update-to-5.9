@@ -1,6 +1,6 @@
 
 /*
- * $Id: store.c,v 1.544.2.5 2003/09/24 22:30:22 wessels Exp $
+ * $Id: store.c,v 1.544.2.6 2004/05/31 21:28:30 hno Exp $
  *
  * DEBUG: section 20    Storage Manager
  * AUTHOR: Harvest Derived
@@ -985,16 +985,16 @@ storeInitHashValues(void)
     long int i;
     /* Calculate size of hash table (maximum currently 64k buckets).  */
     i = Config.Swap.maxSize / Config.Store.avgObjectSize;
-    debug(20, 1) ("Swap maxSize %ld KB, estimated %ld objects\n",
-	(long int) Config.Swap.maxSize, i);
+    debug(20, 1) ("Swap maxSize %lu KB, estimated %ld objects\n",
+	(unsigned long int) Config.Swap.maxSize, i);
     i /= Config.Store.objectsPerBucket;
     debug(20, 1) ("Target number of buckets: %ld\n", i);
     /* ideally the full scan period should be configurable, for the
      * moment it remains at approximately 24 hours.  */
     store_hash_buckets = storeKeyHashBuckets(i);
     debug(20, 1) ("Using %d Store buckets\n", store_hash_buckets);
-    debug(20, 1) ("Max Mem  size: %ld KB\n", (long int) Config.memMaxSize >> 10);
-    debug(20, 1) ("Max Swap size: %ld KB\n", (long int) Config.Swap.maxSize);
+    debug(20, 1) ("Max Mem  size: %lu KB\n", (unsigned long int) (Config.memMaxSize >> 10));
+    debug(20, 1) ("Max Swap size: %lu KB\n", (unsigned long int) Config.Swap.maxSize);
 }
 
 void

@@ -1,6 +1,6 @@
 
 /*
- * $Id: store_io_ufs.c,v 1.9.2.1 2002/08/08 20:17:42 hno Exp $
+ * $Id: store_io_ufs.c,v 1.9.2.2 2004/05/31 22:03:31 hno Exp $
  *
  * DEBUG: section 79    Storage Manager UFS Interface
  * AUTHOR: Duane Wessels
@@ -50,6 +50,7 @@ storeIOState *
 storeUfsOpen(SwapDir * SD, StoreEntry * e, STFNCB * file_callback,
     STIOCB * callback, void *callback_data)
 {
+    ufsinfo_t *ufsinfo = (ufsinfo_t *) SD->fsdata;
     sfileno f = e->swap_filen;
     char *path = storeUfsDirFullPath(SD, f, NULL);
     storeIOState *sio;
@@ -80,6 +81,7 @@ storeUfsOpen(SwapDir * SD, StoreEntry * e, STFNCB * file_callback,
     if (fstat(fd, &sb) == 0)
 	sio->st_size = sb.st_size;
     store_open_disk_fd++;
+    ufsinfo->open_files++;
 
     /* We should update the heap/dlink position here ! */
     return sio;
@@ -126,6 +128,7 @@ storeUfsCreate(SwapDir * SD, StoreEntry * e, STFNCB * file_callback, STIOCB * ca
     ((ufsstate_t *) (sio->fsstate))->flags.reading = 0;
     ((ufsstate_t *) (sio->fsstate))->flags.close_request = 0;
     store_open_disk_fd++;
+    ufsinfo->open_files++;
 
     /* now insert into the replacement policy */
     storeUfsDirReplAdd(SD, e);
@@ -246,8 +249,11 @@ storeUfsIOCallback(storeIOState * sio, int errflag)
     ufsstate_t *ufsstate = (ufsstate_t *) sio->fsstate;
     debug(79, 3) ("storeUfsIOCallback: errflag=%d\n", errflag);
     if (ufsstate->fd > -1) {
+	SwapDir *SD = INDEXSD(sio->swap_dirn);
+	ufsinfo_t *ufsinfo = (ufsinfo_t *) SD->fsdata;
 	file_close(ufsstate->fd);
 	store_open_disk_fd--;
+	ufsinfo->open_files--;
     }
     if (cbdataValid(sio->callback_data))
 	sio->callback(sio->callback_data, errflag, sio);

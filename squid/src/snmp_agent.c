@@ -1,6 +1,6 @@
 
 /*
- * $Id: snmp_agent.c,v 1.83.2.2 2003/06/24 21:08:42 wessels Exp $
+ * $Id: snmp_agent.c,v 1.83.2.3 2004/05/31 22:39:00 hno Exp $
  *
  * DEBUG: section 49     SNMP Interface
  * AUTHOR: Kostas Anagnostakis
@@ -285,7 +285,7 @@ snmp_prfSysFn(variable_list * Var, snint * ErrP)
     case PERF_SYS_CURUNLREQ:
 	Answer = snmp_var_new_integer(Var->name, Var->name_length,
 	    (snint) statCounter.unlink.requests,
-	    SMI_GAUGE32);
+	    SMI_COUNTER32);
 	break;
     case PERF_SYS_CURUNUSED_FD:
 	Answer = snmp_var_new_integer(Var->name, Var->name_length,

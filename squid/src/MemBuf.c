@@ -1,6 +1,6 @@
 
 /*
- * $Id: MemBuf.c,v 1.28 2001/04/20 21:26:22 hno Exp $
+ * $Id: MemBuf.c,v 1.28.2.2 2004/06/06 15:07:16 hno Exp $
  *
  * DEBUG: section 59    auto-growing Memory Buffer with printf
  * AUTHOR: Alex Rousskov
@@ -98,8 +98,16 @@
  * }
  */
 
-
 #include "squid.h"
+
+#ifdef VA_COPY
+#undef VA_COPY
+#endif
+#if defined HAVE_VA_COPY
+#define VA_COPY va_copy
+#elif defined HAVE___VA_COPY
+#define VA_COPY __va_copy
+#endif
 
 /* local constants */
 
@@ -228,6 +236,9 @@ memBufPrintf(va_alist)
 void
 memBufVPrintf(MemBuf * mb, const char *fmt, va_list vargs)
 {
+#if defined VA_COPY
+    va_list ap;
+#endif
     int sz = 0;
     assert(mb && fmt);
     assert(mb->buf);
@@ -236,7 +247,17 @@ memBufVPrintf(MemBuf * mb, const char *fmt, va_list vargs)
     while (mb->capacity <= mb->max_capacity) {
 	mb_size_t free_space = mb->capacity - mb->size;
 	/* put as much as we can */
+
+#if defined VA_COPY
+	VA_COPY(ap, vargs);	/* Fix of bug 753. The value of vargs is undefined
+				 * * after vsnprintf() returns. Make a copy of vargs
+				 * * incase we loop around and call vsnprintf() again.
+				 */
+	sz = vsnprintf(mb->buf + mb->size, free_space, fmt, ap);
+	va_end(ap);
+#else
 	sz = vsnprintf(mb->buf + mb->size, free_space, fmt, vargs);
+#endif
 	/* check for possible overflow */
 	/* snprintf on Linuz returns -1 on overflows */
 	/* snprintf on FreeBSD returns at least free_space on overflows */

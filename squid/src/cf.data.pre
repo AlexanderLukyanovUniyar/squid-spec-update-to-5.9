@@ -1,6 +1,6 @@
 
 #
-# $Id: cf.data.pre,v 1.245.2.61 2004/02/10 21:01:21 hno Exp $
+# $Id: cf.data.pre,v 1.245.2.66 2004/04/30 20:40:39 wessels Exp $
 #
 #
 # SQUID Web Proxy Cache          http://www.squid-cache.org/
@@ -801,7 +801,13 @@ DOC_START
 
 	Q2 specifies the number of unacknowledged messages when Squid
 	starts blocking.  If this many messages are in the queues,
-	Squid blocks until it recevies some replies. Default is 72
+	Squid blocks until it receives some replies. Default is 72
+
+	When Q1 < Q2 (the default), the cache directory is optimized
+	for lower response time at the expense of a decrease in hit
+	ratio.  If Q1 > Q2, the cache directory is optimized for
+	higher hit ratio at the expense of an increase in response
+	time.
 
 	The coss store type:
 
@@ -862,14 +868,14 @@ DOC_START
 DOC_END
 
 
-NAME: cache_swap_log
+NAME: cache_swap_log cache_swap_state
 TYPE: string
 LOC: Config.Log.swap
 DEFAULT: none
 DOC_START
-	Location for the cache "swap.log."  This log file holds the
-	metadata of objects saved on disk.  It is used to rebuild the
-	cache during startup.  Normally this file resides in each
+	Location for the cache "swap.state" file. This log file holds
+	the metadata of objects saved on disk.  It is used to rebuild
+	the cache during startup.  Normally this file resides in each
 	'cache_dir' directory, but you may specify an alternate
 	pathname here.  Note you must give a full filename, not just
 	a directory. Since this is the index for the whole object
@@ -1342,8 +1348,8 @@ DOC_START
 	"program" cmdline
 	Specify the command for the external authenticator.  Such a program
 	reads a line containing "username":"realm" and replies with the
-	appropriate H(A1) value base64 encoded.  See rfc 2616 for the
-	definition of H(A1).
+	appropriate H(A1) value base64 encoded or ERR if the user (or his H(A1)
+	hash) does not exists.  See rfc 2616 for the definition of H(A1).
 
 	By default, the digest authentication scheme is not used unless a
 	program is specified.
@@ -2548,8 +2554,8 @@ DEFAULT: off
 DOC_START
 	If you are running Squid as an accelerator and have a single backend
 	server then set this to on. This causes Squid to forward the request
-	to this server irregardles of what any redirectors or Host headers
-	says.
+	to this server, regardles of what any redirectors or Host headers
+	say.
 
 	Leave this at off if you have multiple backend servers, and use a
 	redirector (or host table or private DNS) to map the requests to the

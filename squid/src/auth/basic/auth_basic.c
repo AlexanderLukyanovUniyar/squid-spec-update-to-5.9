@@ -1,5 +1,5 @@
 /*
- * $Id: auth_basic.c,v 1.14.2.5 2004/02/18 17:50:51 hno Exp $
+ * $Id: auth_basic.c,v 1.14.2.6 2004/04/18 01:29:52 hno Exp $
  *
  * DEBUG: section 29    Authenticator
  * AUTHOR: Duane Wessels
@@ -421,7 +421,7 @@ authenticateBasicDecodeAuth(auth_user_request_t * auth_user_request, const char 
 
     /* decode the username */
     /* trim BASIC from string */
-    while (!xisspace(*proxy_auth))
+    while (xisgraph(*proxy_auth))
 	proxy_auth++;
 
     local_basic.passwd = NULL;

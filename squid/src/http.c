@@ -1,6 +1,6 @@
 
 /*
- * $Id: http.c,v 1.384.2.12 2004/01/30 23:09:12 hno Exp $
+ * $Id: http.c,v 1.384.2.16 2004/06/08 10:54:07 hno Exp $
  *
  * DEBUG: section 11    Hypertext Transfer Protocol (HTTP)
  * AUTHOR: Harvest Derived
@@ -65,7 +65,9 @@ httpStateFree(int fd, void *data)
     if (httpState == NULL)
 	return;
     if (httpState->body_buf) {
-	clientAbortBody(httpState->orig_request);
+	if (httpState->orig_request->body_connection) {
+	    clientAbortBody(httpState->orig_request);
+	}
 	if (httpState->body_buf) {
 	    memFree(httpState->body_buf, MEM_8K_BUF);
 	    httpState->body_buf = NULL;
@@ -348,6 +350,13 @@ httpMakeVaryMark(request_t * request, HttpReply * reply)
 	char *name = xmalloc(ilen + 1);
 	xstrncpy(name, item, ilen + 1);
 	Tolower(name);
+	if (strcmp(name, "*") == 0) {
+	    /* Can not handle "Vary: *" withtout ETag support */
+	    safe_free(name);
+	    stringClean(&vary);
+	    stringClean(&vstr);
+	    break;
+	}
 	strListAdd(&vstr, name, ',');
 	hdr = httpHeaderGetByName(&request->header, name);
 	safe_free(name);
@@ -435,35 +444,36 @@ httpProcessReplyHeader(HttpStateData * httpState, const char *buf, int size)
     debug(11, 3) ("httpProcessReplyHeader: HTTP CODE: %d\n", reply->sline.status);
     if (neighbors_do_private_keys)
 	httpMaybeRemovePublic(entry, reply->sline.status);
+    if (httpHeaderHas(&reply->header, HDR_VARY)
+#if X_ACCELERATOR_VARY
+	|| httpHeaderHas(&reply->header, HDR_X_ACCELERATOR_VARY)
+#endif
+	) {
+	const char *vary = httpMakeVaryMark(httpState->orig_request, reply);
+	if (!vary) {
+	    httpMakePrivate(entry);
+	    goto no_cache;
+	}
+	entry->mem_obj->vary_headers = xstrdup(vary);
+    }
     switch (httpCachableReply(httpState)) {
     case 1:
-	if (httpHeaderHas(&reply->header, HDR_VARY)
-#if X_ACCELERATOR_VARY
-	    || httpHeaderHas(&reply->header, HDR_X_ACCELERATOR_VARY)
-#endif
-	    ) {
-	    const char *vary = httpMakeVaryMark(httpState->orig_request, reply);
-	    if (vary) {
-		entry->mem_obj->vary_headers = xstrdup(vary);
-		/* Kill the old base object if a change in variance is detected */
-		httpMakePublic(entry);
-	    } else {
-		httpMakePrivate(entry);
-	    }
-	} else {
-	    httpMakePublic(entry);
-	}
+	httpMakePublic(entry);
 	break;
     case 0:
 	httpMakePrivate(entry);
 	break;
     case -1:
-	httpCacheNegatively(entry);
+	if (Config.negativeTtl > 0)
+	    httpCacheNegatively(entry);
+	else
+	    httpMakePrivate(entry);
 	break;
     default:
 	assert(0);
 	break;
     }
+  no_cache:
     if (reply->cache_control) {
 	if (EBIT_TEST(reply->cache_control->mask, CC_PROXY_REVALIDATE))
 	    EBIT_SET(entry->flags, ENTRY_REVALIDATE);
@@ -708,10 +718,12 @@ httpSendComplete(int fd, char *bufnotused, size_t size, int errflag, void *data)
     if (errflag == COMM_ERR_CLOSING)
 	return;
     if (errflag) {
-	err = errorCon(ERR_WRITE_ERROR, HTTP_INTERNAL_SERVER_ERROR);
-	err->xerrno = errno;
-	err->request = requestLink(httpState->orig_request);
-	errorAppendEntry(entry, err);
+	if (entry->mem_obj->inmem_hi == 0) {
+	    err = errorCon(ERR_WRITE_ERROR, HTTP_INTERNAL_SERVER_ERROR);
+	    err->xerrno = errno;
+	    err->request = requestLink(httpState->orig_request);
+	    errorAppendEntry(entry, err);
+	}
 	comm_close(fd);
 	return;
     } else {
@@ -1103,6 +1115,15 @@ httpSendRequestEntryDone(int fd, void *data)
 }
 
 static void
+httpRequestBodyHandler2(void *data)
+{
+    HttpStateData *httpState = (HttpStateData *) data;
+    char *buf = httpState->body_buf;
+    httpState->body_buf = NULL;
+    comm_write(httpState->fd, buf, httpState->body_buf_sz, httpSendRequestEntry, data, memFree8K);
+}
+
+static void
 httpRequestBodyHandler(char *buf, ssize_t size, void *data)
 {
     HttpStateData *httpState = (HttpStateData *) data;
@@ -1118,6 +1139,12 @@ httpRequestBodyHandler(char *buf, ssize_t size, void *data)
 		comm_close(httpState->fd);
 		return;
 	    }
+	    httpState->body_buf = buf;
+	    httpState->body_buf_sz = size;
+	    /* Give response some time to propagate before sending rest
+	     * of request in case of error */
+	    eventAdd("POST delay on response", httpRequestBodyHandler2, httpState, 2.0, 1);
+	    return;
 	}
 	comm_write(httpState->fd, buf, size, httpSendRequestEntry, data, memFree8K);
     } else if (size == 0) {
@@ -1147,10 +1174,12 @@ httpSendRequestEntry(int fd, char *bufnotused, size_t size, int errflag, void *d
     if (errflag == COMM_ERR_CLOSING)
 	return;
     if (errflag) {
-	err = errorCon(ERR_WRITE_ERROR, HTTP_INTERNAL_SERVER_ERROR);
-	err->xerrno = errno;
-	err->request = requestLink(httpState->orig_request);
-	errorAppendEntry(entry, err);
+	if (entry->mem_obj->inmem_hi == 0) {
+	    err = errorCon(ERR_WRITE_ERROR, HTTP_INTERNAL_SERVER_ERROR);
+	    err->xerrno = errno;
+	    err->request = requestLink(httpState->orig_request);
+	    errorAppendEntry(entry, err);
+	}
 	comm_close(fd);
 	return;
     }

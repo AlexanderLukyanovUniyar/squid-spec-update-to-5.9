@@ -1,6 +1,6 @@
 
 /*
- * $Id: store_dir_ufs.c,v 1.39.2.7 2003/01/09 03:38:48 hno Exp $
+ * $Id: store_dir_ufs.c,v 1.39.2.8 2004/05/31 22:03:31 hno Exp $
  *
  * DEBUG: section 47    Store Directory Routines
  * AUTHOR: Duane Wessels
@@ -1355,8 +1355,8 @@ storeUfsDirMaintain(SwapDir * SD)
 int
 storeUfsDirCheckObj(SwapDir * SD, const StoreEntry * e)
 {
-    /* Return 999 (99.9%) constant load */
-    return 999;
+    ufsinfo_t *ufsinfo = SD->fsdata;
+    return 500 + ufsinfo->open_files / 2;
 }
 
 /*

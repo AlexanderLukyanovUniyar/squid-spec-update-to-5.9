@@ -1,6 +1,6 @@
 
 /*
- * $Id: helper.c,v 1.34.2.15 2004/02/09 09:03:49 hno Exp $
+ * $Id: helper.c,v 1.34.2.16 2004/03/11 15:26:30 hno Exp $
  *
  * DEBUG: section 84    Helper process maintenance
  * AUTHOR: Harvest Derived?
@@ -743,19 +743,19 @@ Enqueue(helper * hlp, helper_request * r)
     hlp->stats.queue_size++;
     if (hlp->stats.queue_size < hlp->n_running)
 	return;
-    if (hlp->stats.queue_size < hlp->n_running)
-	return;
+    if (hlp->stats.queue_size > hlp->stats.max_queue_size)
+	hlp->stats.max_queue_size = hlp->stats.queue_size;
     if (squid_curtime - hlp->last_queue_warn < 30)
 	return;
     if (shutting_down || reconfiguring)
 	return;
-    hlp->last_queue_warn = squid_curtime;
     debug(84, 1) ("WARNING: All %s processes are busy.\n", hlp->id_name);
     debug(84, 1) ("WARNING: up to %d pending requests queued\n", hlp->stats.max_queue_size);
     if (hlp->stats.queue_size > hlp->n_running * 2)
 	fatalf("Too many queued %s requests (%d on %d)", hlp->id_name, hlp->stats.queue_size, hlp->n_running);
-    if (hlp->stats.max_queue_size > 1)
+    if (squid_curtime - hlp->last_queue_warn < 300)
 	debug(84, 1) ("Consider increasing the number of %s processes to at least %d in your config file.\n", hlp->id_name, hlp->n_running + hlp->stats.max_queue_size);
+    hlp->last_queue_warn = squid_curtime;
     hlp->stats.max_queue_size = hlp->stats.queue_size;
 }
 
@@ -775,11 +775,11 @@ StatefulEnqueue(statefulhelper * hlp, helper_stateful_request * r)
 	return;
     if (shutting_down || reconfiguring)
 	return;
-    hlp->last_queue_warn = squid_curtime;
     debug(84, 1) ("WARNING: All %s processes are busy.\n", hlp->id_name);
     debug(84, 1) ("WARNING: up to %d pending requests queued\n", hlp->stats.max_queue_size);
-    if (hlp->stats.max_queue_size > 1)
+    if (squid_curtime - hlp->last_queue_warn < 300)
 	debug(84, 1) ("Consider increasing the number of %s processes to at least %d in your config file.\n", hlp->id_name, hlp->n_running + hlp->stats.max_queue_size);
+    hlp->last_queue_warn = squid_curtime;
     hlp->stats.max_queue_size = hlp->stats.queue_size;
 }
 

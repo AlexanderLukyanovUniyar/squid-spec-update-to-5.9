@@ -29,6 +29,10 @@ SourceIfNotEmpty /etc/sysconfig/network
 #    internet connection when you start squid, uncomment this
 SQUID_OPTS="-D"
 
+#Uncomment for makes squid write info in access.log by pieces as far as the
+#receipt of data but not after downloading whole file.
+#SQUID_OPTS="-D -x /tmp/squid"
+
 LOCKFILE=/var/lock/subsys/squid
 PIDFILE=/var/run/squid.pid
 RETVAL=0

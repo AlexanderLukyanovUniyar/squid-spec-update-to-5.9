@@ -23,7 +23,7 @@
 #ifndef __CONFIGURE_H__
 #define __CONFIGURE_H__
 @TOP@
-/* $Id: acconfig.h,v 1.61.2.3 2002/07/01 08:55:11 hno Exp $ */
+/* $Id: acconfig.h,v 1.61.2.4 2004/06/01 08:34:19 hno Exp $ */
 
 /*
  * configure command line used to configure Squid
@@ -281,6 +281,15 @@
  * we check for the existance of struct mallinfo
  */
 #undef HAVE_STRUCT_MALLINFO
+
+/*
+ * Some systems dont have va_copy */
+#undef HAVE_VA_COPY
+
+/*
+ * Some systems support __va_copy */
+#undef HAVE___VA_COPY
+
 
 /*
  * Do we want to use truncate(2) or unlink(2)?

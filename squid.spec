@@ -1,6 +1,6 @@
 Name: squid
 Version: 2.5.STABLE4
-Release: alt4
+Release: alt5
 
 Summary: The Squid proxy caching server
 License: GPL
@@ -21,6 +21,7 @@ Patch3: %name-2.4.STABLE6-alt-without-bind.patch
 Patch4: %name-2.5-perlpath.patch
 Patch5: %name-2.5-automake.patch
 Patch6: %name-errrors-belarusian.patch
+Patch7: %name-2.5.sasl.patch
 
 #Official patches to Squid
 Patch10: %name-2.5.STABLE4-digest_auth_pwchange.patch
@@ -47,8 +48,8 @@ Obsoletes: %name-novm
 BuildConflicts: bind-devel
 BuildPreReq: rpm-build >= 4.0.4-alt10, autoconf >= 2.54
 
-# Automatically added by buildreq on Wed Oct 22 2003 (-bi)
-BuildRequires: OpenSP libdb4.0-devel libkrb5 libldap-devel libmysqlclient10 libpam-devel libsasl-devel libssl-devel perl-Authen-Smb sgml-tools
+# Automatically added by buildreq on Thu Dec 18 2003 (-bi)
+BuildRequires: OpenSP libldap-devel libpam-devel libsasl2-devel libssl-devel perl-Authen-Smb sgml-tools
 
 %description
 Squid is a high-performance proxy caching server for Web clients,
@@ -81,6 +82,7 @@ ICMP messages directly
 %patch4 -p1
 %patch5 -p1
 %patch6 -p1
+%patch7 -p1
 
 %patch10 -p1
 %patch11 -p1
@@ -259,6 +261,9 @@ popd
 %attr(4710,root,%name) %_libdir/%name/pinger
 
 %changelog
+* Thu Dec 18 2003 Konstantin Timoshenko <kt@altlinux.ru> 2.5.STABLE4-alt5
+- fix build with libsasl2
+
 * Mon Dec 08 2003 Konstantin Timoshenko <kt@altlinux.ru> 2.5.STABLE4-alt4
 - Official bugfixes from www.%name-cache.org.
 - cosmetics spec file

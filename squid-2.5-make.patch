@@ -42,15 +42,3 @@ diff -Nur squid-2.5.STABLE3.orig/src/Makefile.in squid-2.5.STABLE3/src/Makefile.
  DEFAULT_PINGER = $(libexecdir)/pinger$(EXEEXT)
  DEFAULT_UNLINKD = $(libexecdir)/unlinkd$(EXEEXT)
  DEFAULT_DISKD = $(libexecdir)/diskd$(EXEEXT)
-diff -Nur squid-2.5.STABLE3.orig/helpers/basic_auth/SASL/Makefile.in squid-2.5.STABLE3/helpers/basic_auth/SASL/Makefile.in
---- squid-2.5.STABLE3.orig/helpers/basic_auth/SASL/Makefile.in	2003-07-11 13:53:18 +0600
-+++ squid-2.5.STABLE3/helpers/basic_auth/SASL/Makefile.in	2003-07-11 16:41:18 +0600
-@@ -120,7 +120,7 @@
- install_sh = @install_sh@
- makesnmplib = @makesnmplib@
- 
--INCLUDES = -I$(top_srcdir)/include
-+INCLUDES = -I$(top_srcdir)/include -I$(includedir)/sasl
- 
- libexec_PROGRAMS = sasl_auth
- LDADD = -L$(top_builddir)/lib -lmiscutil -lsasl $(XTRA_LIBS)

@@ -1,8 +1,9 @@
 Name: squid
 Version: 2.5.STABLE7
-Release: alt7
+Release: alt8
 
 Summary: The Squid proxy caching server
+Summary(ru_RU.KOI8-R): Кэширующий прокси-сервер Squid
 License: GPL
 Group: System/Servers
 
@@ -51,14 +52,19 @@ Patch30: squid-2.5.STABLE7-ftp_datachannel.patch
 Patch31: squid-2.5.STABLE7-short_icons_urls.patch
 Patch32: squid-2.5.STABLE7-response_splitting.patch
 Patch33: squid-2.5.STABLE7-wccp_buffer_overflow.patch
+Patch34: squid-2.5.STABLE7-oversize_reply_headers.patch
+Patch35: squid-2.5.STABLE7-ldap_search.patch
+Patch36: squid-2.5.STABLE7-ntlm_segfault.patch
+Patch37: squid-2.5.STABLE7-post.patch
+Patch38: squid-2.5.STABLE7-server_post.patch
 
 Obsoletes: %name-novm
 
 BuildConflicts: bind-devel
 BuildPreReq: rpm-build >= 4.0.4-alt10, autoconf >= 2.54
 PreReq: net-snmp-mibs
-# Automatically added by buildreq on Fri Jul 23 2004 (-bi)
-BuildRequires: OpenSP libldap-devel libpam-devel libsasl2-devel libssl-devel perl-Authen-Smb sgml-tools
+
+BuildRequires: OpenSP libldap-devel libpam0-devel libsasl2-devel libssl-devel perl-Authen-Smb sgml-tools
 
 %description
 Squid is a high-performance proxy caching server for Web clients,
@@ -67,21 +73,29 @@ caching software, Squid handles all requests in a single,
 non-blocking, I/O-driven process. Squid keeps meta data and especially
 hot objects cached in RAM, caches DNS lookups, supports non-blocking
 DNS lookups, and implements negative caching of failed requests.
-
-Squid consists of a main server program squid, a Domain Name System
-lookup program (dnsserver), a program for retrieving FTP data
-(ftpget), and some management and client tools.
-
 Install squid if you need a proxy caching server.
+
+%description -l ru_RU.KOI8-R
+Squid --- высокопроизводительный кэширующий прокси-сервер для web-клиентов
+с поддержкой протоколов FTP, gopher и HTTP. В отличие от традиционного кэширующего
+ПО Squid обрабатывает все запросы в едином неблокирующем процессе. Squid хранит
+метаданные и особенно часто запрашиваемые объекты в ОЗУ, кэширует DNS-запросы,
+поддерживает неблокирующие DNS-запросы и реализует негативное кэширование
+неудачных запросов.
+Установите squid, если вам необходим кэширующий прокси-сервер.
 
 %package pinger
 Summary: The pinger process for Squid proxy caching server
+Summary(ru_RU.KOI8-R): Процесс pinger для кэширующего прокси-сервера Squid.
 Group: System/Servers
 Requires: %name = %version-%release
 
 %description pinger
-Pinger process for Squid to send and receive
-ICMP messages directly
+Pinger process for Squid to send and receive ICMP messages directly.
+
+%description -l ru_RU.KOI8-R pinger
+Процесс pinger для Squid предназначен для прямой отправки и получения
+ICMP-сообщений.
 
 %prep
 %setup -q
@@ -117,6 +131,11 @@ ICMP messages directly
 %patch31 -p1
 %patch32 -p1
 %patch33 -p1
+%patch34 -p1
+%patch35 -p1
+%patch36 -p1
+%patch37 -p1
+%patch38 -p1
 
 %build
 %set_autoconf_version 2.5
@@ -281,6 +300,16 @@ popd
 %attr(4710,root,%name) %_libdir/%name/pinger
 
 %changelog
+* Fri Feb 04 2005 Denis Ovsienko <pilot@altlinux.ru> 2.5.STABLE7-alt8
+- libpam-devel -> libpam0-devel
+- Russian description
+- applied:
+ + 2005-01-31 22:50 (Security issue) Correct handling of oversized reply headers
+ + 2005-02-03 23:17 (Minor) LDAP helpers sends slightly malformed search requests
+ + 2005-02-03 23:27 (Minor) Sporadic segmentation fault when using ntlm authentication
+ + 2005-02-04 00:12 (Major) Segmentation fault on failed PUT/POST request
+ + 2005-02-04 00:33 (Medium) Persistent connection trouble on failed PUT/POST requests
+
 * Sat Jan 29 2005 Denis Ovsienko <pilot@altlinux.ru> 2.5.STABLE7-alt7
 - updated squid-2.5.STABLE7-header_parsing.patch once more
 - applied:

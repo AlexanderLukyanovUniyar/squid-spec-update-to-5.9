@@ -1,6 +1,6 @@
 Name: squid
-Version: 2.5.STABLE7
-Release: alt8
+Version: 2.5.STABLE8
+Release: alt1
 
 Summary: The Squid proxy caching server
 Summary(ru_RU.KOI8-R): Кэширующий прокси-сервер Squid
@@ -28,35 +28,10 @@ Patch6: %name-errrors-belarusian.patch
 Patch7: patch-aa.patch
 
 #Official patches to Squid
-Patch10: squid-2.5.STABLE7-half_closed_POST.patch
-Patch11: squid-2.5.STABLE7-LDAP_version_documentation.patch
-Patch12: squid-2.5.STABLE7_req_resp_header.patch
-Patch13: squid-2.5.STABLE7-helper_shutdown.patch
-Patch14: squid-2.5.STABLE7-non_blocking_disk.patch
-Patch15: squid-2.5.STABLE7-blank_response.patch
-Patch16: squid-2.5.STABLE7-dothost.patch
-Patch17: squid-2.5.STABLE7-httpd_accel_vport.patch
-Patch18: squid-2.5.STABLE7-cachemgr_vmobjects.patch
-Patch19: squid-2.5.STABLE7-empty_acls.patch
-Patch20: squid-2.5.STABLE7-PURGE_internal.patch
-Patch21: squid-2.5.STABLE7-close_other.patch
-Patch22: squid-2.5.STABLE7-fakeauth_auth.patch
-Patch23: squid-2.5.STABLE7-gopher_html_parsing.patch
-Patch24: squid-2.5.STABLE7-wccp_denial_of_service.patch
-Patch25: squid-2.5.STABLE7-dns_memleak.patch
-Patch26: squid-2.5.STABLE7-fqdn_truncated.patch
-Patch27: squid-2.5.STABLE7-ldap_spaces.patch
-Patch28: squid-2.5.STABLE7-header_parsing.patch
-Patch29: squid-2.5.STABLE7-httpd_accel_no_pmtu_disc.patch
-Patch30: squid-2.5.STABLE7-ftp_datachannel.patch
-Patch31: squid-2.5.STABLE7-short_icons_urls.patch
-Patch32: squid-2.5.STABLE7-response_splitting.patch
-Patch33: squid-2.5.STABLE7-wccp_buffer_overflow.patch
-Patch34: squid-2.5.STABLE7-oversize_reply_headers.patch
-Patch35: squid-2.5.STABLE7-ldap_search.patch
-Patch36: squid-2.5.STABLE7-ntlm_segfault.patch
-Patch37: squid-2.5.STABLE7-post.patch
-Patch38: squid-2.5.STABLE7-server_post.patch
+Patch10: squid-2.5.STABLE8-dns_assert.patch
+Patch11: squid-2.5.STABLE8-format_fixes.patch
+Patch12: squid-2.5.STABLE8-html_high_chars.patch
+Patch13: squid-2.5.STABLE8-ftp_cleanup.patch
 
 Obsoletes: %name-novm
 
@@ -111,31 +86,6 @@ ICMP-сообщений.
 %patch11 -p1
 %patch12 -p1
 %patch13 -p1
-%patch14 -p1
-%patch15 -p1
-%patch16 -p1
-%patch17 -p1
-%patch18 -p1
-%patch19 -p1
-%patch20 -p1
-%patch21 -p1
-%patch22 -p1
-%patch23 -p1
-%patch24 -p1
-%patch25 -p1
-%patch26 -p1
-%patch27 -p1
-%patch28 -p1
-%patch29 -p1
-%patch30 -p1
-%patch31 -p1
-%patch32 -p1
-%patch33 -p1
-%patch34 -p1
-%patch35 -p1
-%patch36 -p1
-%patch37 -p1
-%patch38 -p1
 
 %build
 %set_autoconf_version 2.5
@@ -300,6 +250,21 @@ popd
 %attr(4710,root,%name) %_libdir/%name/pinger
 
 %changelog
+* Wed Feb 16 2005 Denis Ovsienko <pilot@altlinux.ru> 2.5.STABLE8-alt1
+- upstream merged:
+ + 2005-02-04 11:41 (Minor) WCCP easily disturbed by forged packets 
+ + 2005-02-06 00:57 (Cosmetic) Improve password handling in FTP gatewaying of ftp://user@host URLs
+ + 2005-02-11 10:59 (Major) Data corruption when HTTP reply headers is split in several packets
+- upstream updated and merged:
+ + 2005-01-31 01:50 (Security issue) Strengthen Squid from HTTP response splitting cache pollution attack
+ + 2005-02-10 10:14 (Security issue) Reject malformed HTTP requests and responses that conflict with the HTTP specifications
+- applied new:
+ + 2005-02-13 05:58 (Major) Assertion failure on certain odd DNS responses
+ + 2005-02-15 00:03 (Cosmetic) Cross-platform format fixes
+ + 2005-02-15 01:07 (Cosmetic) Allow high characters in generated FTP and Gopher directory listings
+ + 2005-02-15 02:14 (Cosmetic) FTP URL cleanups
+
+
 * Fri Feb 04 2005 Denis Ovsienko <pilot@altlinux.ru> 2.5.STABLE7-alt8
 - libpam-devel -> libpam0-devel
 - Russian description

@@ -1,6 +1,6 @@
 
 /*
- * $Id: authenticate.c,v 1.36.2.15 2004/04/18 01:29:51 hno Exp $
+ * $Id: authenticate.c,v 1.36.2.16 2005/01/10 15:35:38 hno Exp $
  *
  * DEBUG: section 29    Authenticator
  * AUTHOR: Duane Wessels
@@ -42,8 +42,7 @@
 
 CBDATA_TYPE(auth_user_ip_t);
 
-static void
-     authenticateDecodeAuth(const char *proxy_auth, auth_user_request_t * auth_user_request);
+static void authenticateDecodeAuth(const char *proxy_auth, auth_user_request_t * auth_user_request);
 static auth_acl_t authenticateAuthenticate(auth_user_request_t ** auth_user_request, http_hdr_type headertype, request_t * request, ConnStateData * conn, struct in_addr src_addr);
 
 /*
@@ -83,7 +82,7 @@ authenticateAuthSchemeId(const char *typestr)
     return -1;
 }
 
-void
+static void
 authenticateDecodeAuth(const char *proxy_auth, auth_user_request_t * auth_user_request)
 {
     int i = 0;

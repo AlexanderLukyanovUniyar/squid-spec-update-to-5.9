@@ -1,6 +1,6 @@
 
 /*
- * $Id: store.c,v 1.544.2.6 2004/05/31 21:28:30 hno Exp $
+ * $Id: store.c,v 1.544.2.7 2005/01/21 11:57:38 hno Exp $
  *
  * DEBUG: section 20    Storage Manager
  * AUTHOR: Harvest Derived
@@ -940,6 +940,7 @@ static int
 storeEntryValidLength(const StoreEntry * e)
 {
     int diff;
+    int clen;
     const HttpReply *reply;
     assert(e->mem_obj != NULL);
     reply = e->mem_obj->reply;
@@ -948,31 +949,18 @@ storeEntryValidLength(const StoreEntry * e)
 	objectLen(e));
     debug(20, 5) ("storeEntryValidLength:         hdr_sz = %d\n",
 	reply->hdr_sz);
+    clen = httpReplyBodySize(e->mem_obj->method, reply);
     debug(20, 5) ("storeEntryValidLength: content_length = %d\n",
-	reply->content_length);
-    if (reply->content_length < 0) {
+	clen);
+    if (clen < 0) {
 	debug(20, 5) ("storeEntryValidLength: Unspecified content length: %s\n",
 	    storeKeyText(e->hash.key));
 	return 1;
     }
-    if (reply->hdr_sz == 0) {
-	debug(20, 5) ("storeEntryValidLength: Zero header size: %s\n",
-	    storeKeyText(e->hash.key));
-	return 1;
-    }
-    if (e->mem_obj->method == METHOD_HEAD) {
-	debug(20, 5) ("storeEntryValidLength: HEAD request: %s\n",
-	    storeKeyText(e->hash.key));
-	return 1;
-    }
-    if (reply->sline.status == HTTP_NOT_MODIFIED)
-	return 1;
-    if (reply->sline.status == HTTP_NO_CONTENT)
-	return 1;
-    diff = reply->hdr_sz + reply->content_length - objectLen(e);
+    diff = reply->hdr_sz + clen - objectLen(e);
     if (diff == 0)
 	return 1;
-    debug(20, 3) ("storeEntryValidLength: %d bytes too %s; '%s'\n",
+    debug(20, 2) ("storeEntryValidLength: %d bytes too %s; '%s'\n",
 	diff < 0 ? -diff : diff,
 	diff < 0 ? "big" : "small",
 	storeKeyText(e->hash.key));

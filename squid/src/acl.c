@@ -1,6 +1,6 @@
 
 /*
- * $Id: acl.c,v 1.270.2.29 2004/09/25 11:56:16 hno Exp $
+ * $Id: acl.c,v 1.270.2.32 2005/01/10 15:31:00 hno Exp $
  *
  * DEBUG: section 28    Access Control
  * AUTHOR: Duane Wessels
@@ -557,11 +557,9 @@ aclParseTimeSpec(void *curlist)
 	} else {
 	    /* assume its time-of-day spec */
 	    if (sscanf(t, "%d:%d-%d:%d", &h1, &m1, &h2, &m2) < 4) {
-		debug(28, 0) ("%s line %d: %s\n",
+		fatalf("aclParseTimeSpec: ERROR: Bad time range in"
+		    "%s line %d: %s\n",
 		    cfg_filename, config_lineno, config_input_line);
-		debug(28, 0) ("aclParseTimeSpec: IGNORING Bad time range\n");
-		memFree(q, MEM_ACL_TIME_DATA);
-		return;
 	    }
 	    q = memAllocate(MEM_ACL_TIME_DATA);
 	    q->start = h1 * 60 + m1;
@@ -569,11 +567,9 @@ aclParseTimeSpec(void *curlist)
 	    q->weekbits = weekbits;
 	    weekbits = 0;
 	    if (q->start > q->stop) {
-		debug(28, 0) ("%s line %d: %s\n",
+		fatalf("aclParseTimeSpec: ERROR: Reversed time range in"
+		    "%s line %d: %s\n",
 		    cfg_filename, config_lineno, config_input_line);
-		debug(28, 0) ("aclParseTimeSpec: IGNORING Reversed time range\n");
-		memFree(q, MEM_ACL_TIME_DATA);
-		return;
 	    }
 	    if (q->weekbits == 0)
 		q->weekbits = ACL_ALLWEEK;
@@ -643,7 +639,7 @@ aclParseHeader(void *data)
     q = xcalloc(1, sizeof(acl_hdr_data));
     q->hdr_name = xstrdup(t);
     q->hdr_id = httpHeaderIdByNameDef(t, strlen(t));
-    aclParseRegexList(q->reglist);
+    aclParseRegexList(&q->reglist);
     if (!q->reglist) {
 	debug(28, 0) ("%s line %d: %s\n", cfg_filename, config_lineno, config_input_line);
 	debug(28, 0) ("aclParseHeader: No pattern defined '%s'\n", t);
@@ -693,13 +689,19 @@ static wordlist *
 aclDumpHeader(acl_hdr_data * hd)
 {
     wordlist *W = NULL;
-    relist *data = hd->reglist;
-    wordlistAdd(&W, httpHeaderNameById(hd->hdr_id));
-    while (data != NULL) {
-	wordlistAdd(&W, data->pattern);
-	data = data->next;
+    while (hd) {
+	MemBuf mb;
+	relist *data;
+	memBufDefInit(&mb);
+	memBufPrintf(&mb, "%s", hd->hdr_name);
+	for (data = hd->reglist; data; data = data->next) {
+	    memBufPrintf(&mb, " %s", data->pattern);
+	}
+	wordlistAdd(&W, mb.buf);
+	memBufClean(&mb);
+	hd = hd->next;
     }
-    return aclDumpRegexList(hd->reglist);
+    return W;
 }
 
 #if SQUID_SNMP
@@ -885,22 +887,22 @@ aclParseAclLine(acl ** head)
 	break;
     case ACL_PROXY_AUTH:
 	if (authenticateSchemeCount() == 0) {
-	    debug(28, 0) ("aclParseAclLine: IGNORING: Proxy Auth ACL '%s' \
-because no authentication schemes were compiled.\n", A->cfgline);
+	    fatalf("Invalid Proxy Auth ACL '%s' "
+		"because no authentication schemes were compiled.\n", A->cfgline);
 	} else if (authenticateActiveSchemeCount() == 0) {
-	    debug(28, 0) ("aclParseAclLine: IGNORING: Proxy Auth ACL '%s' \
-because no authentication schemes are fully configured.\n", A->cfgline);
+	    fatalf("Invalid Proxy Auth ACL '%s' "
+		"because no authentication schemes are fully configured.\n", A->cfgline);
 	} else {
 	    aclParseUserList(&A->data);
 	}
 	break;
     case ACL_PROXY_AUTH_REGEX:
 	if (authenticateSchemeCount() == 0) {
-	    debug(28, 0) ("aclParseAclLine: IGNORING: Proxy Auth ACL '%s' \
-because no authentication schemes were compiled.\n", A->cfgline);
+	    fatalf("Invalid Proxy Auth ACL '%s' "
+		"because no authentication schemes were compiled.\n", A->cfgline);
 	} else if (authenticateActiveSchemeCount() == 0) {
-	    debug(28, 0) ("aclParseAclLine: IGNORING: Proxy Auth ACL '%s' \
-because no authentication schemes are fully configured.\n", A->cfgline);
+	    fatalf("Invalid Proxy Auth ACL '%s' "
+		"because no authentication schemes are fully configured.\n", A->cfgline);
 	} else {
 	    aclParseRegexList(&A->data);
 	}
@@ -930,10 +932,8 @@ because no authentication schemes are fully configured.\n", A->cfgline);
     if (!new_acl)
 	return;
     if (A->data == NULL) {
-	debug(28, 0) ("aclParseAclLine: IGNORING invalid ACL: %s\n",
+	debug(28, 0) ("aclParseAclLine: WARNING: empty ACL: %s\n",
 	    A->cfgline);
-	memFree(A, MEM_ACL);
-	return;
     }
     /* append */
     while (*head)
@@ -1297,9 +1297,8 @@ aclMatchProxyAuth(void *data, auth_user_request_t * auth_user_request,
     /* this ACL check completed */
     authenticateAuthUserRequestUnlock(auth_user_request);
     /* check to see if we have matched the user-acl before */
-    return aclCacheMatchAcl(&auth_user_request->auth_user->
-	proxy_match_cache, acltype, data,
-	authenticateUserRequestUsername(auth_user_request));
+    return aclCacheMatchAcl(&auth_user_request->auth_user->proxy_match_cache,
+	acltype, data, authenticateUserRequestUsername(auth_user_request));
 }
 
 CBDATA_TYPE(acl_user_ip_data);

@@ -30,6 +30,10 @@
  * or (at your option) any later version.
  *
  * Changes:
+ * 2005-01-07: Henrik Nordstrom <hno@squid-cache.org>
+ *             - Added some sanity checks on login names to avoid
+ *             users bypassing equality checks by exploring the
+ *             overly helpful match capabilities of LDAP
  * 2004-07-17: Henrik Nordstrom <hno@squid-cache.org>
  *             - Corrected non-persistent mode to only issue one
  *             ldap_bind per connection.
@@ -83,7 +87,7 @@
 #include <stdlib.h>
 #include <lber.h>
 #include <ldap.h>
-
+#include <ctype.h>
 #include "util.h"
 
 #define PROGRAM_NAME "squid_ldap_auth"
@@ -116,6 +120,10 @@ static int checkLDAP(LDAP * ld, const char *userid, const char *password, const 
 static int readSecret(const char *filename);
 
 /* Yuck.. we need to glue to different versions of the API */
+
+#ifndef LDAP_NO_ATTRS
+#define LDAP_NO_ATTRS "1.1"
+#endif
 
 #if defined(LDAP_API_VERSION) && LDAP_API_VERSION > 1823
 static int
@@ -259,6 +267,32 @@ open_ldap_connection(const char *ldapServer, int port)
     squid_ldap_set_referrals(ld, !noreferrals);
     squid_ldap_set_aliasderef(ld, aliasderef);
     return ld;
+}
+
+/* Make a sanity check on the username to reject oddly typed names */
+static int
+validUsername(const char *user)
+{
+    const unsigned char *p = user;
+
+    /* Leading whitespace? */
+    if (isspace(p[0]))
+	return 0;
+    while(p[0] && p[1]) {
+	if (isspace(p[0])) {
+	    /* More than one consequitive space? */
+	    if (isspace(p[1]))
+		return 0;
+	    /* or odd space type character used? */
+	    if (p[0] != ' ')
+		return 0;
+	}
+	p++;
+    }
+    /* Trailing whitespace? */
+    if (isspace(p[0]))
+	return 0;
+    return 1;
 }
 
 int
@@ -481,6 +515,10 @@ main(int argc, char **argv)
 	}
 	rfc1738_unescape(user);
 	rfc1738_unescape(passwd);
+	if (!validUsername(user)) {
+	    printf("ERR\n");
+	    continue;
+	}
 	tryagain = (ld != NULL);
       recover:
 	if (ld == NULL && persistent)
@@ -552,8 +590,7 @@ checkLDAP(LDAP * persistent_ld, const char *userid, const char *password, const 
 	char escaped_login[256];
 	LDAPMessage *res = NULL;
 	LDAPMessage *entry;
-	char *searchattr[] =
-	{NULL};
+	char *searchattr[] = {LDAP_NO_ATTRS, NULL};
 	char *userdn;
 	int rc;
 	LDAP *search_ld = persistent_ld;

@@ -1,6 +1,6 @@
 
 /*
- * $Id: enums.h,v 1.203.2.13 2004/10/05 21:31:26 hno Exp $
+ * $Id: enums.h,v 1.203.2.14 2005/01/17 22:13:04 hno Exp $
  *
  *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/
@@ -93,6 +93,7 @@ typedef enum {
     ERR_ONLY_IF_CACHED_MISS,	/* failure to satisfy only-if-cached request */
     ERR_TOO_BIG,
     TCP_RESET,
+    ERR_INVALID_RESP,
     ERR_MAX
 } err_type;
 

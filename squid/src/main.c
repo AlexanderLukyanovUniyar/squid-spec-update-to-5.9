@@ -1,6 +1,6 @@
 
 /*
- * $Id: main.c,v 1.345.2.13 2003/12/17 21:10:30 hno Exp $
+ * $Id: main.c,v 1.345.2.15 2004/12/28 12:54:35 hno Exp $
  *
  * DEBUG: section 1     Startup and Main Loop
  * AUTHOR: Harvest Derived
@@ -586,7 +586,6 @@ int
 main(int argc, char **argv)
 {
     int errcount = 0;
-    int n;			/* # of GC'd objects */
     int loop_delay;
     mode_t oldmask;
 #if defined(_SQUID_MSWIN_) || defined(_SQUID_CYGWIN_)
@@ -700,10 +699,6 @@ main(int argc, char **argv)
     if (!opt_no_daemon)
 	watch_child(argv);
     setMaxFD();
-
-    if (opt_catch_signals)
-	for (n = Squid_MaxFD; n > 2; n--)
-	    close(n);
 
     /* init comm module */
     comm_init();
@@ -892,9 +887,6 @@ watch_child(char *argv[])
 	dup2(nullfd, 1);
 	dup2(nullfd, 2);
     }
-    /* Close all else */
-    for (i = 3; i < Squid_MaxFD; i++)
-	close(i);
     for (;;) {
 	mainStartScript(argv[0]);
 	if ((pid = fork()) == 0) {

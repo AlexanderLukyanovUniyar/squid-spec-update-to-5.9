@@ -1,6 +1,6 @@
 
 /*
- * $Id: client_side.c,v 1.561.2.60 2004/10/05 22:34:42 hno Exp $
+ * $Id: client_side.c,v 1.561.2.70 2005/02/04 00:10:09 hno Exp $
  *
  * DEBUG: section 33    Client-side Routines
  * AUTHOR: Duane Wessels
@@ -661,6 +661,15 @@ clientPurgeRequest(clientHttpRequest * http)
 	if (!entry)
 	    entry = storeGetPublicByRequestMethod(http->request, METHOD_HEAD);
 	if (entry) {
+	    if (EBIT_TEST(entry->flags, ENTRY_SPECIAL)) {
+		http->log_type = LOG_TCP_DENIED;
+		err = errorCon(ERR_ACCESS_DENIED, HTTP_FORBIDDEN);
+		err->request = requestLink(http->request);
+		err->src_addr = http->conn->peer.sin_addr;
+		http->entry = clientCreateStoreEntry(http, http->request->method, null_request_flags);
+		errorAppendEntry(http->entry, err);
+		return;
+	    }
 	    /* Swap in the metadata */
 	    http->entry = entry;
 	    storeLockObject(http->entry);
@@ -924,9 +933,10 @@ connStateFree(int fd, void *data)
 	authenticateAuthUserRequestUnlock(connState->auth_user_request);
     connState->auth_user_request = NULL;
     authenticateOnCloseConnection(connState);
-    if (connState->in.size == CLIENT_REQ_BUF_SZ)
+    if (connState->in.size == CLIENT_REQ_BUF_SZ) {
 	memFree(connState->in.buf, MEM_CLIENT_REQ_BUF);
-    else
+	connState->in.buf = NULL;
+    } else
 	safe_free(connState->in.buf);
     /* XXX account connState->in.buf */
     pconnHistCount(0, connState->nrequests);
@@ -2713,7 +2723,7 @@ parseHttpRequest(ConnStateData * conn, method_t * method_p, int *status,
     /* see if we running in Config2.Accel.on, if so got to convert it to URL */
     else if (Config2.Accel.on && *url == '/') {
 	/* prepend the accel prefix */
-	if (opt_accel_uses_host && (t = mime_get_header(req_hdr, "Host"))) {
+	if (Config.onoff.accel_uses_host_header && (t = mime_get_header(req_hdr, "Host"))) {
 	    int vport;
 	    char *q;
 	    const char *protocol_name = "http";
@@ -2857,6 +2867,15 @@ parseHttpRequest(ConnStateData * conn, method_t * method_p, int *status,
 		vport, url);
 #endif
 	    debug(33, 5) ("VHOST REWRITE: '%s'\n", http->uri);
+	} else if (vport_mode) {
+	    int vport;
+	    const char *protocol_name = "http";
+	    vport = (int) ntohs(http->conn->me.sin_port);
+	    url_sz = strlen(url) + 32 + Config.appendDomainLen +
+		strlen(Config.Accel.host);
+	    http->uri = xcalloc(url_sz, 1);
+	    snprintf(http->uri, url_sz, "%s://%s:%d%s",
+		protocol_name, Config.Accel.host, vport, url);
 	} else {
 	    url_sz = strlen(Config2.Accel.prefix) + strlen(url) +
 		Config.appendDomainLen + 1;
@@ -2864,6 +2883,18 @@ parseHttpRequest(ConnStateData * conn, method_t * method_p, int *status,
 	    snprintf(http->uri, url_sz, "%s%s", Config2.Accel.prefix, url);
 	}
 	http->flags.accel = 1;
+	if (Config.onoff.accel_no_pmtu_disc) {
+#if defined(IP_MTU_DISCOVER) && defined(IP_PMTUDISC_DONT)
+	    int i = IP_PMTUDISC_DONT;
+	    setsockopt(conn->fd, SOL_IP, IP_MTU_DISCOVER, &i, sizeof i);
+#else
+	    static int reported = 0;
+	    if (!reported) {
+		debug(33, 1) ("Notice: httpd_accel_no_pmtu_disc not supported on your platform\n");
+		reported = 1;
+	    }
+#endif
+	}
     } else {
 	/* URL may be rewritten later, so make extra room */
 	url_sz = strlen(url) + Config.appendDomainLen + 5;
@@ -2882,10 +2913,11 @@ parseHttpRequest(ConnStateData * conn, method_t * method_p, int *status,
 }
 
 static int
-clientReadDefer(int fdnotused, void *data)
+clientReadDefer(int fd, void *data)
 {
+    fde *F = &fd_table[fd];
     ConnStateData *conn = data;
-    if (conn->body.size_left)
+    if (conn->body.size_left && !F->flags.socket_eof)
 	return conn->in.offset >= conn->in.size - 1;
     else
 	return conn->defer.until > squid_curtime;
@@ -2972,9 +3004,15 @@ clientReadRequest(int fd, void *data)
 	}
 	/* Continue to process previously read data */
     }
+    cbdataLock(conn);		/* clientProcessBody might pull the connection under our feets */
     /* Process request body if any */
-    if (conn->in.offset > 0 && conn->body.callback != NULL)
+    if (conn->in.offset > 0 && conn->body.callback != NULL) {
 	clientProcessBody(conn);
+	if (!cbdataValid(conn)) {
+	    cbdataUnlock(conn);
+	    return;
+	}
+    }
     /* Process next request */
     while (conn->in.offset > 0 && conn->body.size_left == 0) {
 	int nrequests;
@@ -3050,13 +3088,21 @@ clientReadRequest(int fd, void *data)
 		errorAppendEntry(http->entry, err);
 		safe_free(prefix);
 		break;
-	    } else {
-		/* compile headers */
-		/* we should skip request line! */
-		if (!httpRequestParseHeader(request, prefix + req_line_sz))
-		    debug(33, 1) ("Failed to parse request headers: %s\n%s\n",
-			http->uri, prefix);
-		/* continue anyway? */
+	    }
+	    /* compile headers */
+	    /* we should skip request line! */
+	    if (!httpRequestParseHeader(request, prefix + req_line_sz)) {
+		debug(33, 1) ("Failed to parse request headers: %s\n%s\n",
+		    http->uri, prefix);
+		err = errorCon(ERR_INVALID_URL, HTTP_BAD_REQUEST);
+		err->src_addr = conn->peer.sin_addr;
+		err->url = xstrdup(http->uri);
+		http->al.http.code = err->http_status;
+		http->log_type = LOG_TCP_DENIED;
+		http->entry = clientCreateStoreEntry(http, method, null_request_flags);
+		errorAppendEntry(http->entry, err);
+		safe_free(prefix);
+		break;
 	    }
 	    request->flags.accelerated = http->flags.accel;
 	    if (!http->flags.internal) {
@@ -3070,8 +3116,10 @@ clientReadRequest(int fd, void *data)
 			http->flags.internal = 1;
 		    }
 		}
-		if (http->flags.internal)
+		if (http->flags.internal) {
 		    request->protocol = PROTO_HTTP;
+		    request->login[0] = '\0';
+		}
 	    }
 	    /*
 	     * cache the Content-length value in request_t.
@@ -3134,7 +3182,6 @@ clientReadRequest(int fd, void *data)
 		break;
 	    } else {
 		clientAccessCheck(http);
-		continue;	/* while offset > 0 && body.size_left == 0 */
 	    }
 	} else if (parser_return_code == 0) {
 	    /*
@@ -3154,11 +3201,15 @@ clientReadRequest(int fd, void *data)
 		*H = http;
 		http->entry = clientCreateStoreEntry(http, METHOD_NONE, null_request_flags);
 		errorAppendEntry(http->entry, err);
-		return;
 	    }
 	    break;
 	}
+	if (!cbdataValid(conn)) {
+	    cbdataUnlock(conn);
+	    return;
+	}
     }				/* while offset > 0 && conn->body.size_left == 0 */
+    cbdataUnlock(conn);
     /* Check if a half-closed connection was aborted in the middle */
     if (F->flags.socket_eof) {
 	if (conn->in.offset != conn->body.size_left) {	/* != 0 when no request body */

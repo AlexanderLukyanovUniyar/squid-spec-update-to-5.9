@@ -1,0 +1,77 @@
+Index: squid/src/comm.c
+diff -c squid/src/comm.c:1.324.2.4 squid/src/comm.c:1.324.2.5
+*** squid/src/comm.c:1.324.2.4	Mon Sep 27 12:17:39 2004
+--- squid/src/comm.c	Sat Feb 12 22:53:56 2005
+***************
+*** 411,418 ****
+  	cs->S.sin_family = AF_INET;
+  	cs->S.sin_addr = cs->in_addr;
+  	cs->S.sin_port = htons(cs->port);
+- 	if (Config.onoff.log_fqdn)
+- 	    fqdncache_gethostbyaddr(cs->S.sin_addr, FQDN_LOOKUP_IF_MISS);
+      }
+      switch (comm_connect_addr(fd, &cs->S)) {
+      case COMM_INPROGRESS:
+--- 411,416 ----
+Index: squid/src/fqdncache.c
+diff -c squid/src/fqdncache.c:1.149.2.5 squid/src/fqdncache.c:1.149.2.6
+*** squid/src/fqdncache.c:1.149.2.5	Tue Dec  7 16:40:57 2004
+--- squid/src/fqdncache.c	Sat Feb 12 22:53:56 2005
+***************
+*** 303,309 ****
+  	    continue;
+  	if (answers[k].class != RFC1035_CLASS_IN)
+  	    continue;
+! 	f->names[f->name_count++] = xstrndup(answers[k].rdata, answers[k].rdlength);
+  	if (ttl == 0 || answers[k].ttl < ttl)
+  	    ttl = answers[k].ttl;
+  	if (f->name_count >= FQDN_MAX_NAMES)
+--- 303,311 ----
+  	    continue;
+  	if (answers[k].class != RFC1035_CLASS_IN)
+  	    continue;
+! 	if (!answers[k].rdata[0])
+! 	    continue;
+! 	f->names[f->name_count++] = xstrdup(answers[k].rdata);
+  	if (ttl == 0 || answers[k].ttl < ttl)
+  	    ttl = answers[k].ttl;
+  	if (f->name_count >= FQDN_MAX_NAMES)
+Index: squid/src/ipcache.c
+diff -c squid/src/ipcache.c:1.236.2.5 squid/src/ipcache.c:1.236.2.6
+*** squid/src/ipcache.c:1.236.2.5	Tue Dec  7 16:40:57 2004
+--- squid/src/ipcache.c	Sat Feb 12 22:53:56 2005
+***************
+*** 338,343 ****
+--- 338,347 ----
+  	    continue;
+  	if (answers[k].class != RFC1035_CLASS_IN)
+  	    continue;
++ 	if (answers[k].rdlength != 4) {
++ 	    debug(14, 1) ("ipcacheParse: Invalid IP address in response to '%s'\n", name);
++ 	    continue;
++ 	}
+  	na++;
+      }
+      if (na == 0) {
+***************
+*** 353,361 ****
+  	    continue;
+  	if (answers[k].class != RFC1035_CLASS_IN)
+  	    continue;
+  	if (ttl == 0 || ttl > answers[k].ttl)
+  	    ttl = answers[k].ttl;
+- 	assert(answers[k].rdlength == 4);
+  	xmemcpy(&i->addrs.in_addrs[j++], answers[k].rdata, 4);
+  	debug(14, 3) ("ipcacheParse: #%d %s\n",
+  	    j - 1,
+--- 357,366 ----
+  	    continue;
+  	if (answers[k].class != RFC1035_CLASS_IN)
+  	    continue;
++ 	if (answers[k].rdlength != 4)
++ 	    continue;
+  	if (ttl == 0 || ttl > answers[k].ttl)
+  	    ttl = answers[k].ttl;
+  	xmemcpy(&i->addrs.in_addrs[j++], answers[k].rdata, 4);
+  	debug(14, 3) ("ipcacheParse: #%d %s\n",
+  	    j - 1,

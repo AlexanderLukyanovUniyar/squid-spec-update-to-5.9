@@ -1,6 +1,6 @@
 
 /*
- * $Id: structs.h,v 1.408.2.30 2004/10/05 22:56:36 hno Exp $
+ * $Id: structs.h,v 1.408.2.36 2005/02/04 00:30:01 hno Exp $
  *
  *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/
@@ -118,8 +118,7 @@ struct _auth_user_t {
     int auth_module;
     /* we only have one username associated with a given auth_user struct */
     auth_user_hash_pointer *usernamehash;
-    /* we may have many proxy-authenticate strings that decode to the same user */
-    dlink_list proxy_auth_list;
+    /* cache of acl lookups on this username */
     dlink_list proxy_match_cache;
     /* what ip addresses has this user been seen at?, plus a list length cache */
     dlink_list ip_list;
@@ -606,6 +605,9 @@ struct _SquidConfig {
 	int request_entities;
 	int detect_broken_server_pconns;
 	int balance_on_multiple_ip;
+	int relaxed_header_parser;
+	int accel_uses_host_header;
+	int accel_no_pmtu_disc;
     } onoff;
     acl *aclList;
     struct {
@@ -983,6 +985,7 @@ struct _http_state_flags {
     unsigned int only_if_cached:1;
     unsigned int keepalive_broken:1;
     unsigned int abuse_detected:1;
+    unsigned int request_sent:1;
 };
 
 struct _HttpStateData {
@@ -2027,6 +2030,7 @@ struct _helper {
     const char *id_name;
     int n_to_start;
     int n_running;
+    int n_active;
     int ipc_type;
     time_t last_queue_warn;
     struct {
@@ -2046,6 +2050,7 @@ struct _helper_stateful {
     const char *id_name;
     int n_to_start;
     int n_running;
+    int n_active;
     int ipc_type;
     MemPool *datapool;
     HLPSAVAIL *IsAvailable;
@@ -2075,7 +2080,6 @@ struct _helper_server {
     helper *parent;
     helper_request *request;
     struct _helper_flags {
-	unsigned int alive:1;
 	unsigned int busy:1;
 	unsigned int closing:1;
 	unsigned int shutdown:1;

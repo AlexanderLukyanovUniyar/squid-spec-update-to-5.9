@@ -1,6 +1,6 @@
 
 /*
- * $Id: mime.c,v 1.102.2.3 2003/12/14 13:33:47 hno Exp $
+ * $Id: mime.c,v 1.102.2.4 2005/01/22 00:56:14 hno Exp $
  *
  * DEBUG: section 25    MIME Parsing
  * AUTHOR: Harvest Derived
@@ -118,7 +118,7 @@ size_t
 headersEnd(const char *mime, size_t l)
 {
     size_t e = 0;
-    int state = 0;
+    int state = 1;
     while (e < l && state < 3) {
 	switch (state) {
 	case 0:
@@ -134,9 +134,7 @@ headersEnd(const char *mime, size_t l)
 		state = 0;
 	    break;
 	case 2:
-	    if ('\r' == mime[e])	/* ignore repeated CR */
-		(void) 0;
-	    else if ('\n' == mime[e])
+	    if ('\n' == mime[e])
 		state = 3;
 	    else
 		state = 0;

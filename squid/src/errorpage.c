@@ -1,6 +1,6 @@
 
 /*
- * $Id: errorpage.c,v 1.167.2.8 2003/05/27 07:20:55 hno Exp $
+ * $Id: errorpage.c,v 1.167.2.9 2003/11/06 16:13:03 hno Exp $
  *
  * DEBUG: section 4     Error Generation
  * AUTHOR: Duane Wessels
@@ -192,7 +192,7 @@ errorTryLoadText(const char *page_name, const char *dir)
 	text = NULL;
     }
     file_close(fd);
-    if (strstr(text, "%s") == NULL)
+    if (text && strstr(text, "%s") == NULL)
 	strcat(text, "%S");	/* add signature */
     return text;
 }

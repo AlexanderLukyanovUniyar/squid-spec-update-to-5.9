@@ -1,6 +1,6 @@
 
 /*
- * $Id: cache_cf.c,v 1.396.2.14 2003/07/01 20:42:41 wessels Exp $
+ * $Id: cache_cf.c,v 1.396.2.16 2003/12/06 17:19:36 hno Exp $
  *
  * DEBUG: section 3     Configuration File Parsing
  * AUTHOR: Harvest Derived
@@ -431,6 +431,14 @@ configDoConfigure(void)
 	    debug(22, 0) ("WARNING: 'maxconn' ACL (%s) won't work with client_db disabled\n", a->name);
 	}
     }
+    if (Config.negativeDnsTtl <= 0) {
+	debug(22, 0) ("WARNING: resetting negative_dns_ttl to 1 second\n");
+	Config.negativeDnsTtl = 1;
+    }
+    if (Config.positiveDnsTtl < Config.negativeDnsTtl) {
+	debug(22, 0) ("NOTICE: positive_dns_ttl must be larger than negative_dns_ttl. Resetting negative_dns_ttl to match\n");
+	Config.positiveDnsTtl = Config.negativeDnsTtl;
+    }
 }
 
 /* Parse a time specification from the config file.  Store the
@@ -504,6 +512,8 @@ parseBytesLine(size_t * bptr, const char *units)
     else if ((m = parseBytesUnits(token)) == 0)
 	self_destruct();
     *bptr = m * d / u;
+    if ((double) *bptr != m * d / u)
+	self_destruct();
 }
 
 static size_t

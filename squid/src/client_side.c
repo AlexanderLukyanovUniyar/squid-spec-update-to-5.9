@@ -1,6 +1,6 @@
 
 /*
- * $Id: client_side.c,v 1.561.2.46 2003/09/01 20:39:33 hno Exp $
+ * $Id: client_side.c,v 1.561.2.54 2004/02/18 18:51:16 hno Exp $
  *
  * DEBUG: section 33    Client-side Routines
  * AUTHOR: Duane Wessels
@@ -100,6 +100,7 @@ static void clientProcessMiss(clientHttpRequest *);
 static void clientBuildReplyHeader(clientHttpRequest * http, HttpReply * rep);
 static clientHttpRequest *parseHttpRequestAbort(ConnStateData * conn, const char *uri);
 static clientHttpRequest *parseHttpRequest(ConnStateData *, method_t *, int *, char **, size_t *);
+static void clientRedirectStart(clientHttpRequest * http);
 static RH clientRedirectDone;
 static void clientCheckNoCache(clientHttpRequest *);
 static void clientCheckNoCacheDone(int answer, void *data);
@@ -244,7 +245,7 @@ clientAccessCheckDone(int answer, void *data)
 	http->uri = xstrdup(urlCanonical(http->request));
 	assert(http->redirect_state == REDIRECT_NONE);
 	http->redirect_state = REDIRECT_PENDING;
-	redirectStart(http, clientRedirectDone, http);
+	clientRedirectStart(http);
     } else {
 	int require_auth = (answer == ACCESS_REQ_PROXY_AUTH || aclIsProxyAuth(AclMatchedName));
 	debug(33, 5) ("Access Denied: %s\n", http->uri);
@@ -289,6 +290,33 @@ clientAccessCheckDone(int answer, void *data)
 	    authenticateAuthUserRequestLock(err->auth_user_request);
 	err->callback_data = NULL;
 	errorAppendEntry(http->entry, err);
+    }
+}
+
+static void
+clientRedirectAccessCheckDone(int answer, void *data)
+{
+    clientHttpRequest *http = data;
+    http->acl_checklist = NULL;
+    if (answer == ACCESS_ALLOWED)
+	redirectStart(http, clientRedirectDone, http);
+    else
+	clientRedirectDone(http, NULL);
+}
+
+static void
+clientRedirectStart(clientHttpRequest * http)
+{
+    debug(33, 5) ("clientRedirectStart: '%s'\n", http->uri);
+    if (Config.Program.redirect == NULL) {
+	clientRedirectDone(http, NULL);
+	return;
+    }
+    if (Config.accessList.redirector) {
+	http->acl_checklist = clientAclChecklistCreate(Config.accessList.redirector, http);
+	aclNBCheck(http->acl_checklist, clientRedirectAccessCheckDone, http);
+    } else {
+	redirectStart(http, clientRedirectDone, http);
     }
 }
 
@@ -785,8 +813,10 @@ httpRequestFree(void *data)
     MemObject *mem = NULL;
     debug(33, 3) ("httpRequestFree: %s\n", storeUrl(http->entry));
     if (!clientCheckTransferDone(http)) {
-	if (request && request->body_connection)
+	if (request && request->body_connection) {
 	    clientAbortBody(request);	/* abort request body transter */
+	    request->body_connection = NULL;
+	}
 	/* HN: This looks a bit odd.. why should client_side care about
 	 * the ICP selection status?
 	 */
@@ -1401,6 +1431,10 @@ clientBuildReplyHeader(clientHttpRequest * http, HttpReply * rep)
 	debug(33, 3) ("clientBuildReplyHeader: can't keep-alive, unknown body size\n");
 	request->flags.proxy_keepalive = 0;
     }
+    if (fdUsageHigh()) {
+	debug(33, 3) ("clientBuildReplyHeader: Not many unused FDs, can't keep-alive\n");
+	request->flags.proxy_keepalive = 0;
+    }
     /* Signal keep-alive if needed */
     httpHeaderPutStr(hdr,
 	http->flags.accel ? HDR_CONNECTION : HDR_PROXY_CONNECTION,
@@ -1818,6 +1852,8 @@ clientMaxBodySize(request_t * request, clientHttpRequest * http, HttpReply * rep
 {
     body_size *bs;
     aclCheck_t *checklist;
+    if (http->log_type == LOG_TCP_DENIED)
+	return;
     bs = (body_size *) Config.ReplyBodySize.head;
     while (bs) {
 	checklist = clientAclChecklistCreate(bs->access_list, http);
@@ -1935,18 +1971,18 @@ clientSendMoreData(void *data, char *buf, ssize_t size)
 	return;
     }
     if (http->out.offset == 0) {
-	if (Config.onoff.log_mime_hdrs) {
-	    size_t k;
-	    if ((k = headersEnd(buf, size))) {
-		safe_free(http->al.headers.reply);
-		http->al.headers.reply = xcalloc(k + 1, 1);
-		xstrncpy(http->al.headers.reply, buf, k);
-	    }
-	}
 	rep = clientBuildReply(http, buf, size);
 	if (rep) {
 	    aclCheck_t *ch;
 	    int rv;
+	    if (Config.onoff.log_mime_hdrs) {
+		size_t k;
+		if ((k = headersEnd(buf, size))) {
+		    safe_free(http->al.headers.reply);
+		    http->al.headers.reply = xcalloc(k + 1, 1);
+		    xstrncpy(http->al.headers.reply, buf, k);
+		}
+	    }
 	    clientMaxBodySize(http->request, http, rep);
 	    if (http->log_type != LOG_TCP_DENIED && clientReplyBodyTooLarge(http, rep->content_length)) {
 		ErrorState *err = errorCon(ERR_TOO_BIG, HTTP_FORBIDDEN);
@@ -1980,7 +2016,11 @@ clientSendMoreData(void *data, char *buf, ssize_t size)
 		    AclMatchedName ? AclMatchedName : "NO ACL's");
 		if (!rv) {
 		    ErrorState *err;
-		    err = errorCon(ERR_ACCESS_DENIED, HTTP_FORBIDDEN);
+		    err_type page_id;
+		    page_id = aclGetDenyInfoPage(&Config.denyInfoList, AclMatchedName);
+		    if (page_id == ERR_NONE)
+			page_id = ERR_ACCESS_DENIED;
+		    err = errorCon(page_id, HTTP_FORBIDDEN);
 		    err->request = requestLink(http->request);
 		    storeUnregister(http->sc, http->entry, http);
 		    http->sc = NULL;
@@ -1994,16 +2034,6 @@ clientSendMoreData(void *data, char *buf, ssize_t size)
 		    return;
 		}
 	    }
-	} else if (size < CLIENT_SOCK_SZ && entry->store_status == STORE_PENDING) {
-	    /* wait for more to arrive */
-	    storeClientCopy(http->sc, entry,
-		http->out.offset + size,
-		http->out.offset,
-		CLIENT_SOCK_SZ,
-		buf,
-		clientSendMoreData,
-		http);
-	    return;
 	}
 	/* reset range iterator */
 	http->range_iter.pos = HttpHdrRangeInitPos;
@@ -2338,16 +2368,6 @@ clientProcessRequest2(clientHttpRequest * http)
 	http->entry = e;
 	return LOG_TCP_HIT;
     }
-#if HTTP_VIOLATIONS
-    if (e->store_status == STORE_PENDING) {
-	if (r->flags.nocache || r->flags.nocache_hack) {
-	    debug(33, 3) ("Clearing no-cache for STORE_PENDING request\n\t%s\n",
-		storeUrl(e));
-	    r->flags.nocache = 0;
-	    r->flags.nocache_hack = 0;
-	}
-    }
-#endif
     if (r->flags.nocache) {
 	debug(33, 3) ("clientProcessRequest2: no-cache REFRESH MISS\n");
 	http->entry = NULL;
@@ -2495,7 +2515,7 @@ clientProcessMiss(clientHttpRequest * http)
 	storeReleaseRequest(http->entry);
 	httpRedirectReply(rep, http->redirect.status, http->redirect.location);
 	httpReplySwapOut(rep, http->entry);
-	httpReplyDestroy(rep);
+	httpReplyAbsorb(http->entry->mem_obj->reply, rep);
 	storeComplete(http->entry);
 	return;
     }
@@ -3040,6 +3060,8 @@ clientReadRequest(int fd, void *data)
 			http->flags.internal = 1;
 		    }
 		}
+		if (http->flags.internal)
+		    request->protocol = PROTO_HTTP;
 	    }
 	    /*
 	     * cache the Content-length value in request_t.
@@ -3260,8 +3282,7 @@ clientAbortBody(request_t * request)
     CBCB *callback;
     void *cbdata;
     int valid;
-    request->body_connection = NULL;
-    if (!conn->body.callback || !conn->body.request)
+    if (!conn->body.callback || conn->body.request != request)
 	return;
     buf = conn->body.buf;
     callback = conn->body.callback;

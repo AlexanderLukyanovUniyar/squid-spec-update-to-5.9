@@ -1,6 +1,6 @@
 
 /*
- * $Id: ftp.c,v 1.316.2.10 2003/07/16 13:42:51 hno Exp $
+ * $Id: ftp.c,v 1.316.2.13 2004/02/24 23:31:22 hno Exp $
  *
  * DEBUG: section 9     File Transfer Protocol (FTP)
  * AUTHOR: Harvest Derived
@@ -336,10 +336,10 @@ ftpLoginParser(const char *login, FtpStateData * ftpState, int escaped)
     }
     if (escaped)
 	rfc1738_unescape(ftpState->user);
-    if (ftpState->user[0] || ftpState->password[0])
-	return;
-    xstrncpy(ftpState->user, "anonymous", MAX_URL);
-    xstrncpy(ftpState->password, Config.Ftp.anon_user, MAX_URL);
+    if (!ftpState->user[0])
+	xstrncpy(ftpState->user, "anonymous", MAX_URL);
+    if (strcmp(ftpState->user, "anonymous") == 0 && !ftpState->password[0])
+	xstrncpy(ftpState->password, Config.Ftp.anon_user, MAX_URL);
 }
 
 static void
@@ -1131,16 +1131,55 @@ ftpStart(FwdState * fwd)
 
 /* ====================================================================== */
 
+/* escapes any IAC (0xFF) characters. Returns a new string */
+static char *
+escapeIAC(const char *buf)
+{
+    int n;
+    char *ret;
+    unsigned const char *p;
+    unsigned char *r;
+    for (p = (unsigned const char *) buf, n = 1; *p; n++, p++)
+	if (*p == 255)
+	    n++;
+    ret = xmalloc(n);
+    for (p = (unsigned const char *) buf, r = (unsigned char *) ret; *p; p++) {
+	*r++ = *p;
+	if (*p == 255)
+	    *r++ = 255;
+    }
+    *r++ = '\0';
+    assert((r - (unsigned char *) ret) == n);
+    return ret;
+}
+
+/* removes any telnet options. Same string returned */
+static char *
+decodeTelnet(char *buf)
+{
+    char *p = buf;
+    while ((p = strstr(p, "\377\377")) != NULL) {
+	p++;
+	memmove(p, p + 1, strlen(p + 1) + 1);
+    }
+    return buf;
+}
+
 static void
 ftpWriteCommand(const char *buf, FtpStateData * ftpState)
 {
+    char *ebuf;
     debug(9, 5) ("ftpWriteCommand: %s\n", buf);
+    if (Config.Ftp.telnet)
+	ebuf = escapeIAC(buf);
+    else
+	ebuf = xstrdup(buf);
     safe_free(ftpState->ctrl.last_command);
     safe_free(ftpState->ctrl.last_reply);
     ftpState->ctrl.last_command = xstrdup(buf);
     comm_write(ftpState->ctrl.fd,
-	xstrdup(buf),
-	strlen(buf),
+	ebuf,
+	strlen(ebuf),
 	ftpWriteCommandCallback,
 	ftpState,
 	xfree);
@@ -1219,6 +1258,8 @@ ftpParseControlReply(char *buf, size_t len, int *codep, int *used)
 	list = memAllocate(MEM_WORDLIST);
 	list->key = xmalloc(linelen - offset);
 	xstrncpy(list->key, s + offset, linelen - offset);
+	if (Config.Ftp.telnet)
+	    decodeTelnet(list->key);
 	debug(9, 7) ("%d %s\n", code, list->key);
 	*tail = list;
 	tail = &list->next;
@@ -2264,6 +2305,8 @@ static void
 ftpDataWriteCallback(int fd, char *buf, size_t size, int err, void *data)
 {
     FtpStateData *ftpState = (FtpStateData *) data;
+    if (err == COMM_ERR_CLOSING)
+	return;
     if (!err) {
 	/* Shedule the rest of the request */
 	clientReadBody(ftpState->request, ftpState->data.buf, ftpState->data.size, ftpRequestBody, ftpState);

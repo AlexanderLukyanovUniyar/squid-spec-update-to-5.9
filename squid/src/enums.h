@@ -1,6 +1,6 @@
 
 /*
- * $Id: enums.h,v 1.203.2.8 2003/01/21 00:06:39 wessels Exp $
+ * $Id: enums.h,v 1.203.2.10 2004/02/04 17:42:28 hno Exp $
  *
  *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/
@@ -136,6 +136,7 @@ typedef enum {
     ACL_REP_MIME_TYPE,
     ACL_MAX_USER_IP,
     ACL_EXTERNAL,
+    ACL_URLLOGIN,
     ACL_ENUM_MAX
 } squid_acl;
 
@@ -527,14 +528,6 @@ typedef enum {
     AUTH_DIGEST,
     AUTH_BROKEN			/* known type, but broken data */
 } auth_type_t;
-
-/* stateful helper callback response codes */
-typedef enum {
-    S_HELPER_UNKNOWN,
-    S_HELPER_RESERVE,
-    S_HELPER_RELEASE,
-    S_HELPER_DEFER
-} stateful_helper_callback_t;
 
 /* stateful helper reservation info */
 typedef enum {

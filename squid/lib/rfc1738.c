@@ -1,5 +1,5 @@
 /*
- * $Id: rfc1738.c,v 1.23.2.1 2003/06/18 23:53:34 hno Exp $
+ * $Id: rfc1738.c,v 1.23.2.2 2003/12/19 06:11:20 wessels Exp $
  *
  * DEBUG: 
  * AUTHOR: Harvest Derived
@@ -195,6 +195,10 @@ rfc1738_unescape(char *s)
 	    continue;
 	}
 	if (s[j + 1] && s[j + 2]) {
+	    if (s[j + 1] == '0' && s[j + 2] == '0') {	/* %00 case */
+		j += 2;
+		continue;
+	    }
 	    hexnum[0] = s[j + 1];
 	    hexnum[1] = s[j + 2];
 	    hexnum[2] = '\0';

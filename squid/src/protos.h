@@ -1,6 +1,6 @@
 
 /*
- * $Id: protos.h,v 1.420.2.20 2003/08/10 21:04:47 hno Exp $
+ * $Id: protos.h,v 1.420.2.22 2004/02/04 17:42:28 hno Exp $
  *
  *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/
@@ -269,6 +269,7 @@ extern void fd_bytes(int fd, int len, unsigned int type);
 extern void fdFreeMemory(void);
 extern void fdDumpOpen(void);
 extern int fdNFree(void);
+extern int fdUsageHigh(void);
 extern void fdAdjustReserved(void);
 
 extern fileMap *file_map_create(void);
@@ -1273,7 +1274,7 @@ extern void helperStatefulFree(statefulhelper *);
 extern void helperStatefulReset(helper_stateful_server * srv);
 extern void helperStatefulReleaseServer(helper_stateful_server * srv);
 extern void *helperStatefulServerGetData(helper_stateful_server * srv);
-extern helper_stateful_server *helperStatefulDefer(statefulhelper *);
+extern helper_stateful_server *helperStatefulGetServer(statefulhelper *);
 
 
 

@@ -1,4 +1,74 @@
+Changes to squid-2.5.STABLE5 (1 Mar 2004):
+
+	- cache.log message on "squid -k reconfigure" was slightly confusing,
+	  claiming Squid restarted when it just reread the configuration.
+	- Bug #787: digest auth never detects password changes
+	- Bug #789: login with space confuses redirector helpers
+	- Bug #791: FQDNcache discards negative responses when using
+	  internal DNS
+	- pam_auth fails on Solaris when using pam_authtok_get. Persistent
+	  PAM connections are unsafe and now disabled by default.
+	- auth_param documentation clarifications and added default realm
+	  values making only the helper program a required attribute
+	- Bug #795: German ERR_DNS_FAIL correction
+	- Bug #803: Lithuantian error messages update
+	- Bug #806: Segfault if failing to load error page
+	- Bug #812: Mozilla/Netscape plugins mime type defined (.xpi)
+	- Bug #817: maximum_object_size too large causes squid not to cache
+	- Bug #824: 100% CPU loop if external_acl combined with separate
+          authentication acl in the same http_access line
+	- squid_ldap_group updated to version 2.12 with support for ldaps://
+	  (LDAPv2 over SSL) and a numer of other improvements.
+	- Bug #799: positive_dns_ttl ignored when using internal DNS.
+	- Bug #690: Incorrect html on empty Gopher responses
+	- Bug #729: --enable-arp-acl may give warning about net/route.h
+	- Bug #14: attempts to establish connection may look like syn flood
+	  attack if the contacted server is refusing connections
+	- errorpage README files included in the distribution again showing
+	  who contributed which translation
+	- Bug #848: connect_timeout connect_timeout ends up twice the length.
+	  forward_timeout option added to address this.
+	- Bug #849: DNS log error messages should report the failed query
+	- Bug #851: DNS retransmits too often
+	- Bug #862: Very frequently repeated POST requests may cause a
+	  filedescriptor shortage due to persitent connections building up
+	- Bug #853: Sporatic segmentation faults on aborted FTP PUT requests
+	- Bug #571: Need to limit use of persistent connections when
+	  filedescriptor usage is high
+	- Bug #856: FTP/Gopher Icon URLs are unneededly complex and often
+	  does not work properly
+	- Bug #860: redirector_access does not handle "slow" acls such as
+	  "dst" or "external" requiring a external lookup.
+	- Bug #865: Persistent connection usage too high after sudden burst
+	  of traffic.
+	- Bug #867: cache_peer max-conn=.. option does not work
+	- Bug #868: refuses to start if pid_filename none is specified
+	- Bug #887: LDAP helper -Z (TLS) option does not work
+	- Bug #877: Squid doesn't follow telnet protocol on FTP control
+	  connections
+	- Bug #908: Random auth popups and account lockouts when using ntlm
+	- Support for NTLM_NEGOTIATE exchanges with ntlm helpers
+	- Bug #585: cache_peer_access fails with NTLM authentication
+	- Bug #592: always/never_direct fails with NTLM authentication
+	- wbinfo_group update for Samba-3
+	- Bug #892: helpers/ntlm_auth/SMB/ fails to compile on FreeBSD 5.0
+	- Bug #924: miss_access restricts internal and cachemgr requests
+	  even if these are local
+	- Bug #925: auth headers send by squidclient are mildly malformed
+	- Bug #922: miss_access and delay_access and several other
+	  authentication related bug fixes.
+	- Bug #909: Added ARP acl support for FreeBSD
+	- Bug #926: deny_info with http_reply_access or miss_access
+	- Bug #872: reply_body_max_size problems when using NTLM auth
+	- Bug #825: random segmentation faults when using digest auth
+	- Bug #910: Partial fix for temporary memory leaks when using NTLM
+	  auth. There is still problems if challenge reuse is enabled.
+	- ftp://anonymous@host/ now accepted without requiring a password
+	- Bug #594: several mime type updates (ftp:// related)
+	- url_regex enhanced to allow matching of %00
+
 Changes to squid-2.5.STABLE4 (15 Sep 2003):
+
 	- Lithuanian error messages added to the distribution
 	- Bug #660: segfauld if more than one custom deny_info line
 	- cache_dir disd documentation cleanup

@@ -1,6 +1,6 @@
 
 /*
- * $Id: auth_digest.c,v 1.10.2.7 2003/08/10 07:31:33 hno Exp $
+ * $Id: auth_digest.c,v 1.10.2.11 2004/02/19 12:28:01 hno Exp $
  *
  * DEBUG: section 29    Authenticator
  * AUTHOR: Robert Collins
@@ -47,6 +47,10 @@ extern AUTHSSETUP authSchemeSetup_digest;
 static void
 authenticateStateFree(authenticateStateData * r)
 {
+    if (r->auth_user_request) {
+	authenticateAuthUserRequestUnlock(r->auth_user_request);
+	r->auth_user_request = NULL;
+    }
     cbdataFree(r);
 }
 
@@ -523,8 +527,10 @@ authDigestRequestDelete(digest_request_h * digest_request)
 static void
 authDigestAURequestFree(auth_user_request_t * auth_user_request)
 {
-    if (auth_user_request->scheme_data != NULL)
+    if (auth_user_request->scheme_data != NULL) {
 	authDigestRequestDelete((digest_request_h *) auth_user_request->scheme_data);
+	auth_user_request->scheme_data = NULL;
+    }
 }
 
 static digest_request_h *
@@ -695,7 +701,13 @@ authenticateDigestAuthenticateUser(auth_user_request_t * auth_user_request, requ
     debug(29, 9) ("\nResponse = '%s'\n"
 	"squid is = '%s'\n", digest_request->response, Response);
 
-    if (strcasecmp(digest_request->response, Response)) {
+    if (strcasecmp(digest_request->response, Response) != 0) {
+	if (!digest_request->flags.helper_queried) {
+	    /* Query the helper in case the password has changed */
+	    digest_request->flags.helper_queried = 1;
+	    digest_request->flags.credentials_ok = 2;
+	    return;
+	}
 	if (digestConfig->PostWorkaround && request->method != METHOD_GET) {
 	    /* Ugly workaround for certain very broken browsers using the
 	     * wrong method to calculate the request-digest on POST request.
@@ -952,6 +964,7 @@ authDigestParse(authScheme * scheme, int n_configured, char *param_str)
 	memset(scheme->scheme_data, 0, sizeof(auth_digest_config));
 	digestConfig = scheme->scheme_data;
 	digestConfig->authenticateChildren = 5;
+	digestConfig->digestAuthRealm = xstrdup("Squid proxy-caching web server");
 	/* 5 minutes */
 	digestConfig->nonceGCInterval = 5 * 60;
 	/* 30 minutes */
@@ -962,6 +975,7 @@ authDigestParse(authScheme * scheme, int n_configured, char *param_str)
 	digestConfig->NonceStrictness = 0;
 	/* Verify nonce count */
 	digestConfig->CheckNonceCount = 1;
+	digestConfig->PostWorkaround = 0;
     }
     digestConfig = scheme->scheme_data;
     if (strcasecmp(param_str, "program") == 0) {
@@ -1394,6 +1408,7 @@ authenticateDigestStart(auth_user_request_t * auth_user_request, RH * handler, v
     cbdataLock(data);
     r->data = data;
     r->auth_user_request = auth_user_request;
+    authenticateAuthUserRequestLock(r->auth_user_request);
     snprintf(buf, 8192, "\"%s\":\"%s\"\n", digest_user->username, digest_request->realm);
     helperSubmit(digestauthenticators, buf, authenticateDigestHandleReply, r);
 }

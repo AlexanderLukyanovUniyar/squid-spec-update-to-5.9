@@ -1,6 +1,6 @@
 
 /*
- * $Id: fd.c,v 1.43 2001/08/26 22:24:56 hno Exp $
+ * $Id: fd.c,v 1.43.2.1 2003/12/14 12:30:36 hno Exp $
  *
  * DEBUG: section 51    Filedescriptor Functions
  * AUTHOR: Duane Wessels
@@ -176,6 +176,17 @@ int
 fdNFree(void)
 {
     return Squid_MaxFD - Number_FD - Opening_FD;
+}
+
+int
+fdUsageHigh(void)
+{
+    int nrfree = fdNFree();
+    if (nrfree < (RESERVED_FD << 1))
+	return 1;
+    if (nrfree < (Number_FD >> 2))
+	return 1;
+    return 0;
 }
 
 /* Called when we runs out of file descriptors */

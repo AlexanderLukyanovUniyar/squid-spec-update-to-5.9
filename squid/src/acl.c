@@ -1,6 +1,6 @@
 
 /*
- * $Id: acl.c,v 1.270.2.17 2003/05/12 07:24:37 hno Exp $
+ * $Id: acl.c,v 1.270.2.27 2004/02/27 16:36:35 wessels Exp $
  *
  * DEBUG: section 28    Access Control
  * AUTHOR: Duane Wessels
@@ -178,6 +178,8 @@ aclStrToType(const char *s)
 	return ACL_MAX_USER_IP;
     if (!strcmp(s, "external"))
 	return ACL_EXTERNAL;
+    if (!strcmp(s, "urllogin"))
+	return ACL_URLLOGIN;
     return ACL_NONE;
 }
 
@@ -252,6 +254,8 @@ aclTypeToStr(squid_acl type)
 	return "max_user_ip";
     if (type == ACL_EXTERNAL)
 	return "external";
+    if (type == ACL_URLLOGIN)
+	return "urllogin";
     return "ERROR";
 }
 
@@ -622,25 +626,28 @@ aclParseUserList(void **current)
     splayNode *Top = NULL;
 
     debug(28, 2) ("aclParseUserList: parsing user list\n");
+    t = strtokFile();
+    if (!t) {
+	debug(28, 2) ("aclParseUserList: No data defined\n");
+	return;
+    }
+    debug(28, 5) ("aclParseUserList: First token is %s\n", t);
     if (*current == NULL) {
 	debug(28, 3) ("aclParseUserList: current is null. Creating\n");
 	*current = memAllocate(MEM_ACL_USER_DATA);
     }
     data = *current;
     Top = data->names;
-    if ((t = strtokFile())) {
-	debug(28, 5) ("aclParseUserList: First token is %s\n", t);
-	if (strcmp("-i", t) == 0) {
-	    debug(28, 5) ("aclParseUserList: Going case-insensitive\n");
-	    data->flags.case_insensitive = 1;
-	} else if (strcmp("REQUIRED", t) == 0) {
-	    debug(28, 5) ("aclParseUserList: REQUIRED-type enabled\n");
-	    data->flags.required = 1;
-	} else {
-	    if (data->flags.case_insensitive)
-		Tolower(t);
-	    Top = splay_insert(xstrdup(t), Top, (SPLAYCMP *) strcmp);
-	}
+    if (strcmp("-i", t) == 0) {
+	debug(28, 5) ("aclParseUserList: Going case-insensitive\n");
+	data->flags.case_insensitive = 1;
+    } else if (strcmp("REQUIRED", t) == 0) {
+	debug(28, 5) ("aclParseUserList: REQUIRED-type enabled\n");
+	data->flags.required = 1;
+    } else {
+	if (data->flags.case_insensitive)
+	    Tolower(t);
+	Top = splay_insert(xstrdup(t), Top, (SPLAYCMP *) strcmp);
     }
     debug(28, 3) ("aclParseUserList: Case-insensitive-switch is %d\n",
 	data->flags.case_insensitive);
@@ -737,6 +744,7 @@ aclParseAclLine(acl ** head)
 	aclParseTimeSpec(&A->data);
 	break;
     case ACL_URL_REGEX:
+    case ACL_URLLOGIN:
     case ACL_URLPATH_REGEX:
     case ACL_BROWSER:
     case ACL_REFERER_REGEX:
@@ -1413,12 +1421,16 @@ aclAuthenticated(aclCheck_t * checklist)
 #endif
     }
     /* get authed here */
-    /* Note: this fills in checklist->auth_user_request when applicable */
+    /* Note: this fills in checklist->auth_user_request when applicable (auth incomplete) */
     switch (authenticateTryToAuthenticateAndSetAuthUser(&checklist->auth_user_request, headertype, checklist->request, checklist->conn, checklist->src_addr)) {
     case AUTH_ACL_CANNOT_AUTHENTICATE:
 	debug(28, 4) ("aclMatchAcl: returning  0 user authenticated but not authorised.\n");
 	return 0;
     case AUTH_AUTHENTICATED:
+	if (checklist->auth_user_request) {
+	    authenticateAuthUserRequestUnlock(checklist->auth_user_request);
+	    checklist->auth_user_request = NULL;
+	}
 	return 1;
 	break;
     case AUTH_ACL_HELPER:
@@ -1464,6 +1476,7 @@ aclMatchAcl(acl * ae, aclCheck_t * checklist)
     case ACL_URLPATH_REGEX:
     case ACL_URL_PORT:
     case ACL_URL_REGEX:
+    case ACL_URLLOGIN:
 	/* These ACL types require checklist->request */
 	if (NULL == r) {
 	    debug(28, 1) ("WARNING: '%s' ACL is used but there is no"
@@ -1567,6 +1580,12 @@ aclMatchAcl(acl * ae, aclCheck_t * checklist)
 	k = aclMatchRegex(ae->data, esc_buf);
 	safe_free(esc_buf);
 	return k;
+    case ACL_URLLOGIN:
+	esc_buf = xstrdup(r->login);
+	rfc1738_unescape(esc_buf);
+	k = aclMatchRegex(ae->data, esc_buf);
+	safe_free(esc_buf);
+	return k;
 	/* NOTREACHED */
     case ACL_MAXCONN:
 	k = clientdbEstablished(checklist->src_addr, 0);
@@ -1618,17 +1637,15 @@ aclMatchAcl(acl * ae, aclCheck_t * checklist)
     case ACL_PROXY_AUTH_REGEX:
 	if ((ti = aclAuthenticated(checklist)) != 1)
 	    return ti;
-	ti = aclMatchProxyAuth(ae->data, checklist->auth_user_request,
+	ti = aclMatchProxyAuth(ae->data, r->auth_user_request,
 	    checklist, ae->type);
-	checklist->auth_user_request = NULL;
 	return ti;
 	/* NOTREACHED */
     case ACL_MAX_USER_IP:
 	if ((ti = aclAuthenticated(checklist)) != 1)
 	    return ti;
-	ti = aclMatchUserMaxIP(ae->data, checklist->auth_user_request,
+	ti = aclMatchUserMaxIP(ae->data, r->auth_user_request,
 	    checklist->src_addr);
-	checklist->auth_user_request = NULL;
 	return ti;
 	/* NOTREACHED */
 #if SQUID_SNMP
@@ -1724,6 +1741,30 @@ aclCheckCleanup(aclCheck_t * checklist)
     if (checklist->extacl_entry) {
 	cbdataUnlock(checklist->extacl_entry);
 	checklist->extacl_entry = NULL;
+    }
+    /* During reconfigure or if authentication is used in aclCheckFast without
+     * first being authenticated in http_access we can end up not finishing call
+     * sequences into the auth code. In such case we must make sure to forget
+     * the authentication state completely
+     */
+    if (checklist->auth_user_request) {
+	authenticateAuthUserRequestUnlock(checklist->auth_user_request);
+	checklist->auth_user_request = NULL;
+	if (checklist->request) {
+	    if (checklist->request->auth_user_request) {
+		authenticateAuthUserRequestUnlock(checklist->request->auth_user_request);
+		checklist->request->auth_user_request = NULL;
+	    }
+	}
+	/* it might have been connection based */
+	if (checklist->conn) {
+	    if (checklist->conn->auth_user_request) {
+		authenticateAuthUserRequestUnlock(checklist->conn->auth_user_request);
+		checklist->conn->auth_user_request = NULL;
+	    }
+	    assert(checklist->request);
+	    checklist->conn->auth_type = AUTH_BROKEN;
+	}
     }
     checklist->current_acl = NULL;
 }
@@ -1875,6 +1916,10 @@ aclChecklistFree(aclCheck_t * checklist)
 	cbdataUnlock(checklist->access_list);
 	checklist->access_list = NULL;
     }
+    if (checklist->callback_data) {
+	cbdataUnlock(checklist->callback_data);
+	checklist->callback_data = NULL;
+    }
     aclCheckCleanup(checklist);
     cbdataFree(checklist);
 }
@@ -1883,16 +1928,7 @@ static void
 aclCheckCallback(aclCheck_t * checklist, allow_t answer)
 {
     debug(28, 3) ("aclCheckCallback: answer=%d\n", answer);
-    /* During reconfigure, we can end up not finishing call sequences into the auth code */
-    if (checklist->auth_user_request) {
-	/* the checklist lock */
-	authenticateAuthUserRequestUnlock(checklist->auth_user_request);
-	/* it might have been connection based */
-	assert(checklist->conn);
-	checklist->conn->auth_user_request = NULL;
-	checklist->conn->auth_type = AUTH_BROKEN;
-	checklist->auth_user_request = NULL;
-    }
+    aclCheckCleanup(checklist);
     if (cbdataValid(checklist->callback_data))
 	checklist->callback(answer, checklist->callback_data);
     cbdataUnlock(checklist->callback_data);
@@ -1968,11 +2004,14 @@ aclLookupProxyAuthDone(void *data, char *result)
 	 * restart the whole process */
 	/* OR the connection was closed, there's no way to continue */
 	authenticateAuthUserRequestUnlock(checklist->auth_user_request);
+	checklist->auth_user_request = NULL;
 	if (checklist->conn) {
-	    checklist->conn->auth_user_request = NULL;
+	    if (checklist->conn->auth_user_request) {
+		authenticateAuthUserRequestUnlock(checklist->conn->auth_user_request);
+		checklist->conn->auth_user_request = NULL;
+	    }
 	    checklist->conn->auth_type = AUTH_BROKEN;
 	}
-	checklist->auth_user_request = NULL;
     }
     aclCheck(checklist);
 }
@@ -2114,6 +2153,7 @@ aclDestroyAcls(acl ** head)
 #endif
 	case ACL_PROXY_AUTH_REGEX:
 	case ACL_URL_REGEX:
+	case ACL_URLLOGIN:
 	case ACL_URLPATH_REGEX:
 	case ACL_BROWSER:
 	case ACL_REFERER_REGEX:
@@ -2529,6 +2569,7 @@ aclDumpGeneric(const acl * a)
 	return aclDumpTimeSpecList(a->data);
     case ACL_PROXY_AUTH_REGEX:
     case ACL_URL_REGEX:
+    case ACL_URLLOGIN:
     case ACL_URLPATH_REGEX:
     case ACL_BROWSER:
     case ACL_REFERER_REGEX:
@@ -2623,9 +2664,12 @@ aclPurgeMethodInUse(acl_access * a)
 #include <sys/ioctl.h>
 #else
 #include <net/if_dl.h>
-#endif
 #include <net/route.h>
+#endif
 #include <net/if.h>
+#ifdef _SQUID_FREEBSD__
+#include <net/if_arp.h>
+#endif
 #if HAVE_NETINET_IF_ETHER_H
 #include <netinet/if_ether.h>
 #endif
@@ -2846,6 +2890,81 @@ aclMatchArp(void *dataptr, struct in_addr c)
 	    inet_ntoa(c), splayLastResult ? "NOT found" : "found");
 	return (0 == splayLastResult);
     }
+#elif defined(_SQUID_FREEBSD_)
+    struct arpreq arpReq;
+    struct sockaddr_in ipAddr;
+    unsigned char ifbuffer[sizeof(struct ifreq) * 64];
+    struct ifconf ifc;
+    struct ifreq *ifr;
+    int offset;
+    splayNode **Top = dataptr;
+
+    int mib[6];
+    size_t needed;
+    char *lim, *buf, *next;
+    struct rt_msghdr *rtm;
+    struct sockaddr_inarp *sin;
+    struct sockaddr_dl *sdl;
+
+    /*
+     * Set up structures for ARP lookup with blank interface name
+     */
+    ipAddr.sin_family = AF_INET;
+    ipAddr.sin_port = 0;
+    ipAddr.sin_addr = c;
+    memset(&arpReq, '\0', sizeof(arpReq));
+    xmemcpy(&arpReq.arp_pa, &ipAddr, sizeof(struct sockaddr_in));
+
+    /* Query ARP table */
+    mib[0] = CTL_NET;
+    mib[1] = PF_ROUTE;
+    mib[2] = 0;
+    mib[3] = AF_INET;
+    mib[4] = NET_RT_FLAGS;
+    mib[5] = RTF_LLINFO;
+    if (sysctl(mib, 6, NULL, &needed, NULL, 0) < 0) {
+	debug(28, 0) ("Can't estimate ARP table size!\n");
+	return 0;
+    }
+    if ((buf = xmalloc(needed)) == NULL) {
+	debug(28, 0) ("Can't allocate temporary ARP table!\n");
+	return 0;
+    }
+    if (sysctl(mib, 6, buf, &needed, NULL, 0) < 0) {
+	debug(28, 0) ("Can't retrieve ARP table!\n");
+	xfree(buf);
+	return 0;
+    }
+    lim = buf + needed;
+    for (next = buf; next < lim; next += rtm->rtm_msglen) {
+	rtm = (struct rt_msghdr *) next;
+	sin = (struct sockaddr_inarp *) (rtm + 1);
+	/*sdl = (struct sockaddr_dl *) (sin + 1); */
+#define ROUNDUP(a) \
+        ((a) > 0 ? (1 + (((a) - 1) | (sizeof(long) - 1))) : sizeof(long))
+	(char *) sdl = (char *) sin + ROUNDUP(sin->sin_len);
+	if (c.s_addr == sin->sin_addr.s_addr) {
+	    if (sdl->sdl_alen) {
+		arpReq.arp_ha.sa_len = sizeof(struct sockaddr);
+		arpReq.arp_ha.sa_family = AF_UNSPEC;
+		memcpy(arpReq.arp_ha.sa_data, LLADDR(sdl), sdl->sdl_alen);
+	    }
+	}
+    }
+    xfree(buf);
+    if (arpReq.arp_ha.sa_data[0] == 0 && arpReq.arp_ha.sa_data[1] == 0 &&
+	arpReq.arp_ha.sa_data[2] == 0 && arpReq.arp_ha.sa_data[3] == 0 &&
+	arpReq.arp_ha.sa_data[4] == 0 && arpReq.arp_ha.sa_data[5] == 0)
+	return 0;
+    debug(28, 4) ("Got address %02x:%02x:%02x:%02x:%02x:%02x\n",
+	arpReq.arp_ha.sa_data[0] & 0xff, arpReq.arp_ha.sa_data[1] & 0xff,
+	arpReq.arp_ha.sa_data[2] & 0xff, arpReq.arp_ha.sa_data[3] & 0xff,
+	arpReq.arp_ha.sa_data[4] & 0xff, arpReq.arp_ha.sa_data[5] & 0xff);
+    /* Do lookup */
+    *Top = splay_splay(&arpReq.arp_ha.sa_data, *Top, aclArpCompare);
+    debug(28, 3) ("aclMatchArp: '%s' %s\n",
+	inet_ntoa(c), splayLastResult ? "NOT found" : "found");
+    return (0 == splayLastResult);
 #else
     WRITE ME;
 #endif
@@ -2869,6 +2988,21 @@ aclArpCompare(const void *a, const void *b)
     if (d1[2] != d2[2])
 	return (d1[2] > d2[2]) ? 1 : -1;
 #elif defined(_SQUID_SOLARIS_)
+    const unsigned char *d1 = a;
+    const unsigned char *d2 = b;
+    if (d1[0] != d2[0])
+	return (d1[0] > d2[0]) ? 1 : -1;
+    if (d1[1] != d2[1])
+	return (d1[1] > d2[1]) ? 1 : -1;
+    if (d1[2] != d2[2])
+	return (d1[2] > d2[2]) ? 1 : -1;
+    if (d1[3] != d2[3])
+	return (d1[3] > d2[3]) ? 1 : -1;
+    if (d1[4] != d2[4])
+	return (d1[4] > d2[4]) ? 1 : -1;
+    if (d1[5] != d2[5])
+	return (d1[5] > d2[5]) ? 1 : -1;
+#elif defined(_SQUID_FREEBSD_)
     const unsigned char *d1 = a;
     const unsigned char *d2 = b;
     if (d1[0] != d2[0])

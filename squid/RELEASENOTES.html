@@ -1,13 +1,13 @@
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">
 <HTML>
 <HEAD>
- <META NAME="GENERATOR" CONTENT="LinuxDoc-Tools 0.9.16">
+ <META NAME="GENERATOR" CONTENT="LinuxDoc-Tools 0.9.20">
  <TITLE>Squid 2.5 release notes</TITLE>
 </HEAD>
 <BODY>
 <H1>Squid 2.5 release notes</H1>
 
-<H2>Squid Developers</H2>$Id: release-2.5.html,v 1.1.2.20 2003/09/15 00:35:55 hno Exp $
+<H2>Squid Developers</H2>$Id: release-2.5.html,v 1.1.2.30 2004/02/29 22:24:27 hno Exp $
 <HR>
 <EM>This document contains the release notes for version 2.5 of Squid.
 Squid is a WWW Cache application developed by the National Laboratory
@@ -130,6 +130,8 @@ exacly where you want to have them in your system.</LI>
 <DT><B>reference_age</B><DD><P>This has been removed - starting with Squid-2.4 this directive have had no effect and has now been fully removed to avoid confusion.</P>
 <DT><B>siteselect_timeout</B><DD><P>This has been removed - it is not referenced anywhere in the source code.</P>
 <DT><B>minimum_retry_timeout</B><DD><P>This has been removed - it is not referenced anywhere in the source code.</P>
+<DT><B>short_icon_urls</B><DD><P>New directive to enable an alternative way of referring to icons in FTP directory listings etc.</P>
+<DT><B>acl urllogin</B><DD><P>New acl type to match the login component of Internet style URLs (protocol://user:password@host/path/to/file)</P>
 </DL>
 </P>
 
@@ -138,20 +140,35 @@ exacly where you want to have them in your system.</LI>
 <P>There is a few known issues and limitations in this version of Squid which we hope to correct in a later release</P>
 <P>
 <DL>
-<DT><B>Bug #592</B><DD><P>always/never_direct and NTLM authentication</P>
-<DT><B>Bug #585</B><DD><P>cache_peer_access fails with NTLM authentication</P>
-<DT><B>deny_info</B><DD><P>deny_info only works for http_access, not for the acls listen in http_reply_access </P>
+<DT><B>Bug 
+<A HREF="http://www.squid-cache.org/bugs/show_bug.cgi?id=761">#761</A></B><DD><P>assertion failed: cbdata.c:249: "c-&gt;locks &gt; 0" when using diskd</P>
+<DT><B>Bug 
+<A HREF="http://www.squid-cache.org/bugs/show_bug.cgi?id=910">#910</A></B><DD><P>ntlm auth_user_hash_pointer memory leak if challenge reuses are enabled</P>
 
-<DT><B>Bug #692</B><DD><P>tcp_outgoing_address using an ident ACL does not work</P>
-<DT><B>Bug #616</B><DD><P>Negative cached 404 replies with VARY header never matches</P>
-<DT><B>Bug #581</B><DD><P>acl max_user_ip and multiple authentication schemes</P>
-<DT><B>Bug #513</B><DD><P>squid -F is starting server sockets to early</P>
-<DT><B>Bug #518</B><DD><P>wb_auth fails on TRU64 and probably other 64 bit platforms</P>
-<DT><B>Bug #500</B><DD><P>delay_pools stops working on -k reconfigure</P>
-<DT><B>Bug #457</B><DD><P>does not handle swap.state corruption properly</P>
-<DT><B>Bug #426</B><DD><P>Vary: * does not work</P>
-<DT><B>Bug #410</B><DD><P>unstable if runs out of disk space</P>
-<DT><B>Bug #355</B><DD><P>diskd may appear slow on low loads</P>
+<DT><B>Bug 
+<A HREF="http://www.squid-cache.org/bugs/show_bug.cgi?id=779">#779</A></B><DD><P>users going above their allowed IP count no longer logged in cache.log</P>
+<DT><B>Bug 
+<A HREF="http://www.squid-cache.org/bugs/show_bug.cgi?id=692">#692</A></B><DD><P>tcp_outgoing_address using an ident ACL does not work</P>
+<DT><B>Bug 
+<A HREF="http://www.squid-cache.org/bugs/show_bug.cgi?id=616">#616</A></B><DD><P>Negative cached 404 replies with VARY header never matches</P>
+<DT><B>Bug 
+<A HREF="http://www.squid-cache.org/bugs/show_bug.cgi?id=581">#581</A></B><DD><P>acl max_user_ip and multiple authentication schemes</P>
+<DT><B>Bug 
+<A HREF="http://www.squid-cache.org/bugs/show_bug.cgi?id=528">#528</A></B><DD><P>miss_access fails on "slow" acl types such as dst.</P>
+<DT><B>Bug 
+<A HREF="http://www.squid-cache.org/bugs/show_bug.cgi?id=513">#513</A></B><DD><P>squid -F is starting server sockets to early</P>
+<DT><B>Bug 
+<A HREF="http://www.squid-cache.org/bugs/show_bug.cgi?id=518">#518</A></B><DD><P>wb_auth fails on TRU64 and probably other 64 bit platforms</P>
+<DT><B>Bug 
+<A HREF="http://www.squid-cache.org/bugs/show_bug.cgi?id=500">#500</A></B><DD><P>delay_pools stops working on -k reconfigure</P>
+<DT><B>Bug 
+<A HREF="http://www.squid-cache.org/bugs/show_bug.cgi?id=457">#457</A></B><DD><P>does not handle swap.state corruption properly</P>
+<DT><B>Bug 
+<A HREF="http://www.squid-cache.org/bugs/show_bug.cgi?id=426">#426</A></B><DD><P>Vary: * does not work</P>
+<DT><B>Bug 
+<A HREF="http://www.squid-cache.org/bugs/show_bug.cgi?id=410">#410</A></B><DD><P>unstable if runs out of disk space</P>
+<DT><B>Bug 
+<A HREF="http://www.squid-cache.org/bugs/show_bug.cgi?id=355">#355</A></B><DD><P>diskd may appear slow on low loads</P>
 </DL>
 </P>
 
@@ -216,6 +233,49 @@ but you may want to upgrade your configuration now to save you
 from the trouble when upgrading to Squid-3 later.</LI>
 <LI>a large number of minor bugfixes. See the list of 
 <A HREF="http://www.squid-cache.org/Versions/v2/2.5/bugs/#STABLE3">squid-2.5.STABLE3 patches</A> and the 
+<A HREF="ChangeLog">ChangeLog</A> file for details.</LI>
+</UL>
+</P>
+
+<H2><A NAME="s7">7. Key changes squid-2.5.STABLE4 to 2.5.STABLE5:</A></H2>
+
+<P>
+<UL>
+<LI>redirector interface modified to try to deal with login names
+containing spaces or other odd characters. This is accomplished
+by URL-encoding the login name before sent to redirectors. Note:
+Existing redirectors or their configuration may need to be slightly
+modified in how they process the ident column to support the new
+username format (only applies to redirectors looking into the username)</LI>
+<LI>new forward_timeout option to complement connect_timeout in
+management of timeouts while connecting to origin servers or peers</LI>
+<LI>various timeouts adjusted: connect_timeout 1 minute (was 2 minutes
+which is now forward_timeout), negative_dns_ttl 1 minute (was 5 minutes)
+and is now also used as minimum positive dns ttl, dns_timeout 2 minutes
+(was 5 minutes)</LI>
+<LI>"short_icon_urls on" can be used to simplify the URLs used for
+icons etc to avoid issues with proxy host naming and authentication
+when requesting icons.</LI>
+<LI>A new "urllogin" ACL type has been introducing allowing regex
+matches to the "login" component of Internet style URLs
+(protocol://user:password@host/path/to/file).</LI>
+<LI>Squid now respects the Telnet protocol on connections to FTP
+servers. The ftp_telnet_protocol directice can be used to revert back
+to the old incorrect implementation.</LI>
+<LI>Several NTLM related bugfixes and improvements fixing the problem
+of random auth popups and account lockouts. Support for the NEGOTIATE
+NTLM packet is also added to allow Samba-3.0.2 or later to negotiate the
+use of NTLMv2.</LI>
+<LI>Several authentication related bugfixes to allow authentication
+to work in additional acl driven directives, correct an number
+of assertion or segmentation and some memory leaks.</LI>
+<LI>The default mime.conf has been updated with many new mime types
+and a few minor corrections. In addition the download and view links
+is used more frequently to allow view/download of different ftp://
+contents regardless of their mime type assignment.</LI>
+<LI>url_regex enhanced to allow matching of %00</LI>
+<LI>a large number of minor and cosmetic bugfixes. See the list of 
+<A HREF="http://www.squid-cache.org/Versions/v2/2.5/bugs/#STABLE4">squid-2.5.STABLE4 patches</A> and the 
 <A HREF="ChangeLog">ChangeLog</A> file for details.</LI>
 </UL>
 </P>

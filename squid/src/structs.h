@@ -1,6 +1,6 @@
 
 /*
- * $Id: structs.h,v 1.408.2.14 2003/09/12 20:30:16 hno Exp $
+ * $Id: structs.h,v 1.408.2.23 2004/02/04 17:42:28 hno Exp $
  *
  *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/
@@ -400,6 +400,7 @@ struct _SquidConfig {
     struct {
 	time_t read;
 	time_t lifetime;
+	time_t forward;
 	time_t connect;
 	time_t peer_connect;
 	time_t request;
@@ -592,6 +593,7 @@ struct _SquidConfig {
 	int vary_ignore_expire;
 	int pipeline_prefetch;
 	int request_entities;
+	int detect_broken_server_pconns;
     } onoff;
     acl *aclList;
     struct {
@@ -626,6 +628,7 @@ struct _SquidConfig {
 	char *anon_user;
 	int passive;
 	int sanitycheck;
+	int telnet;
     } Ftp;
     refresh_t *Refresh;
     struct _cacheSwap {
@@ -635,6 +638,7 @@ struct _SquidConfig {
     } cacheSwap;
     struct {
 	char *directory;
+	int use_short_names;
     } icons;
     char *errorDirectory;
     struct {
@@ -965,6 +969,8 @@ struct _http_state_flags {
     unsigned int proxying:1;
     unsigned int keepalive:1;
     unsigned int only_if_cached:1;
+    unsigned int keepalive_broken:1;
+    unsigned int abuse_detected:1;
 };
 
 struct _HttpStateData {
@@ -979,6 +985,7 @@ struct _HttpStateData {
     int fd;
     http_state_flags flags;
     FwdState *fwd;
+    char *body_buf;
 };
 
 struct _icpUdpData {
@@ -1951,7 +1958,7 @@ struct _FwdServer {
 };
 
 struct _FwdState {
-    int client_fd;
+    int client_fd;		/* XXX unnecessary */
     StoreEntry *entry;
     request_t *request;
     FwdServer *servers;
@@ -1959,6 +1966,7 @@ struct _FwdState {
     ErrorState *err;
     time_t start;
     int n_tries;
+    int origin_tries;
 #if WIP_FWD_LOG
     http_status last_status;
 #endif
@@ -1994,8 +2002,6 @@ struct _helper_request {
 struct _helper_stateful_request {
     char *buf;
     HLPSCB *callback;
-    int placeholder;		/* if 1, this is a dummy request waiting for a stateful helper
-				 * to become available for deferred requests.*/
     void *data;
 };
 
@@ -2013,6 +2019,7 @@ struct _helper {
 	int requests;
 	int replies;
 	int queue_size;
+	int max_queue_size;
 	int avg_svc_time;
     } stats;
     time_t last_restart;
@@ -2028,12 +2035,13 @@ struct _helper_stateful {
     int ipc_type;
     MemPool *datapool;
     HLPSAVAIL *IsAvailable;
-    HLPSONEQ *OnEmptyQueue;
+    HLPSRESET *Reset;
     time_t last_queue_warn;
     struct {
 	int requests;
 	int replies;
 	int queue_size;
+	int max_queue_size;
 	int avg_svc_time;
     } stats;
     time_t last_restart;
@@ -2075,7 +2083,6 @@ struct _helper_stateful_server {
     struct timeval dispatch_time;
     struct timeval answer_time;
     dlink_node link;
-    dlink_list queue;
     statefulhelper *parent;
     helper_stateful_request *request;
     struct _helper_stateful_flags {
@@ -2083,16 +2090,13 @@ struct _helper_stateful_server {
 	unsigned int busy:1;
 	unsigned int closing:1;
 	unsigned int shutdown:1;
-	stateful_helper_reserve_t reserved;
+	unsigned int reserved:1;
     } flags;
     struct {
 	int uses;
 	int submits;
 	int releases;
-	int deferbyfunc;
-	int deferbycb;
     } stats;
-    int deferred_requests;	/* current number of deferred requests */
     void *data;			/* State data used by the calling routines */
 };
 

@@ -1,5 +1,5 @@
 /*
- * $Id: splay.c,v 1.12 1999/10/04 05:04:52 wessels Exp $
+ * $Id: splay.c,v 1.12.4.1 2004/01/15 07:38:35 hno Exp $
  */
 
 #include "config.h"
@@ -53,8 +53,10 @@ splay_splay(const void *data, splayNode * top, SPLAYCMP * compare)
     splayNode *l;
     splayNode *r;
     splayNode *y;
-    if (top == NULL)
+    if (top == NULL) {
+	splayLastResult = -1;
 	return top;
+    }
     N.left = N.right = NULL;
     l = r = &N;
 

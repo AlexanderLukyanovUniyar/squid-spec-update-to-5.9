@@ -16,7 +16,7 @@
 #
 #  Makefile for the Squid LDAP authentication helper
 #
-#  $Id: Makefile.in,v 1.1.2.5 2003/02/12 02:02:43 hno Exp $
+#  $Id: Makefile.in,v 1.1.2.6 2003/11/20 00:43:41 hno Exp $
 #
 #  Uncomment and customize the following to suit your needs:
 #
@@ -155,7 +155,7 @@ DIST_SOURCES = $(squid_ldap_group_SOURCES)
 
 NROFF = nroff
 MANS = $(man_MANS)
-DIST_COMMON = Makefile.am Makefile.in
+DIST_COMMON = README ChangeLog Makefile.am Makefile.in
 SOURCES = $(squid_ldap_group_SOURCES)
 
 all: all-am

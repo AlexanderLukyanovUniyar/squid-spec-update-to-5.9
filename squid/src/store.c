@@ -1,6 +1,6 @@
 
 /*
- * $Id: store.c,v 1.544.2.4 2003/08/06 13:49:02 hno Exp $
+ * $Id: store.c,v 1.544.2.5 2003/09/24 22:30:22 wessels Exp $
  *
  * DEBUG: section 20    Storage Manager
  * AUTHOR: Harvest Derived
@@ -443,6 +443,7 @@ storeSetPublicKey(StoreEntry * e)
 	    }
 #endif
 	    storeSetPublicKey(pe);
+	    storeBuffer(pe);
 	    httpReplySwapOut(pe->mem_obj->reply, pe);
 	    storeBufferFlush(pe);
 	    storeTimestampsSet(pe);

@@ -1,6 +1,6 @@
 
 /*
- * $Id: pinger.c,v 1.46 2001/01/12 00:37:20 wessels Exp $
+ * $Id: pinger.c,v 1.46.2.1 2003/12/23 00:55:57 hno Exp $
  *
  * DEBUG: section 42    ICMP Pinger program
  * AUTHOR: Duane Wessels
@@ -170,7 +170,7 @@ pingerSendEcho(struct in_addr to, int opcode, char *payload, int len)
     echo = (icmpEchoData *) (icmp + 1);
     echo->opcode = (unsigned char) opcode;
     echo->tv = current_time;
-    icmp_pktsize += sizeof(icmpEchoData) - MAX_PAYLOAD;
+    icmp_pktsize += sizeof(struct timeval) + sizeof(char);
     if (payload) {
 	if (len > MAX_PAYLOAD)
 	    len = MAX_PAYLOAD;

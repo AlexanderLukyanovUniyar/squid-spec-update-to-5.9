@@ -1,6 +1,6 @@
 
 /*
- * $Id: typedefs.h,v 1.132.2.2 2003/05/11 17:30:13 hno Exp $
+ * $Id: typedefs.h,v 1.132.2.4 2004/02/04 17:42:29 hno Exp $
  *
  *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/
@@ -249,11 +249,11 @@ typedef void OBJH(StoreEntry *);
 typedef void SIGHDLR(int sig);
 typedef void STVLDCB(void *, int, int);
 typedef void HLPCB(void *, char *buf);
-typedef stateful_helper_callback_t HLPSCB(void *, void *lastserver, char *buf);
+typedef void HLPSCB(void *, void *lastserver, char *buf);
 typedef int HLPSAVAIL(void *);
-typedef void HLPSONEQ(void *);
+typedef void HLPSRESET(void *);
 typedef void HLPCMDOPTS(int *argc, char **argv);
-typedef void IDNSCB(void *, rfc1035_rr *, int);
+typedef void IDNSCB(void *, rfc1035_rr *, int, const char *);
 
 typedef void STINIT(SwapDir *);
 typedef void STNEWFS(SwapDir *);

@@ -1,6 +1,6 @@
 
 /*
- * $Id: external_acl.c,v 1.1.2.28 2003/09/02 07:51:59 hno Exp $
+ * $Id: external_acl.c,v 1.1.2.30 2004/02/18 04:00:08 hno Exp $
  *
  * DEBUG: section 82    External ACL
  * AUTHOR: Henrik Nordstrom, MARA Systems AB
@@ -423,7 +423,6 @@ aclMatchExternal(void *data, aclCheck_t * ch)
 	/* Not sufficient data to process */
 	return -1;
     }
-    ch->auth_user_request = NULL;
     if (entry) {
 	if (entry->def != acl->def || strcmp(entry->hash.key, key) != 0) {
 	    /* Not ours.. get rid of it */
@@ -508,7 +507,7 @@ makeExternalAclKey(aclCheck_t * ch, external_acl_data * acl_data)
 	const char *str = NULL;
 	switch (format->type) {
 	case EXT_ACL_LOGIN:
-	    str = authenticateUserRequestUsername(ch->auth_user_request);
+	    str = authenticateUserRequestUsername(request->auth_user_request);
 	    break;
 #if USE_IDENT
 	case EXT_ACL_IDENT:
@@ -760,7 +759,6 @@ externalAclLookup(aclCheck_t * ch, void *acl_data, EAH * callback, void *callbac
 	}
     }
     key = makeExternalAclKey(ch, acl);
-    ch->auth_user_request = NULL;
     if (!key) {
 	debug(82, 1) ("externalAclLookup: lookup in '%s', prerequisit failure\n", def->name);
 	callback(callback_data, NULL);

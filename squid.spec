@@ -1,13 +1,13 @@
 Name: squid
 Version: 2.5.STABLE7
-Release: alt1
+Release: alt2
 
 Summary: The Squid proxy caching server
 License: GPL
 Group: System/Servers
 
+Url:http://www.%name-cache.org/Squid
 Packager: Squid Development Team <squid@packages.altlinux.org>
-URL:http://www.%name-cache.org/Squid
 
 Source: %url/v2/%name-%version.tar.bz2
 Source1: %url/FAQ/FAQ.sgml
@@ -28,14 +28,13 @@ Patch7: patch-aa.patch
 #Official patches to Squid
 # merged into 2.5.STABLE7
 
-
 Obsoletes: %name-novm
 
 BuildConflicts: bind-devel
 BuildPreReq: rpm-build >= 4.0.4-alt10, autoconf >= 2.54
 
 # Automatically added by buildreq on Fri Jul 23 2004 (-bi)
-BuildRequires: OpenSP glib2 libldap-devel libpam-devel libsasl2-devel libssl-devel perl-Authen-Smb pkgconfig sgml-tools squid
+BuildRequires: OpenSP libldap-devel libpam-devel libsasl2-devel libssl-devel perl-Authen-Smb sgml-tools
 
 %description
 Squid is a high-performance proxy caching server for Web clients,
@@ -229,6 +228,11 @@ popd
 %attr(4710,root,%name) %_libdir/%name/pinger
 
 %changelog
+* Sun Nov 14 2004 Dmitry V. Levin <ldv@altlinux.org> 2.5.STABLE7-alt2
+- Cleaned up build dependencies, was too superfluous
+  since 2.5.STABLE6-alt1.
+- Rebuilt with openldap-2.2.18-alt3.
+
 * Tue Oct 12 2004 Denis Ovsienko <pilot@altlinux.ru> 2.5.STABLE7-alt1
 - 2.5.STABLE7 (security fix)
 - updated FAQ to 1.235 2004/10/04

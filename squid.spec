@@ -1,6 +1,6 @@
 Name: squid
 Version: 2.5.STABLE9
-Release: alt1
+Release: alt2
 
 Summary: The Squid proxy caching server
 Summary(ru_RU.KOI8-R): Кэширующий прокси-сервер Squid
@@ -28,7 +28,26 @@ Patch6: %name-errrors-belarusian.patch
 Patch7: patch-aa.patch
 
 #Official patches to Squid
-# nothing ATM
+Patch10: squid-2.5.STABLE9-setcookie.patch
+Patch11: squid-2.5.STABLE9-ftp_EPLF.patch
+Patch12: squid-2.5.STABLE9-ftp_base_href.patch
+Patch13: squid-2.5.STABLE9-acl_error.patch
+Patch14: squid-2.5.STABLE9-date.patch
+Patch15: squid-2.5.STABLE9-reload_into_ims.patch
+Patch16: squid-2.5.STABLE9-delay_access_doc.patch
+Patch17: squid-2.5.STABLE9-config_overflow.patch
+Patch18: squid-2.5.STABLE9-bzero.patch
+Patch19: squid-2.5.STABLE9-pid_t.patch
+Patch20: squid-2.5.STABLE9-ctype.patch
+Patch21: squid-2.5.STABLE9-defer_digest_fetch.patch
+Patch22: squid-2.5.STABLE9-dup_content_length.patch
+Patch23: squid-2.5.STABLE9-excess_data.patch
+Patch24: squid-2.5.STABLE9-aufs.patch
+Patch25: squid-2.5.STABLE9-long_basic_auth.patch
+Patch26: squid-2.5.STABLE9-CONNECT_truncated.patch
+Patch27: squid-2.5.STABLE9-LDAP_SUN_SDK.patch
+Patch28: squid-2.5.STABLE9-disable_hostname_checks.patch
+Patch29: squid-2.5.STABLE9-aufs_shutdown.patch
 
 Obsoletes: %name-novm
 
@@ -78,6 +97,27 @@ ICMP-сообщений.
 %patch5 -p1
 %patch6 -p1
 %patch7 -p1
+
+%patch10 -p1
+%patch11 -p1
+%patch12 -p1
+%patch13 -p1
+%patch14 -p1
+%patch15 -p1
+%patch16 -p1
+%patch17 -p1
+%patch18 -p1
+%patch19 -p1
+%patch20 -p1
+%patch21 -p1
+%patch22 -p1
+%patch23 -p1
+%patch24 -p1
+%patch25 -p1
+%patch26 -p1
+%patch27 -p1
+%patch28 -p1
+%patch29 -p1
 
 %build
 %set_autoconf_version 2.5
@@ -242,6 +282,30 @@ popd
 %attr(4710,root,%name) %_libdir/%name/pinger
 
 %changelog
+* Tue Mar 22 2005 Denis Ovsienko <pilot@altlinux.ru> 2.5.STABLE9-alt2
+- applied:
+ + 2005-03-03 02:26 (Minor Security) Race condition related to Set-Cookie header 
+ + 2005-03-04 11:55 (Minor) Fails to parse the EPLF FTP directory format
+ + 2005-03-04 11:55 (Minor) Links in FTP listings without / fails due to missing BASE HREF
+ + 2005-03-04 22:48 (Cosmetic Security) Unexpected access control results on configuration errors
+ + 2005-03-09 15:46 (Minor) Handle odd date formats
+ + 2005-03-09 15:46 (Minor) reload_into_ims fails to revalidate negatively cached entries
+ + 2005-03-09 15:46 (Cosmetic) Clarify delay_access function
+ + 2005-03-09 15:46 (Cosmetic) Check several squid.conf directives for int overflows
+ + 2005-03-09 15:46 (Minor) bzero is a non-standard function not available on all platforms
+ + 2005-03-15 04:27 (Minor) compile warnings due to pid_t not being an int
+ + 2005-03-10 23:38 (Minor) Incorrect use of ctype functions
+ + 2005-03-09 15:46 (Cosmetic) Defer digest fetch if the peer is not allowed to be used
+ + 2005-03-09 15:46 (Cosmetic) Duplicate content-length headers logged as conflicting with relaxed_header_parser off
+ + 2005-03-09 15:46 (Cosmetic) Extend relaxed_header_parser to work around "excess data from" errors from many major web servers.
+ + 2005-03-19 11:42 (Minor) Several minor aufs issues
+ + 2005-03-19 00:25 (Minor) Basic authentication fails with very long login or password
+ + 2005-03-21 20:44 (Minor) CONNECT requests truncated if client side disconnects first assertion failed: comm.c:430: "quot;ntohs(address->sin_port) != 0"quot;
+ + 2005-03-19 01:11 (Cosmetic) LDAP helpers fail to compile with SUN LDAP SDK
+ + 2005-03-19 01:35 (Minor) --disable-hostname-checks not working
+ + 2005-03-19 23:57 (Cosmetic) aufs warning about open event filedescriptors on shutdown
+- updated FAQ to v 1.246 2005/03/04 23:49:39
+
 * Tue Mar 01 2005 Denis Ovsienko <pilot@altlinux.ru> 2.5.STABLE9-alt1
 - upstream merged:
  + 2005-02-20 10:47 (Minor) Relax header parsing slightly again to work around broken web servers

@@ -1,0 +1,255 @@
+Index: squid/helpers/basic_auth/LDAP/squid_ldap_auth.c
+diff -c squid/helpers/basic_auth/LDAP/squid_ldap_auth.c:1.21.2.19 squid/helpers/basic_auth/LDAP/squid_ldap_auth.c:1.21.2.20
+*** squid/helpers/basic_auth/LDAP/squid_ldap_auth.c:1.21.2.19	Sun Feb 20 12:07:44 2005
+--- squid/helpers/basic_auth/LDAP/squid_ldap_auth.c	Fri Mar 18 17:53:55 2005
+***************
+*** 252,266 ****
+      if (version == -1) {
+  	version = LDAP_VERSION2;
+      }
+!     if (ldap_set_option(ld, LDAP_OPT_PROTOCOL_VERSION, &version)
+! 	!= LDAP_OPT_SUCCESS) {
+  	fprintf(stderr, "Could not set LDAP_OPT_PROTOCOL_VERSION %d\n",
+  	    version);
+  	exit(1);
+      }
+!     if (use_tls && (version == LDAP_VERSION3) && (ldap_start_tls_s(ld, NULL, NULL) != LDAP_SUCCESS)) {
+! 	fprintf(stderr, "Could not Activate TLS connection\n");
+  	exit(1);
+      }
+  #endif
+      squid_ldap_set_timelimit(ld, timelimit);
+--- 252,275 ----
+      if (version == -1) {
+  	version = LDAP_VERSION2;
+      }
+!     if (ldap_set_option(ld, LDAP_OPT_PROTOCOL_VERSION, &version) != LDAP_SUCCESS) {
+  	fprintf(stderr, "Could not set LDAP_OPT_PROTOCOL_VERSION %d\n",
+  	    version);
+  	exit(1);
+      }
+!     if (use_tls) {
+! #ifdef LDAP_OPT_X_TLS
+!         if (version == LDAP_VERSION3 && ldap_start_tls_s(ld, NULL, NULL) != LDAP_SUCCESS) {
+! 	    fprintf(stderr, "Could not Activate TLS connection\n");
+! 	    exit(1);
+! 	} else {
+! 	    fprintf(stderr, "TLS requires LDAP version 3\n");
+! 	    exit(1);
+! 	}
+! #else
+! 	fprintf(stderr, "TLS not supported with your LDAP library\n");
+  	exit(1);
++ #endif
+      }
+  #endif
+      squid_ldap_set_timelimit(ld, timelimit);
+Index: squid/helpers/external_acl/ldap_group/squid_ldap_group.c
+diff -c squid/helpers/external_acl/ldap_group/squid_ldap_group.c:1.2.2.21 squid/helpers/external_acl/ldap_group/squid_ldap_group.c:1.2.2.22
+*** squid/helpers/external_acl/ldap_group/squid_ldap_group.c:1.2.2.21	Sat Feb  5 03:53:07 2005
+--- squid/helpers/external_acl/ldap_group/squid_ldap_group.c	Fri Mar 18 17:54:10 2005
+***************
+*** 488,506 ****
+  		if (version == -1) {
+  		    version = LDAP_VERSION2;
+  		}
+! 		if (ldap_set_option(ld, LDAP_OPT_PROTOCOL_VERSION, &version)
+! 		    != LDAP_OPT_SUCCESS) {
+  		    fprintf(stderr, "Could not set LDAP_OPT_PROTOCOL_VERSION %d\n",
+  			version);
+  		    ldap_unbind(ld);
+  		    ld = NULL;
+  		    break;
+  		}
+! 		if (use_tls && (version == LDAP_VERSION3) && (ldap_start_tls_s(ld, NULL, NULL) != LDAP_SUCCESS)) {
+! 		    fprintf(stderr, "Could not Activate TLS connection\n");
+! 		    ldap_unbind(ld);
+! 		    ld = NULL;
+! 		    break;
+  		}
+  #endif
+  		squid_ldap_set_timelimit(ld, timelimit);
+--- 488,515 ----
+  		if (version == -1) {
+  		    version = LDAP_VERSION2;
+  		}
+! 		if (ldap_set_option(ld, LDAP_OPT_PROTOCOL_VERSION, &version) != LDAP_SUCCESS) {
+  		    fprintf(stderr, "Could not set LDAP_OPT_PROTOCOL_VERSION %d\n",
+  			version);
+  		    ldap_unbind(ld);
+  		    ld = NULL;
+  		    break;
+  		}
+! 		if (use_tls) {
+! #ifdef LDAP_OPT_X_TLS
+! 		    if (version == LDAP_VERSION3 && ldap_start_tls_s(ld, NULL, NULL) != LDAP_SUCCESS) {
+! 			fprintf(stderr, "Could not Activate TLS connection\n");
+! 			ldap_unbind(ld);
+! 			ld = NULL;
+! 			break;
+! 		    } else {
+! 			fprintf(stderr, "TLS requires LDAP version 3\n");
+! 			exit(1);
+! 		    }
+! #else
+! 		    fprintf(stderr, "TLS not supported with your LDAP library\n");
+! 		    exit(1);
+! #endif
+  		}
+  #endif
+  		squid_ldap_set_timelimit(ld, timelimit);
+Index: squid/configure.in
+diff -c squid/configure.in:1.251.2.81 squid/configure.in:1.251.2.83
+*** squid/configure.in:1.251.2.81	Wed Feb 23 16:53:39 2005
+--- squid/configure.in	Fri Mar 18 18:10:27 2005
+***************
+*** 1583,1588 ****
+--- 1583,1592 ----
+  		;;
+  esac
+  
++ dnl LDAP helpers need to know if -llber is needed or not
++ AC_CHECK_LIB(lber, main, [LIB_LBER="-llber"])
++ AC_SUBST(LIB_LBER)
++ 
+  dnl System-specific library modifications
+  dnl
+  case "$host" in
+Index: squid/configure
+diff -c squid/configure:1.248.2.82 squid/configure:1.248.2.84
+*** squid/configure:1.248.2.82	Wed Feb 23 18:12:26 2005
+--- squid/configure	Fri Mar 18 18:10:52 2005
+***************
+*** 7460,7465 ****
+--- 7460,7503 ----
+  		;;
+  esac
+  
++ echo $ac_n "checking for main in -llber""... $ac_c" 1>&6
++ echo "configure:7465: checking for main in -llber" >&5
++ ac_lib_var=`echo lber'_'main | sed 'y%./+-%__p_%'`
++ if eval "test \"`echo '$''{'ac_cv_lib_$ac_lib_var'+set}'`\" = set"; then
++   echo $ac_n "(cached) $ac_c" 1>&6
++ else
++   ac_save_LIBS="$LIBS"
++ LIBS="-llber  $LIBS"
++ cat > conftest.$ac_ext <<EOF
++ #line 7473 "configure"
++ #include "confdefs.h"
++ 
++ int main() {
++ main()
++ ; return 0; }
++ EOF
++ if { (eval echo configure:7480: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
++   rm -rf conftest*
++   eval "ac_cv_lib_$ac_lib_var=yes"
++ else
++   echo "configure: failed program was:" >&5
++   cat conftest.$ac_ext >&5
++   rm -rf conftest*
++   eval "ac_cv_lib_$ac_lib_var=no"
++ fi
++ rm -f conftest*
++ LIBS="$ac_save_LIBS"
++ 
++ fi
++ if eval "test \"`echo '$ac_cv_lib_'$ac_lib_var`\" = yes"; then
++   echo "$ac_t""yes" 1>&6
++   LIB_LBER="-llber"
++ else
++   echo "$ac_t""no" 1>&6
++ fi
++ 
++ 
++ 
+  case "$host" in
+  	i386-*-solaris2.*)
+      		if test "$GCC" = "yes"; then
+***************
+*** 8930,8935 ****
+--- 8968,8974 ----
+  s%@AR_R@%$AR_R%g
+  s%@ALLOCA@%$ALLOCA%g
+  s%@CRYPTLIB@%$CRYPTLIB%g
++ s%@LIB_LBER@%$LIB_LBER%g
+  s%@NEED_OWN_SNPRINTF_TRUE@%$NEED_OWN_SNPRINTF_TRUE%g
+  s%@NEED_OWN_SNPRINTF_FALSE@%$NEED_OWN_SNPRINTF_FALSE%g
+  s%@REGEXLIB@%$REGEXLIB%g
+Index: squid/helpers/basic_auth/LDAP/Makefile.in
+diff -c squid/helpers/basic_auth/LDAP/Makefile.in:1.8.2.13 squid/helpers/basic_auth/LDAP/Makefile.in:1.8.2.14
+*** squid/helpers/basic_auth/LDAP/Makefile.in:1.8.2.13	Sat Jul 10 06:11:41 2004
+--- squid/helpers/basic_auth/LDAP/Makefile.in	Fri Mar 18 17:55:41 2005
+***************
+*** 88,93 ****
+--- 88,94 ----
+  LIBDLMALLOC = @LIBDLMALLOC@
+  LIBREGEX = @LIBREGEX@
+  LIBSASL = @LIBSASL@
++ LIB_LBER = @LIB_LBER@
+  LIB_MALLOC = @LIB_MALLOC@
+  LN = @LN@
+  LN_S = @LN_S@
+***************
+*** 127,133 ****
+  EXTRA_DIST = squid_ldap_auth.8
+  squid_ldap_auth_SOURCES = squid_ldap_auth.c
+  
+! LDADD = -L$(top_builddir)/lib -lmiscutil -lldap -llber $(XTRA_LIBS)
+  INCLUDES = -I$(top_srcdir)/include
+  subdir = helpers/basic_auth/LDAP
+  mkinstalldirs = $(SHELL) $(top_srcdir)/cfgaux/mkinstalldirs
+--- 128,134 ----
+  EXTRA_DIST = squid_ldap_auth.8
+  squid_ldap_auth_SOURCES = squid_ldap_auth.c
+  
+! LDADD = -L$(top_builddir)/lib -lmiscutil -lldap $(LIB_LBER) $(XTRA_LIBS)
+  INCLUDES = -I$(top_srcdir)/include
+  subdir = helpers/basic_auth/LDAP
+  mkinstalldirs = $(SHELL) $(top_srcdir)/cfgaux/mkinstalldirs
+Index: squid/helpers/external_acl/ldap_group/Makefile.am
+diff -c squid/helpers/external_acl/ldap_group/Makefile.am:1.1.2.3 squid/helpers/external_acl/ldap_group/Makefile.am:1.1.2.4
+*** squid/helpers/external_acl/ldap_group/Makefile.am:1.1.2.3	Wed Dec 11 17:23:30 2002
+--- squid/helpers/external_acl/ldap_group/Makefile.am	Fri Mar 18 17:54:10 2005
+***************
+*** 11,14 ****
+  EXTRA_DIST		= squid_ldap_group.8
+  squid_ldap_group_SOURCES	= squid_ldap_group.c
+  
+! LDADD = -lldap -llber $(XTRA_LIBS)
+--- 11,14 ----
+  EXTRA_DIST		= squid_ldap_group.8
+  squid_ldap_group_SOURCES	= squid_ldap_group.c
+  
+! LDADD = -lldap $(LIB_LBER) $(XTRA_LIBS)
+Index: squid/helpers/external_acl/ldap_group/Makefile.in
+diff -c squid/helpers/external_acl/ldap_group/Makefile.in:1.1.2.10 squid/helpers/external_acl/ldap_group/Makefile.in:1.1.2.11
+*** squid/helpers/external_acl/ldap_group/Makefile.in:1.1.2.10	Sat Jul 10 06:11:42 2004
+--- squid/helpers/external_acl/ldap_group/Makefile.in	Fri Mar 18 17:55:49 2005
+***************
+*** 88,93 ****
+--- 88,94 ----
+  LIBDLMALLOC = @LIBDLMALLOC@
+  LIBREGEX = @LIBREGEX@
+  LIBSASL = @LIBSASL@
++ LIB_LBER = @LIB_LBER@
+  LIB_MALLOC = @LIB_MALLOC@
+  LN = @LN@
+  LN_S = @LN_S@
+***************
+*** 127,133 ****
+  EXTRA_DIST = squid_ldap_group.8
+  squid_ldap_group_SOURCES = squid_ldap_group.c
+  
+! LDADD = -lldap -llber $(XTRA_LIBS)
+  subdir = helpers/external_acl/ldap_group
+  mkinstalldirs = $(SHELL) $(top_srcdir)/cfgaux/mkinstalldirs
+  CONFIG_HEADER = $(top_builddir)/include/autoconf.h
+--- 128,134 ----
+  EXTRA_DIST = squid_ldap_group.8
+  squid_ldap_group_SOURCES = squid_ldap_group.c
+  
+! LDADD = -lldap $(LIB_LBER) $(XTRA_LIBS)
+  subdir = helpers/external_acl/ldap_group
+  mkinstalldirs = $(SHELL) $(top_srcdir)/cfgaux/mkinstalldirs
+  CONFIG_HEADER = $(top_builddir)/include/autoconf.h

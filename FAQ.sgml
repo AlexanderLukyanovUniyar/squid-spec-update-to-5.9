@@ -9263,8 +9263,8 @@ diff -p -u -r1.40 -r1.41
   * SUCH DAMAGE.
   *
   *	@(#)uipc_socket.c	8.3 (Berkeley) 4/15/94
-- *	$Id: FAQ.sgml,v 1.245 2005/02/24 23:29:59 wessels Exp $
-+ *	$Id: FAQ.sgml,v 1.245 2005/02/24 23:29:59 wessels Exp $
+- *	$Id: FAQ.sgml,v 1.246 2005/03/04 23:49:39 hno Exp $
++ *	$Id: FAQ.sgml,v 1.246 2005/03/04 23:49:39 hno Exp $
   */
 
  #include <sys/param.h>
@@ -11736,7 +11736,9 @@ than WCCP. You should choose the method that suits your enviroment.
 
 <P>
 Linux 2.2 kernels already support GRE, as long as the GRE module is
-compiled into the kernel.
+compiled into the kernel. However, WCCP uses a slightly non-standard
+GRE encapsualtion format and Linux versions earlier than 2.6.9 may need
+to be patched to support WCCP.
 
 <P>
 Ensure that the GRE code is either built as static or as a module by chosing
@@ -11757,6 +11759,12 @@ address seems to work.
 &lt;Router-IP&gt; is the IP address of your router that is intercepting the 
 HTTP packets.  &lt;Host-IP&gt; is the IP address of your cache, and
 &lt;interface&gt; is the network interface that receives those packets (probably eth0).
+
+<P>Note that WCCP is incompatible with the rp_filter function in Linux and
+you must disable this if enabled (default off). If enabled any packets
+redirected by WCCP and intercepted by Netfilter/iptables will be silendly
+discarded by the TCP/IP stack due to their "unexpected" origin from the gre
+interface.
 
 <sect3>Joe Cooper's Patch
 <p>
@@ -13999,7 +14007,7 @@ want to make a cron job that regularly verifies that your proxy blocks
 access to port 25.
 
 <verb>
-$Id: FAQ.sgml,v 1.245 2005/02/24 23:29:59 wessels Exp $
+$Id: FAQ.sgml,v 1.246 2005/03/04 23:49:39 hno Exp $
 </verb>
 </article>
 <!--  LocalWords:  SSL MSIE Netmanage Chameleon WebSurfer unchecking remotehost

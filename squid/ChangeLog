@@ -1,3 +1,20 @@
+Changes to squid-2.5.STABLE9 (24 Feb 2005)
+
+	- [Medium] Don't retry requests on 403 errors (Bug #1210)
+	- [Minor] Ignore invalid FQDN DNS responses (Bug #1222)
+	- [Minor] cache_peer related memory leaks on reconfigure (Bug #1246)
+	- [Minor] relaxed_header_parser extended to work around even more
+	  broken web servers (Bug #1242)
+	- [Minor] FTP gatewaying URLs cleaned up slightly, mainly to work
+	  better with Mozilla but also to improve security slightly on
+	  non-anonymous FTP.
+	- [Minor] High characters allowed un-encoded in FTP and Gopher
+	  listings to allow the user-agent to display data in non-iso8859-1
+	  charsets. (Bug #1220)
+	- [Cosmetic] format fixes to silence compiler warnings on many
+	  platforms.
+	- [Major] Assertion failures on certain odd DNS responses (Bug #1234)
+
 Changes to squid-2.5.STABLE8 (11 Feb 2005)
 
 	- [Minor] 100% CPU usage on half-closed PUT/POST requests (Bug #354,

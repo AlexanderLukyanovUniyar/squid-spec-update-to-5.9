@@ -1,6 +1,6 @@
 
 /*
- * $Id: acl.c,v 1.270.2.32 2005/01/10 15:31:00 hno Exp $
+ * $Id: acl.c,v 1.270.2.34 2005/02/20 19:07:45 hno Exp $
  *
  * DEBUG: section 28    Access Control
  * AUTHOR: Duane Wessels
@@ -2781,7 +2781,7 @@ aclPurgeMethodInUse(acl_access * a)
 #include <net/route.h>
 #endif
 #include <net/if.h>
-#ifdef _SQUID_FREEBSD__
+#ifdef _SQUID_FREEBSD_
 #include <net/if_arp.h>
 #endif
 #if HAVE_NETINET_IF_ETHER_H
@@ -2856,7 +2856,7 @@ aclMatchArp(void *dataptr, struct in_addr c)
 #if defined(_SQUID_LINUX_)
     struct arpreq arpReq;
     struct sockaddr_in ipAddr;
-    unsigned char ifbuffer[sizeof(struct ifreq) * 64];
+    char ifbuffer[sizeof(struct ifreq) * 64];
     struct ifconf ifc;
     struct ifreq *ifr;
     int offset;
@@ -2969,10 +2969,6 @@ aclMatchArp(void *dataptr, struct in_addr c)
 #elif defined(_SQUID_SOLARIS_)
     struct arpreq arpReq;
     struct sockaddr_in ipAddr;
-    unsigned char ifbuffer[sizeof(struct ifreq) * 64];
-    struct ifconf ifc;
-    struct ifreq *ifr;
-    int offset;
     splayNode **Top = dataptr;
     /*
      * Set up structures for ARP lookup with blank interface name
@@ -3007,10 +3003,6 @@ aclMatchArp(void *dataptr, struct in_addr c)
 #elif defined(_SQUID_FREEBSD_)
     struct arpreq arpReq;
     struct sockaddr_in ipAddr;
-    unsigned char ifbuffer[sizeof(struct ifreq) * 64];
-    struct ifconf ifc;
-    struct ifreq *ifr;
-    int offset;
     splayNode **Top = dataptr;
 
     int mib[6];

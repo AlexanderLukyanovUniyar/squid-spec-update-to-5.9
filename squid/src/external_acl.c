@@ -1,6 +1,6 @@
 
 /*
- * $Id: external_acl.c,v 1.1.2.31 2004/08/14 21:01:33 hno Exp $
+ * $Id: external_acl.c,v 1.1.2.33 2005/02/20 11:02:56 hno Exp $
  *
  * DEBUG: section 82    External ACL
  * AUTHOR: Henrik Nordstrom, MARA Systems AB
@@ -231,7 +231,7 @@ parse_externalAclHelper(external_acl ** list)
 	    if (member) {
 		/* Split in header and member */
 		*member++ = '\0';
-		if (!isalnum(*member))
+		if (!xisalnum(*member))
 		    format->separator = *member++;
 		else
 		    format->separator = ',';

@@ -1,6 +1,6 @@
 
 /*
- * $Id: main.c,v 1.345.2.15 2004/12/28 12:54:35 hno Exp $
+ * $Id: main.c,v 1.345.2.19 2005/02/21 02:55:04 hno Exp $
  *
  * DEBUG: section 1     Startup and Main Loop
  * AUTHOR: Harvest Derived
@@ -390,6 +390,7 @@ mainReconfigure(void)
     }
     storeDirOpenSwapLogs();
     mimeInit(Config.mimeTablePathname);
+    eventCleanup();
     writePidFile();		/* write PID file */
     debug(1, 1) ("Ready to serve requests.\n");
     reconfiguring = 0;
@@ -807,7 +808,7 @@ mainStartScript(const char *prog)
     xstrncpy(&script[sl], squid_start_script, MAXPATHLEN - sl);
     if ((cpid = fork()) == 0) {
 	/* child */
-	execl(script, squid_start_script, 0);
+	execl(script, squid_start_script, NULL);
 	_exit(0);
     } else {
 	do {
@@ -836,7 +837,7 @@ checkRunningPid(void)
 	return 0;
     if (kill(pid, 0) < 0)
 	return 0;
-    debug(0, 0) ("Squid is already running!  Process ID %d\n", pid);
+    debug(0, 0) ("Squid is already running!  Process ID %ld\n", (long int) pid);
     return 1;
 }
 
@@ -853,7 +854,9 @@ watch_child(char *argv[])
     int status;
 #endif
     pid_t pid;
+#ifdef TIOCNOTTY
     int i;
+#endif
     int nullfd;
     if (*(argv[0]) == '(')
 	return;

@@ -1,6 +1,6 @@
 
 /*
- * $Id: protos.h,v 1.420.2.26 2005/01/21 12:22:59 hno Exp $
+ * $Id: protos.h,v 1.420.2.27 2005/02/21 02:55:04 hno Exp $
  *
  *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/
@@ -257,6 +257,7 @@ extern void eventRun(void);
 extern int eventNextTime(void);
 extern void eventDelete(EVH * func, void *arg);
 extern void eventInit(void);
+extern void eventCleanup(void);
 extern void eventFreeMemory(void);
 extern int eventFind(EVH *, void *);
 

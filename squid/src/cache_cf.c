@@ -1,6 +1,6 @@
 
 /*
- * $Id: cache_cf.c,v 1.396.2.19 2005/02/10 10:07:05 hno Exp $
+ * $Id: cache_cf.c,v 1.396.2.20 2005/02/21 02:55:04 hno Exp $
  *
  * DEBUG: section 3     Configuration File Parsing
  * AUTHOR: Harvest Derived
@@ -1573,9 +1573,12 @@ free_peer(peer ** P)
     while ((p = *P) != NULL) {
 	*P = p->next;
 #if USE_CACHE_DIGESTS
-	if (p->digest)
-	    cbdataUnlock(p->digest);
-	p->digest = NULL;
+	if (p->digest) {
+	    PeerDigest *pd = p->digest;
+	    p->digest = NULL;
+	    peerDigestNotePeerGone(pd);
+	    cbdataUnlock(pd);
+	}
 #endif
 	cbdataFree(p);
     }

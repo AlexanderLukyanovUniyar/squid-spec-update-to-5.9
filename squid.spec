@@ -1,5 +1,5 @@
 Name: squid
-Version: 2.5.STABLE8
+Version: 2.5.STABLE9
 Release: alt1
 
 Summary: The Squid proxy caching server
@@ -28,10 +28,7 @@ Patch6: %name-errrors-belarusian.patch
 Patch7: patch-aa.patch
 
 #Official patches to Squid
-Patch10: squid-2.5.STABLE8-dns_assert.patch
-Patch11: squid-2.5.STABLE8-format_fixes.patch
-Patch12: squid-2.5.STABLE8-html_high_chars.patch
-Patch13: squid-2.5.STABLE8-ftp_cleanup.patch
+# nothing ATM
 
 Obsoletes: %name-novm
 
@@ -81,11 +78,6 @@ ICMP-сообщений.
 %patch5 -p1
 %patch6 -p1
 %patch7 -p1
-
-%patch10 -p1
-%patch11 -p1
-%patch12 -p1
-%patch13 -p1
 
 %build
 %set_autoconf_version 2.5
@@ -250,6 +242,19 @@ popd
 %attr(4710,root,%name) %_libdir/%name/pinger
 
 %changelog
+* Tue Mar 01 2005 Denis Ovsienko <pilot@altlinux.ru> 2.5.STABLE9-alt1
+- upstream merged:
+ + 2005-02-20 10:47 (Minor) Relax header parsing slightly again to work around broken web servers
+ + 2005-02-20 19:11 (Cosmetic) GCC4 warnings
+ + 2005-02-21 01:38 (Cosmetic) Doesn't work specifying the AR variable to configure
+ + 2005-02-21 02:58 (Minor) Peer related memory leaks on "squid -k reconfigure"
+ + 2005-02-21 03:38 (Cosmetic) Display FTP URLs in decoded format to allow for sane display of national characters etc
+ + 2005-02-21 17:02 (Minor) fqdn lookups with spaces may confuse redirectors
+ + 2005-02-23 00:11 (Medium) Should not automatically retry request on 403 and other server errors
+- upstream updated and merged:
+ + 2005-02-20 11:03 (Cosmetic) Cross-platform format fixes
+- updated FAQ to v 1.245 2005/02/24 23:29:59
+
 * Wed Feb 16 2005 Denis Ovsienko <pilot@altlinux.ru> 2.5.STABLE8-alt1
 - upstream merged:
  + 2005-02-04 11:41 (Minor) WCCP easily disturbed by forged packets 

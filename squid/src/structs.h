@@ -1,6 +1,6 @@
 
 /*
- * $Id: structs.h,v 1.408.2.36 2005/02/04 00:30:01 hno Exp $
+ * $Id: structs.h,v 1.408.2.37 2005/02/23 00:06:35 hno Exp $
  *
  *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/
@@ -657,6 +657,7 @@ struct _SquidConfig {
     char *errorDirectory;
     struct {
 	int maxtries;
+	int onerror;
     } retry;
     struct {
 	size_t limit;

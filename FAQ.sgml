@@ -2518,7 +2518,7 @@ space-separated columns, compare with the <em/storeLog()/ function in file
 <em>src/store_log.c</em>:
 
 <verb>
-    "%9d.%03d %-7s %08X %4d %9d %9d %9d %s %d/%d %s %s\n"
+    "%9d.%03d %-7s %02d %08X %4d %9d %9d %9d %s %d/%d %s %s\n"
 </verb>
 
 <descrip>
@@ -2537,6 +2537,11 @@ The action the object was sumitted to, compare with <em>src/store_log.c</em>:
 <item><bf/SWAPOUT/ The object was saved to disk.
 <item><bf/SWAPIN/ The object existed on disk and was read into memory.
 </itemize>
+
+<tag/dir numer/<label id="log-dirno">
+<P>
+The cache_dir number this object was stored into, starting at 0 for your first 
+cache_dir line.
 
 <tag/file number/<label id="log-fileno">
 <P>
@@ -7467,11 +7472,14 @@ What causes a connection to close prematurely?  It could be a number
 of things, including:
 <enum>
 <item>An overloaded origin server.
-<item>TCP implementation/interoperability bugs.
+<item>TCP implementation/interoperability bugs. See the <ref id="sysdeps"
+ name="System-Dependent Weirdnesses"> section for details.
 <item>Race conditions with HTTP persistent connections.
 <item>Buggy or misconfigured NAT boxes, firewalls, and load-balancers.
 <item>Denial of service attacks.
+<item>Utilizing <ref id="freebsd-zsr" name="TCP blackholing on FreeBSD">.
 </enum>
+
 
 <p>
 You may be able to use <em/tcpdump/ to track down and observe the
@@ -7577,6 +7585,40 @@ by Grzegorz Janoszka
    If this does not work or causes too high load on your server due to
    the reindexing of the cache then delete the cache content as explained
    in <ref id="cleancache" name="I want to restart Squid with a clean cache">.
+
+<sect1>Squid problems with WindowsUpdate v5
+
+<p>
+By Janno de Wit
+
+<p>
+There seems to be some problems with Microsoft Windows to access the Windows Update website.
+This is especially a problem when you block all traffic by a firewall and force your users to go through the Squid Cache.
+
+<p>Symptom: WindowsUpdate gives error codes like 0x80072EFD and cannot update, automatic updates aren't working too.
+<P>Cause:
+In earlier Windows-versions WindowsUpdate takes the proxy-settings from Internet Explorer. Since XP SP2 this is not sure. 
+At my machine I ran Windows XP SP1 without WindowsUpdate problems. When I upgraded to SP2 WindowsUpdate started to give errors
+when searching updates etc.
+<P>The problem was that WU did not go through the proxy and tries to establish direct HTTP connections to Update-servers. Even when I
+set the proxy in IE again, it didn't help . It isn't Squid's problem that Windows Update doesn't work, but it is in Windows itself.
+The solution is to use the 'proxycfg' tool shipped with Windows XP.
+With this tool you can set the proxy for WinHTTP.
+
+<P>Commands:
+<verb>
+C:\> proxycfg 
+# gives information about the current connection type. Note: 'Direct Connection' does not force WU to bypass proxy
+
+C:\> proxycfg -d 
+# Set Direct Connection
+
+C:\> proxycfg -p wu-proxy.lan:8080
+# Set Proxy to use with Windows Update to wu-proxy.lan, port 8080
+
+c:\> proxycfg -u
+# Set proxy to Internet Explorer settings.
+</verb>
 
 <!-- %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% -->
 
@@ -8879,6 +8921,7 @@ describes this.
 <!-- %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% -->
 
 <sect>System-Dependent Weirdnesses
+<label id="sysdeps">
 
 <sect1>Solaris
 
@@ -9220,8 +9263,8 @@ diff -p -u -r1.40 -r1.41
   * SUCH DAMAGE.
   *
   *	@(#)uipc_socket.c	8.3 (Berkeley) 4/15/94
-- *	$Id: FAQ.sgml,v 1.240 2005/01/08 00:16:21 hno Exp $
-+ *	$Id: FAQ.sgml,v 1.240 2005/01/08 00:16:21 hno Exp $
+- *	$Id: FAQ.sgml,v 1.245 2005/02/24 23:29:59 wessels Exp $
++ *	$Id: FAQ.sgml,v 1.245 2005/02/24 23:29:59 wessels Exp $
   */
 
  #include <sys/param.h>
@@ -9324,6 +9367,30 @@ Squid logs messages like:
 You can eliminate the problem by putting the jail's network interface
 address in the 'udp_outgoing_addr' configuration option
 in <em>squid.conf</em>.
+
+<sect2>"Zero Sized Reply" error due to TCP blackholing
+<label id="freebsd-zsr">
+
+<p>
+by <url url="mailto:david@landgren.net" name="David Landgren">
+
+<p>On FreeBSD, make sure that TCP blackholing is not active. You can verify the current setting with:
+<verb>
+# /sbin/sysctl net.inet.tcp.blackhole
+</verb>
+It should return the following output:
+<verb>
+net.inet.tcp.blackhole: 0
+</verb>
+If it is set to a positive value (usually, 2), disable it by setting it back to zero with<
+<verb>
+# /sbin/sysctl net.inet.tcp.blackhole=0
+</verb>
+To make sure the setting survives across reboots, add the following line to the file <em>/etc/sysctl.conf</em>:
+<verb>
+net.inet.tcp.blackhole=0
+</verb>
+</p>
 
 <sect1>OSF1/3.2
 
@@ -13932,7 +13999,7 @@ want to make a cron job that regularly verifies that your proxy blocks
 access to port 25.
 
 <verb>
-$Id: FAQ.sgml,v 1.240 2005/01/08 00:16:21 hno Exp $
+$Id: FAQ.sgml,v 1.245 2005/02/24 23:29:59 wessels Exp $
 </verb>
 </article>
 <!--  LocalWords:  SSL MSIE Netmanage Chameleon WebSurfer unchecking remotehost

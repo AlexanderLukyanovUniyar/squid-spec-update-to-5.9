@@ -1,6 +1,6 @@
 
 /*
- * $Id: neighbors.c,v 1.299.2.4 2003/11/29 18:53:00 hno Exp $
+ * $Id: neighbors.c,v 1.299.2.5 2005/02/21 02:55:04 hno Exp $
  *
  * DEBUG: section 15    Neighbor Routines
  * AUTHOR: Harvest Derived
@@ -961,6 +961,7 @@ peerDestroy(void *data)
 	safe_free(l->domain);
 	safe_free(l);
     }
+    aclDestroyAccessList(&p->access);
     safe_free(p->host);
 #if USE_CACHE_DIGESTS
     if (p->digest) {

@@ -1,6 +1,6 @@
 
 /*
- * $Id: forward.c,v 1.82.2.13 2004/10/05 22:34:42 hno Exp $
+ * $Id: forward.c,v 1.82.2.14 2005/02/23 00:06:35 hno Exp $
  *
  * DEBUG: section 17    Request Forwarding
  * AUTHOR: Duane Wessels
@@ -837,13 +837,14 @@ int
 fwdReforwardableStatus(http_status s)
 {
     switch (s) {
+    case HTTP_BAD_GATEWAY:
+    case HTTP_GATEWAY_TIMEOUT:
+	return 1;
     case HTTP_FORBIDDEN:
     case HTTP_INTERNAL_SERVER_ERROR:
     case HTTP_NOT_IMPLEMENTED:
-    case HTTP_BAD_GATEWAY:
     case HTTP_SERVICE_UNAVAILABLE:
-    case HTTP_GATEWAY_TIMEOUT:
-	return 1;
+	return Config.retry.onerror;
     default:
 	return 0;
     }

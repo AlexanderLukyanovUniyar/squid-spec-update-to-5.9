@@ -1,6 +1,6 @@
 
 /*
- * $Id: wccp.c,v 1.19.2.9 2005/02/04 11:38:15 hno Exp $
+ * $Id: wccp.c,v 1.19.2.10 2005/02/20 19:07:45 hno Exp $
  *
  * DEBUG: section 80    WCCP Support
  * AUTHOR: Glenn Chisholm
@@ -123,7 +123,7 @@ wccpConnectionOpen(void)
 {
     u_short port = WCCP_PORT;
     struct sockaddr_in router, local;
-    int local_len, router_len;
+    socklen_t local_len, router_len;
     debug(80, 5) ("wccpConnectionOpen: Called\n");
     if (Config.Wccp.router.s_addr == any_addr.s_addr) {
 	debug(1, 1) ("WCCP Disabled.\n");

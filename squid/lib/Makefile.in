@@ -14,7 +14,7 @@
 @SET_MAKE@
 
 #
-#  $Id: Makefile.in,v 1.57.2.14 2004/09/01 10:30:29 hno Exp $
+#  $Id: Makefile.in,v 1.57.2.15 2005/02/21 01:35:48 hno Exp $
 #
 
 SHELL = @SHELL@
@@ -254,7 +254,7 @@ Makefile: @MAINTAINER_MODE_TRUE@ $(srcdir)/Makefile.in  $(top_builddir)/config.s
 	  CONFIG_HEADERS= CONFIG_LINKS= \
 	  CONFIG_FILES=$(subdir)/$@ $(SHELL) ./config.status
 
-AR = ar
+#AR = ar
 
 clean-noinstLIBRARIES:
 	-test -z "$(noinst_LIBRARIES)" || rm -f $(noinst_LIBRARIES)

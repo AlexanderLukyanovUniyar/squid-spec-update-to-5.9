@@ -1,5 +1,5 @@
 /*
- * $Id: config.h,v 1.4.2.1 2004/04/18 01:29:51 hno Exp $
+ * $Id: config.h,v 1.4.2.2 2005/02/20 11:02:56 hno Exp $
  *
  * AUTHOR: Duane Wessels
  *
@@ -163,6 +163,7 @@
 #define xisascii(x) isascii((unsigned char)x)
 #define xislower(x) islower((unsigned char)x)
 #define xisalpha(x) isalpha((unsigned char)x)
+#define xisalnum(x) isalnum((unsigned char)x)
 #define xisgraph(x) isgraph((unsigned char)x)
 
 #if HAVE_RANDOM

@@ -1,18 +1,19 @@
 Name: squid
 Version: 2.5.STABLE7
-Release: alt4
+Release: alt5
 
 Summary: The Squid proxy caching server
 License: GPL
 Group: System/Servers
 
-Url:http://www.%name-cache.org/Squid
+Url:http://www.%name-cache.org
 Packager: Squid Development Team <squid@packages.altlinux.org>
 
-Source: %url/v2/%name-%version.tar.bz2
-Source1: %url/FAQ/FAQ.sgml
+Source: %url/Versions/v2/%name-%version.tar.bz2
+Source1: %url/Doc/FAQ/FAQ.sgml
 Source2: %name.init
 Source3: %name.logrotate
+Source4: wbinfo_group.sh
 
 # Other patches
 # rediffed for 2.5.S7
@@ -26,7 +27,6 @@ Patch6: %name-errrors-belarusian.patch
 Patch7: patch-aa.patch
 
 #Official patches to Squid
-# merged into 2.5.STABLE7
 Patch10: squid-2.5.STABLE7-half_closed_POST.patch
 Patch11: squid-2.5.STABLE7-LDAP_version_documentation.patch
 Patch12: squid-2.5.STABLE7_req_resp_header.patch
@@ -36,12 +36,18 @@ Patch15: squid-2.5.STABLE7-blank_response.patch
 Patch16: squid-2.5.STABLE7-dothost.patch
 Patch17: squid-2.5.STABLE7-httpd_accel_vport.patch
 Patch18: squid-2.5.STABLE7-cachemgr_vmobjects.patch
+Patch19: squid-2.5.STABLE7-empty_acls.patch
+Patch20: squid-2.5.STABLE7-PURGE_internal.patch
+Patch21: squid-2.5.STABLE7-close_other.patch
+Patch22: squid-2.5.STABLE7-fakeauth_auth.patch
+Patch23: squid-2.5.STABLE7-gopher_html_parsing.patch
+Patch24: squid-2.5.STABLE7-wccp_denial_of_service.patch
 
 Obsoletes: %name-novm
 
 BuildConflicts: bind-devel
 BuildPreReq: rpm-build >= 4.0.4-alt10, autoconf >= 2.54
-
+PreReq: net-snmp-mibs
 # Automatically added by buildreq on Fri Jul 23 2004 (-bi)
 BuildRequires: OpenSP libldap-devel libpam-devel libsasl2-devel libssl-devel perl-Authen-Smb sgml-tools
 
@@ -87,6 +93,12 @@ ICMP messages directly
 %patch16 -p1
 %patch17 -p1
 %patch18 -p1
+%patch19 -p1
+%patch20 -p1
+%patch21 -p1
+%patch22 -p1
+%patch23 -p1
+%patch24 -p1
 
 %build
 %set_autoconf_version 2.5
@@ -132,24 +144,24 @@ sgml2html FAQ.sgml
 popd
 
 %install
-%make_build install DESTDIR=$RPM_BUILD_ROOT
-%make_build install-pinger DESTDIR=$RPM_BUILD_ROOT
+%make_build install DESTDIR=%buildroot
+%make_build install-pinger DESTDIR=%buildroot
 
-%__mkdir_p $RPM_BUILD_ROOT%_initdir
-%__mkdir_p $RPM_BUILD_ROOT%_sysconfdir/logrotate.d
-%__install -m 755 $RPM_SOURCE_DIR/%name.init $RPM_BUILD_ROOT%_initdir/%name
-%__install -m 644 $RPM_SOURCE_DIR/%name.logrotate $RPM_BUILD_ROOT%_sysconfdir/logrotate.d/%name
+%__mkdir_p %buildroot%_initdir
+%__mkdir_p %buildroot%_sysconfdir/logrotate.d
+%__install -m 755 %SOURCE2 %buildroot%_initdir/%name
+%__install -m 644 %SOURCE3 %buildroot%_sysconfdir/logrotate.d/%name
 
-%__mkdir_p $RPM_BUILD_ROOT%_logdir/%name
-%__mkdir_p $RPM_BUILD_ROOT%_spooldir/%name
+%__mkdir_p %buildroot%_logdir/%name
+%__mkdir_p %buildroot%_spooldir/%name
 
 %__rm -f $RPM_BUILD_DIR/%name-%version/doc/Programming-Guide/Makefile
 
-%__install -p -m644 $RPM_BUILD_DIR/%name-%version/helpers/basic_auth/PAM/pam_auth.8 $RPM_BUILD_ROOT%_man8dir
-%__install -p -m644 $RPM_BUILD_DIR/%name-%version/helpers/external_acl/ldap_group/squid_ldap_group.8 $RPM_BUILD_ROOT%_man8dir
-%__install -p -m644 $RPM_BUILD_DIR/%name-%version/helpers/basic_auth/LDAP/squid_ldap_auth.8 $RPM_BUILD_ROOT%_man8dir
-%__install -p -m644 $RPM_BUILD_DIR/%name-%version/helpers/external_acl/unix_group/squid_unix_group.8 $RPM_BUILD_ROOT%_man8dir
-%__install -p -m644 $RPM_BUILD_DIR/%name-%version/doc/%name.8 $RPM_BUILD_ROOT%_man8dir
+%__install -p -m644 $RPM_BUILD_DIR/%name-%version/helpers/basic_auth/PAM/pam_auth.8 %buildroot%_man8dir
+%__install -p -m644 $RPM_BUILD_DIR/%name-%version/helpers/external_acl/ldap_group/squid_ldap_group.8 %buildroot%_man8dir
+%__install -p -m644 $RPM_BUILD_DIR/%name-%version/helpers/basic_auth/LDAP/squid_ldap_auth.8 %buildroot%_man8dir
+%__install -p -m644 $RPM_BUILD_DIR/%name-%version/helpers/external_acl/unix_group/squid_unix_group.8 %buildroot%_man8dir
+%__install -p -m644 $RPM_BUILD_DIR/%name-%version/doc/%name.8 %buildroot%_man8dir
 
 %__install -D -p -m644 $RPM_BUILD_DIR/%name-%version/helpers/basic_auth/SMB/COPYING-2.0 helpers/doc/SMB.COPYING-2.0
 %__install -D -p -m644 $RPM_BUILD_DIR/%name-%version/helpers/basic_auth/SMB/README helpers/doc/SMB.README
@@ -171,6 +183,9 @@ popd
 %__install -D -p -m644 $RPM_BUILD_DIR/%name-%version/helpers/external_acl/winbind_group/readme.txt helpers/doc/winbind_group.readme.txt
 %__install -D -p -m644 $RPM_BUILD_DIR/%name-%version/helpers/external_acl/unix_group/README helpers/doc/unix_group.README
 %__install -D -p -m644 $RPM_BUILD_DIR/%name-%version/helpers/ntlm_auth/no_check/README.no_check_ntlm_auth helpers/doc/README.no_check_ntlm_auth
+%__install -p -m755 %SOURCE4 %buildroot%_libdir/%name
+%__mkdir_p %buildroot%_datadir/snmp/mibs
+%__mv %buildroot%_datadir/%name/mib.txt %buildroot%_datadir/snmp/mibs/SQUID-MIB.txt
 
 %pre
 /usr/sbin/groupadd -r -f %name >/dev/null 2>&1
@@ -204,7 +219,7 @@ popd
 
 %_datadir/%name/errors
 %_datadir/%name/icons
-%_datadir/%name/mib.txt
+%_datadir/snmp/mibs/SQUID-MIB.txt
 
 %dir %_libdir/%name
 %_libdir/%name/cachemgr.cgi
@@ -230,6 +245,7 @@ popd
 %_libdir/%name/wb_group
 %_libdir/%name/wb_ntlmauth
 %_libdir/%name/wbinfo_group.pl
+%_libdir/%name/wbinfo_group.sh
 %_libdir/%name/yp_auth
 
 %_sbindir/%name
@@ -247,6 +263,20 @@ popd
 %attr(4710,root,%name) %_libdir/%name/pinger
 
 %changelog
+* Thu Jan 13 2005 Denis Ovsienko <pilot@altlinux.ru> 2.5.STABLE7-alt5
+- applied current patches:
+ + 2005-01-12 17:21 (Security issue) Denial of service with forged WCCP messages
+ + 2005-01-12 17:19 (Security issue) buffer overflow bug in gopherToHTML()
+ + 2005-01-08 03:13 (Medium) fakeauth_auth memory leak and NULL pointer access
+ + 2004-12-28 12:55 (Minor) Don't close "other" filedescriptors on startup
+ + 2004-12-21 17:50 (Minor Security) Confusing results on empty acl declarations
+ + 2004-12-08 00:00 (Minor) PURGE is allowed to delete internal objects
+- fix for #5767 (config patch and initgroups)
+- fix for #5616 (squid MIB)
+- fix for #5707 (wbinfo_group.pl and spaces)
+- updated FAQ to 1.240 2005/01/08 00:16:21
+- used macro instead of env var for rpm build root
+
 * Thu Dec 09 2004 Denis Ovsienko <pilot@altlinux.ru> 2.5.STABLE7-alt4
 - applied current patches:
  + 2004-12-08 01:03 (Minor) cachemgr vm_objects segfault

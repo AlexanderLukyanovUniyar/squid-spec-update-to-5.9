@@ -2,4 +2,5 @@ copy: *.init
 copy: *.logrotate
 copy: *.patch
 copy: *.sgml
+copy: *.sh
 tar.bz2: squid

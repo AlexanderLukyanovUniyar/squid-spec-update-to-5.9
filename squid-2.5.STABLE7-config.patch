@@ -44,15 +44,6 @@ diff -urN squid-2.5.STABLE7.orig/src/cf.data.pre squid-2.5.STABLE7/src/cf.data.p
  LOC: Config.effectiveUser
  DOC_START
  	If you start Squid as root, it will change its effective/real
-@@ -2440,7 +2442,7 @@
- 
- NAME: cache_effective_group
- TYPE: string
--DEFAULT: none
-+DEFAULT: squid
- LOC: Config.effectiveGroup
- DOC_START
- 	If you want Squid to run with a specific GID regardless of
 @@ -2661,7 +2663,7 @@
  
  NAME: logfile_rotate

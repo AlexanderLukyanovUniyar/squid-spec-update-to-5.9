@@ -15,6 +15,7 @@ Object Cache software.
 
 <p>
 You can download the FAQ as
+<url url="FAQ_long.html" name="HTML">,
 <url url="FAQ.pdf" name="PDF">, 
 <url url="FAQ.ps.gz" name="compressed Postscript">, 
 <url url="FAQ.txt" name="plain text">,
@@ -5878,6 +5879,34 @@ the Squid signature. See <ref id="custom-err-msgs" name="Customizable Error
 Messages">. The signature by defaults uses %T as timestamp, but if you like
 then you can use %t instead for a timestamp using local time zone.
 
+<sect1>I want to put ACL parameters in an external file.
+
+<P>by Adam Aube
+
+<P>Squid can read ACL parameters from an external file. To do this, first
+place the acl parameters, one per line, in a file. Then, on the ACL line
+in <em/squid.conf/, put the full path to the file in double quotes.
+
+<P>For example, instead of:
+
+<verb>
+	acl trusted_users proxy_auth john jane jim
+</verb>
+
+<P>you would have:
+
+<verb>
+	acl trusted_users proxy_auth "/usr/local/squid/etc/trusted_users.txt"
+</verb>
+
+<P>Inside trusted_users.txt, there is:
+
+<verb>
+	john
+	jane
+	jim
+</verb>
+
 <!-- %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% -->
 
 <sect>Troubleshooting
@@ -5940,6 +5969,14 @@ descriptors for all processes.
 <ITEM>Before configuring Squid run "<em>ulimit -HSn ####</em>" (where #### is the number of filedescriptors you need to support). Be sure to run "make clean" before configure if you have already run configure as the script might otherwise have cached the prior result.
 <ITEM>Configure, build and install Squid as usual
 <ITEM>Make sure your script for starting Squid contains the above <em>ulimit</em> command to raise the filedescriptor limit. You may also need to allow a larger port span for outgoing connections (set in /proc/sys/net/ipv4/, like in "<em>echo 1024 32768 &gt; /proc/sys/net/ipv4/ip_local_port_range</em>")
+</ITEMIZE>
+
+<P>Alternatively you can
+<ITEMIZE>
+<ITEM>Run configure with your needed configure options
+<ITEM>edit include/autoconf.h and define SQUID_MAXFD to your desired limit. Make sure to make it a nice and clean modulo 64 value (multiple of 64) to avoid various bugs in the libc headers.
+<ITEM>build and install Squid as usual
+<ITEM>Set the runtime ulimit as described above when starting Squid.
 </ITEMIZE>
 
 <P>If running things as root is not an option then get your sysadmin to install a the needed ulimit command in /etc/inittscript (see man initscript), install a patched kernel where INR_OPEN in include/linux/fs.h is changed to at least the amount you need or have them install a small suid program which sets the limit (see link below).
@@ -9183,8 +9220,8 @@ diff -p -u -r1.40 -r1.41
   * SUCH DAMAGE.
   *
   *	@(#)uipc_socket.c	8.3 (Berkeley) 4/15/94
-- *	$Id: FAQ.sgml,v 1.235 2004/10/04 20:38:05 wessels Exp $
-+ *	$Id: FAQ.sgml,v 1.235 2004/10/04 20:38:05 wessels Exp $
+- *	$Id: FAQ.sgml,v 1.240 2005/01/08 00:16:21 hno Exp $
++ *	$Id: FAQ.sgml,v 1.240 2005/01/08 00:16:21 hno Exp $
   */
 
  #include <sys/param.h>
@@ -12029,16 +12066,9 @@ you must use the <em/cache_peer_access/ configuration:
 The above lines tell Squid to NOT use <em/parent2/ for SSL, so it
 should always use <em/parent1/.
 
-<sect1>Logfile rotation doesn't work with Async I/O
+<sect1>Empty placeholder
 
-<P>
-It is a know limitation when using Async I/O on Linux. The Linux
-Threads package steals (uses internally) the SIGUSR1 signal that squid uses
-to rotate logs.
-
-<P>
-In order to not disturb the threads package SIGUSR1 use is disabled in
-Squid when threads is enabled on Linux.
+This entry has been deleted.
 
 <sect1>Adding a new cache disk
 <P>
@@ -13809,6 +13839,9 @@ If no usernames appear in access.log and/or no password dialogs appear
 in either browser, then the acl/http_access portions of squid.conf are
 not correct. 
 <p>
+<p>Note that when using NTLM authentication, you will see two 
+"TCP_DENIED/407" entries in access.log for every request. This
+is due to the challenge-response process of NTLM.
 <p>
 <bf>References</bf>
 <p>
@@ -13899,7 +13932,7 @@ want to make a cron job that regularly verifies that your proxy blocks
 access to port 25.
 
 <verb>
-$Id: FAQ.sgml,v 1.235 2004/10/04 20:38:05 wessels Exp $
+$Id: FAQ.sgml,v 1.240 2005/01/08 00:16:21 hno Exp $
 </verb>
 </article>
 <!--  LocalWords:  SSL MSIE Netmanage Chameleon WebSurfer unchecking remotehost

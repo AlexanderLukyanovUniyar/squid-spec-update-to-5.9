@@ -5,7 +5,7 @@ diff -Nur squid-2.5.STABLE4.orig/src/cf.data.pre squid-2.5.STABLE4/src/cf.data.p
  acl localhost src 127.0.0.1/255.255.255.255
  acl to_localhost dst 127.0.0.0/8
  acl SSL_ports port 443 563
-+acl Jabber_ports port 5222
++acl Jabber_ports port 5222 5223
  acl Safe_ports port 80		# http
  acl Safe_ports port 21		# ftp
  acl Safe_ports port 443 563	# https, snews

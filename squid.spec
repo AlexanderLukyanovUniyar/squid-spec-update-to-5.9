@@ -1,6 +1,6 @@
 Name: squid
 Version: 2.5.STABLE5
-Release: alt2
+Release: alt3
 
 Summary: The Squid proxy caching server
 License: GPL
@@ -264,6 +264,9 @@ popd
 %attr(4710,root,%name) %_libdir/%name/pinger
 
 %changelog
+* Wed May 26 2004 Konstantin Timoshenko <kt@altlinux.ru> 2.5.STABLE5-alt3
+- fix bugs id #1629
+
 * Fri May 14 2004 Konstantin Timoshenko <kt@altlinux.ru> 2.5.STABLE5-alt2
 - build with 8192 file descriptors
 - Official bugfixes from www.%name-cache.org.

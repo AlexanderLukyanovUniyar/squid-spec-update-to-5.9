@@ -1,0 +1,34 @@
+Index: squid/helpers/basic_auth/LDAP/squid_ldap_auth.8
+diff -c squid/helpers/basic_auth/LDAP/squid_ldap_auth.8:1.7.2.6 squid/helpers/basic_auth/LDAP/squid_ldap_auth.8:1.7.2.8
+*** squid/helpers/basic_auth/LDAP/squid_ldap_auth.8:1.7.2.6	Sat Jul 17 09:00:12 2004
+--- squid/helpers/basic_auth/LDAP/squid_ldap_auth.8	Tue Oct 19 04:07:25 2004
+***************
+*** 135,140 ****
+--- 135,144 ----
+  server specificiation by using servername:port syntax.
+  .
+  .TP
++ .BI -v " 2|3"
++ LDAP protocol version. Defaults to 2 if not specified.
++ .
++ .TP
+  .BI -Z
+  Use TLS encryption
+  .
+Index: squid/helpers/external_acl/ldap_group/squid_ldap_group.8
+diff -c squid/helpers/external_acl/ldap_group/squid_ldap_group.8:1.1.2.5 squid/helpers/external_acl/ldap_group/squid_ldap_group.8:1.1.2.6
+*** squid/helpers/external_acl/ldap_group/squid_ldap_group.8:1.1.2.5	Sat Jul 17 09:00:12 2004
+--- squid/helpers/external_acl/ldap_group/squid_ldap_group.8	Tue Oct 19 04:07:25 2004
+***************
+*** 119,124 ****
+--- 119,128 ----
+  other than the default LDAP port 389.
+  .
+  .TP
++ .BI -v " 2|3"
++ LDAP protocol version. Defaults to 2 if not specified.
++ .
++ .TP
+  .BI -Z
+  Use TLS encryption
+  .

@@ -1,6 +1,6 @@
 Name: squid
 Version: 2.5.STABLE7
-Release: alt2
+Release: alt4
 
 Summary: The Squid proxy caching server
 License: GPL
@@ -27,6 +27,15 @@ Patch7: patch-aa.patch
 
 #Official patches to Squid
 # merged into 2.5.STABLE7
+Patch10: squid-2.5.STABLE7-half_closed_POST.patch
+Patch11: squid-2.5.STABLE7-LDAP_version_documentation.patch
+Patch12: squid-2.5.STABLE7_req_resp_header.patch
+Patch13: squid-2.5.STABLE7-helper_shutdown.patch
+Patch14: squid-2.5.STABLE7-non_blocking_disk.patch
+Patch15: squid-2.5.STABLE7-blank_response.patch
+Patch16: squid-2.5.STABLE7-dothost.patch
+Patch17: squid-2.5.STABLE7-httpd_accel_vport.patch
+Patch18: squid-2.5.STABLE7-cachemgr_vmobjects.patch
 
 Obsoletes: %name-novm
 
@@ -68,6 +77,16 @@ ICMP messages directly
 %patch5 -p1
 %patch6 -p1
 %patch7 -p1
+
+%patch10 -p1
+%patch11 -p1
+%patch12 -p1
+%patch13 -p1
+%patch14 -p1
+%patch15 -p1
+%patch16 -p1
+%patch17 -p1
+%patch18 -p1
 
 %build
 %set_autoconf_version 2.5
@@ -228,6 +247,21 @@ popd
 %attr(4710,root,%name) %_libdir/%name/pinger
 
 %changelog
+* Thu Dec 09 2004 Denis Ovsienko <pilot@altlinux.ru> 2.5.STABLE7-alt4
+- applied current patches:
+ + 2004-12-08 01:03 (Minor) cachemgr vm_objects segfault
+ + 2004-12-08 00:47 (Minor) httpd_accel_port 0 (virtual) not working correctly
+ + 2004-12-07 23:45 (Cosmetic / Minor Security issue) Random error messages in response to malformed host name
+
+* Sat Dec 04 2004 Denis Ovsienko <pilot@altlinux.ru> 2.5.STABLE7-alt3
+- applied current patches:
+ + 2004-11-07 23:37 (Minor) Squid fails to close TCP connection after blank HTTP response
+ + 2004-11-06 21:42 (Minor) 100% CPU on startup on new/experimental Linux kernels due to O_NONBLOCK
+ + 2004-11-06 15:28 (Minor) Failure to shut down busy helpers on -k rotate/reconfigure
+ + 2004-10-20 23:23 (Minor) The new req_header and resp_header acls segfaults immediately on parse of squid.conf
+ + 2004-10-19 10:09 (Cosmetic) Document -v (protocol version) option to LDAP helpers
+ + 2004-10-14 22:48 (Minor) 100% CPU usage on half-closed PUT/POST requests
+
 * Sun Nov 14 2004 Dmitry V. Levin <ldv@altlinux.org> 2.5.STABLE7-alt2
 - Cleaned up build dependencies, was too superfluous
   since 2.5.STABLE6-alt1.

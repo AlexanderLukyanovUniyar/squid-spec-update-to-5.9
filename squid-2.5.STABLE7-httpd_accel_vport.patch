@@ -1,0 +1,22 @@
+Index: squid/src/client_side.c
+diff -c squid/src/client_side.c:1.561.2.64 squid/src/client_side.c:1.561.2.65
+*** squid/src/client_side.c:1.561.2.64	Tue Dec  7 16:57:25 2004
+--- squid/src/client_side.c	Tue Dec  7 17:44:01 2004
+***************
+*** 2872,2877 ****
+--- 2872,2886 ----
+  		vport, url);
+  #endif
+  	    debug(33, 5) ("VHOST REWRITE: '%s'\n", http->uri);
++ 	} else if (vport_mode) {
++ 	    int vport;
++ 	    const char *protocol_name = "http";
++ 	    vport = (int) ntohs(http->conn->me.sin_port);
++ 	    url_sz = strlen(url) + 32 + Config.appendDomainLen +
++ 		strlen(Config.Accel.host);
++ 	    http->uri = xcalloc(url_sz, 1);
++ 	    snprintf(http->uri, url_sz, "%s://%s:%d%s",
++ 		protocol_name, Config.Accel.host, vport, url);
+  	} else {
+  	    url_sz = strlen(Config2.Accel.prefix) + strlen(url) +
+  		Config.appendDomainLen + 1;

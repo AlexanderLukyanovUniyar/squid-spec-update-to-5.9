@@ -1,0 +1,52 @@
+Index: squid/configure.in
+diff -c squid/configure.in:1.251.2.54 squid/configure.in:1.251.2.55
+*** squid/configure.in:1.251.2.54	Mon Apr  5 11:19:46 2004
+--- squid/configure.in	Mon May 31 17:04:18 2004
+***************
+*** 88,93 ****
+--- 88,95 ----
+      	    # sunos has too many warnings for this to be useful
+  	    # motorola too
+      	    ;;
++ 	*m88k*-openbsd*)
++ 	    ;;
+  	*m88k*)
+  	    # Motorola cc/ld does not like -02 but is ok on -O
+  	    CFLAGS=`echo $CFLAGS | sed -e 's/-O[0-9]/-O/'`
+***************
+*** 1591,1596 ****
+--- 1593,1600 ----
+  				ac_cv_func_vsnprintf=no
+  			;;
+  		esac
++ 		;;
++ 	*m88k*-openbsd*)
+  		;;
+  	*m88k*)
+  		CFLAGS="$CFLAGS -D_SQUID_MOTOROLA_"
+Index: squid/configure
+diff -c squid/configure:1.248.2.56 squid/configure:1.248.2.57
+*** squid/configure:1.248.2.56	Mon Apr  5 18:11:29 2004
+--- squid/configure	Mon May 31 18:11:30 2004
+***************
+*** 1739,1744 ****
+--- 1739,1746 ----
+      	    # sunos has too many warnings for this to be useful
+  	    # motorola too
+      	    ;;
++ 	*m88k*-openbsd*)
++ 	    ;;
+  	*m88k*)
+  	    # Motorola cc/ld does not like -02 but is ok on -O
+  	    CFLAGS=`echo $CFLAGS | sed -e 's/-O0-9/-O/'`
+***************
+*** 7342,7347 ****
+--- 7344,7351 ----
+  			;;
+  		esac
+  		;;
++ 	*m88k*-openbsd*)
++ 		;;
+  	*m88k*)
+  		CFLAGS="$CFLAGS -D_SQUID_MOTOROLA_"
+  		cat >> confdefs.h <<\EOF

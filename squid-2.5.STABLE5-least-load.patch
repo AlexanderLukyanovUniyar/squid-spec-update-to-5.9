@@ -1,0 +1,85 @@
+Index: squid/src/fs/ufs/store_dir_ufs.c
+diff -c squid/src/fs/ufs/store_dir_ufs.c:1.39.2.7 squid/src/fs/ufs/store_dir_ufs.c:1.39.2.8
+*** squid/src/fs/ufs/store_dir_ufs.c:1.39.2.7	Wed Jan  8 20:38:48 2003
+--- squid/src/fs/ufs/store_dir_ufs.c	Mon May 31 16:03:31 2004
+***************
+*** 1355,1362 ****
+  int
+  storeUfsDirCheckObj(SwapDir * SD, const StoreEntry * e)
+  {
+!     /* Return 999 (99.9%) constant load */
+!     return 999;
+  }
+  
+  /*
+--- 1355,1362 ----
+  int
+  storeUfsDirCheckObj(SwapDir * SD, const StoreEntry * e)
+  {
+!     ufsinfo_t *ufsinfo = SD->fsdata;
+!     return 500 + ufsinfo->open_files / 2;
+  }
+  
+  /*
+Index: squid/src/fs/ufs/store_io_ufs.c
+diff -c squid/src/fs/ufs/store_io_ufs.c:1.9.2.1 squid/src/fs/ufs/store_io_ufs.c:1.9.2.2
+*** squid/src/fs/ufs/store_io_ufs.c:1.9.2.1	Thu Aug  8 14:17:42 2002
+--- squid/src/fs/ufs/store_io_ufs.c	Mon May 31 16:03:31 2004
+***************
+*** 50,55 ****
+--- 50,56 ----
+  storeUfsOpen(SwapDir * SD, StoreEntry * e, STFNCB * file_callback,
+      STIOCB * callback, void *callback_data)
+  {
++     ufsinfo_t *ufsinfo = (ufsinfo_t *) SD->fsdata;
+      sfileno f = e->swap_filen;
+      char *path = storeUfsDirFullPath(SD, f, NULL);
+      storeIOState *sio;
+***************
+*** 80,85 ****
+--- 81,87 ----
+      if (fstat(fd, &sb) == 0)
+  	sio->st_size = sb.st_size;
+      store_open_disk_fd++;
++     ufsinfo->open_files++;
+  
+      /* We should update the heap/dlink position here ! */
+      return sio;
+***************
+*** 126,131 ****
+--- 128,134 ----
+      ((ufsstate_t *) (sio->fsstate))->flags.reading = 0;
+      ((ufsstate_t *) (sio->fsstate))->flags.close_request = 0;
+      store_open_disk_fd++;
++     ufsinfo->open_files++;
+  
+      /* now insert into the replacement policy */
+      storeUfsDirReplAdd(SD, e);
+***************
+*** 246,253 ****
+--- 249,259 ----
+      ufsstate_t *ufsstate = (ufsstate_t *) sio->fsstate;
+      debug(79, 3) ("storeUfsIOCallback: errflag=%d\n", errflag);
+      if (ufsstate->fd > -1) {
++ 	SwapDir *SD = INDEXSD(sio->swap_dirn);
++ 	ufsinfo_t *ufsinfo = (ufsinfo_t *) SD->fsdata;
+  	file_close(ufsstate->fd);
+  	store_open_disk_fd--;
++ 	ufsinfo->open_files--;
+      }
+      if (cbdataValid(sio->callback_data))
+  	sio->callback(sio->callback_data, errflag, sio);
+Index: squid/src/fs/ufs/store_ufs.h
+diff -c squid/src/fs/ufs/store_ufs.h:1.2 squid/src/fs/ufs/store_ufs.h:1.2.4.1
+*** squid/src/fs/ufs/store_ufs.h:1.2	Thu May 11 18:29:21 2000
+--- squid/src/fs/ufs/store_ufs.h	Mon May 31 16:03:31 2004
+***************
+*** 13,18 ****
+--- 13,19 ----
+      int l2;
+      fileMap *map;
+      int suggest;
++     int open_files;
+  };
+  
+  struct _ufsstate_t {

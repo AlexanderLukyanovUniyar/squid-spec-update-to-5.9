@@ -1,0 +1,320 @@
+diff -Nur squid-2.5.STABLE5.orig/configure squid-2.5.STABLE5/configure
+--- squid-2.5.STABLE5.orig/configure	2004-06-10 15:30:41 +0600
++++ squid-2.5.STABLE5/configure	2004-06-10 16:20:57 +0600
+@@ -2754,7 +2754,9 @@
+ if test -n "$BASIC_AUTH_HELPERS"; then
+     for helper in $BASIC_AUTH_HELPERS; do
+ 	if test -f $srcdir/helpers/basic_auth/$helper/Makefile.in; then
+-		:
++		if test "$helper" = "SASL"; then
++			require_sasl=yes
++		fi
+ 	else
+ 		echo "ERROR: Basic auth helper $helper does not exists"
+ 		exit 1
+@@ -2893,6 +2895,142 @@
+ 
+ 
+ 
++if test "$require_sasl" = "yes"; then
++	echo $ac_n "checking how to run the C preprocessor""... $ac_c" 1>&6
++echo "configure:2939: checking how to run the C preprocessor" >&5
++# On Suns, sometimes $CPP names a directory.
++if test -n "$CPP" && test -d "$CPP"; then
++  CPP=
++fi
++if test -z "$CPP"; then
++if eval "test \"`echo '$''{'ac_cv_prog_CPP'+set}'`\" = set"; then
++  echo $ac_n "(cached) $ac_c" 1>&6
++else
++    # This must be in double quotes, not single quotes, because CPP may get
++  # substituted into the Makefile and "${CC-cc}" will confuse make.
++  CPP="${CC-cc} -E"
++  # On the NeXT, cc -E runs the code through the compiler's parser,
++  # not just through cpp.
++  cat > conftest.$ac_ext <<EOF
++#line 2954 "configure"
++#include "confdefs.h"
++#include <assert.h>
++Syntax Error
++EOF
++ac_try="$ac_cpp conftest.$ac_ext >/dev/null 2>conftest.out"
++{ (eval echo configure:2960: \"$ac_try\") 1>&5; (eval $ac_try) 2>&5; }
++ac_err=`grep -v '^ *+' conftest.out | grep -v "^conftest.${ac_ext}\$"`
++if test -z "$ac_err"; then
++  :
++else
++  echo "$ac_err" >&5
++  echo "configure: failed program was:" >&5
++  cat conftest.$ac_ext >&5
++  rm -rf conftest*
++  CPP="${CC-cc} -E -traditional-cpp"
++  cat > conftest.$ac_ext <<EOF
++#line 2971 "configure"
++#include "confdefs.h"
++#include <assert.h>
++Syntax Error
++EOF
++ac_try="$ac_cpp conftest.$ac_ext >/dev/null 2>conftest.out"
++{ (eval echo configure:2977: \"$ac_try\") 1>&5; (eval $ac_try) 2>&5; }
++ac_err=`grep -v '^ *+' conftest.out | grep -v "^conftest.${ac_ext}\$"`
++if test -z "$ac_err"; then
++  :
++else
++  echo "$ac_err" >&5
++  echo "configure: failed program was:" >&5
++  cat conftest.$ac_ext >&5
++  rm -rf conftest*
++  CPP="${CC-cc} -nologo -E"
++  cat > conftest.$ac_ext <<EOF
++#line 2988 "configure"
++#include "confdefs.h"
++#include <assert.h>
++Syntax Error
++EOF
++ac_try="$ac_cpp conftest.$ac_ext >/dev/null 2>conftest.out"
++{ (eval echo configure:2994: \"$ac_try\") 1>&5; (eval $ac_try) 2>&5; }
++ac_err=`grep -v '^ *+' conftest.out | grep -v "^conftest.${ac_ext}\$"`
++if test -z "$ac_err"; then
++  :
++else
++  echo "$ac_err" >&5
++  echo "configure: failed program was:" >&5
++  cat conftest.$ac_ext >&5
++  rm -rf conftest*
++  CPP=/lib/cpp
++fi
++rm -f conftest*
++fi
++rm -f conftest*
++fi
++rm -f conftest*
++  ac_cv_prog_CPP="$CPP"
++fi
++  CPP="$ac_cv_prog_CPP"
++else
++  ac_cv_prog_CPP="$CPP"
++fi
++echo "$ac_t""$CPP" 1>&6
++
++for ac_hdr in sasl/sasl.h sasl.h
++do
++ac_safe=`echo "$ac_hdr" | sed 'y%./+-%__p_%'`
++echo $ac_n "checking for $ac_hdr""... $ac_c" 1>&6
++echo "configure:3022: checking for $ac_hdr" >&5
++if eval "test \"`echo '$''{'ac_cv_header_$ac_safe'+set}'`\" = set"; then
++  echo $ac_n "(cached) $ac_c" 1>&6
++else
++  cat > conftest.$ac_ext <<EOF
++#line 3027 "configure"
++#include "confdefs.h"
++#include <$ac_hdr>
++EOF
++ac_try="$ac_cpp conftest.$ac_ext >/dev/null 2>conftest.out"
++{ (eval echo configure:3032: \"$ac_try\") 1>&5; (eval $ac_try) 2>&5; }
++ac_err=`grep -v '^ *+' conftest.out | grep -v "^conftest.${ac_ext}\$"`
++if test -z "$ac_err"; then
++  rm -rf conftest*
++  eval "ac_cv_header_$ac_safe=yes"
++else
++  echo "$ac_err" >&5
++  echo "configure: failed program was:" >&5
++  cat conftest.$ac_ext >&5
++  rm -rf conftest*
++  eval "ac_cv_header_$ac_safe=no"
++fi
++rm -f conftest*
++fi
++if eval "test \"`echo '$ac_cv_header_'$ac_safe`\" = yes"; then
++  echo "$ac_t""yes" 1>&6
++    ac_tr_hdr=HAVE_`echo $ac_hdr | sed 'y%abcdefghijklmnopqrstuvwxyz./-%ABCDEFGHIJKLMNOPQRSTUVWXYZ___%'`
++  cat >> confdefs.h <<EOF
++#define $ac_tr_hdr 1
++EOF
++ 
++else
++  echo "$ac_t""no" 1>&6
++fi
++done
++
++	if test "$ac_cv_header_sasl_sasl_h" = "yes"; then
++		echo "using SASL2"
++		LIBSASL="-lsasl2"
++	else
++		if test "$ac_cv_header_sasl_h" = "yes"; then
++			echo "using SASL"
++			LIBSASL="-lsasl"
++		else
++			echo "ERROR: Neither SASL nor SASL2 found"
++			exit 1
++		fi
++	fi
++	
++fi
++
+ # Check whether --enable-unlinkd or --disable-unlinkd was given.
+ if test "${enable_unlinkd+set}" = set; then
+   enableval="$enable_unlinkd"
+@@ -8619,9 +8757,10 @@
+ s%@DIGEST_AUTH_HELPERS@%$DIGEST_AUTH_HELPERS%g
+ s%@EXTERNAL_ACL_HELPERS@%$EXTERNAL_ACL_HELPERS%g
+ s%@SAMBASOURCES@%$SAMBASOURCES%g
++s%@CPP@%$CPP%g
++s%@LIBSASL@%$LIBSASL%g
+ s%@ENABLE_UNLINKD_TRUE@%$ENABLE_UNLINKD_TRUE%g
+ s%@ENABLE_UNLINKD_FALSE@%$ENABLE_UNLINKD_FALSE%g
+-s%@CPP@%$CPP%g
+ s%@RANLIB@%$RANLIB%g
+ s%@LN_S@%$LN_S%g
+ s%@SH@%$SH%g
+diff -Nur squid-2.5.STABLE5.orig/configure.in squid-2.5.STABLE5/configure.in
+--- squid-2.5.STABLE5.orig/configure.in	2004-06-10 15:30:41 +0600
++++ squid-2.5.STABLE5/configure.in	2004-06-10 16:20:57 +0600
+@@ -912,7 +912,9 @@
+ if test -n "$BASIC_AUTH_HELPERS"; then
+     for helper in $BASIC_AUTH_HELPERS; do
+ 	if test -f $srcdir/helpers/basic_auth/$helper/Makefile.in; then
+-		:
++		if test "$helper" = "SASL"; then
++			require_sasl=yes
++		fi
+ 	else
+ 		echo "ERROR: Basic auth helper $helper does not exists"
+ 		exit 1
+@@ -1055,6 +1057,25 @@
+ ])
+ AC_SUBST(SAMBASOURCES)
+ 
++dnl Check for Cyrus SASL
++if test "$require_sasl" = "yes"; then
++	AC_CHECK_HEADERS(sasl/sasl.h sasl.h)
++	if test "$ac_cv_header_sasl_sasl_h" = "yes"; then
++		echo "using SASL2"
++		LIBSASL="-lsasl2"
++		AC_DEFINE(HAVE_SASL_SASL_H)
++	else
++		if test "$ac_cv_header_sasl_h" = "yes"; then
++			echo "using SASL"
++			LIBSASL="-lsasl"
++		else
++			echo "ERROR: Neither SASL nor SASL2 found"
++			exit 1
++		fi
++	fi
++	AC_SUBST(LIBSASL)
++fi
++
+ dnl Disable "unlinkd" code
+ AC_ARG_ENABLE(unlinkd,
+ [  --disable-unlinkd       Do not use unlinkd],
+diff -Nur squid-2.5.STABLE5.orig/helpers/basic_auth/SASL/Makefile.am squid-2.5.STABLE5/helpers/basic_auth/SASL/Makefile.am
+--- squid-2.5.STABLE5.orig/helpers/basic_auth/SASL/Makefile.am	2004-06-10 15:30:42 +0600
++++ squid-2.5.STABLE5/helpers/basic_auth/SASL/Makefile.am	2004-06-10 16:20:57 +0600
+@@ -9,5 +9,5 @@
+ INCLUDES	= -I$(top_srcdir)/include
+ 
+ libexec_PROGRAMS	= sasl_auth
+-LDADD			= -L$(top_builddir)/lib -lmiscutil -lsasl $(XTRA_LIBS)
++LDADD			= -L$(top_builddir)/lib -lmiscutil $(LIBSASL) $(XTRA_LIBS)
+ EXTRA_DIST		= squid_sasl_auth squid_sasl_auth.conf
+diff -Nur squid-2.5.STABLE5.orig/helpers/basic_auth/SASL/Makefile.in squid-2.5.STABLE5/helpers/basic_auth/SASL/Makefile.in
+--- squid-2.5.STABLE5.orig/helpers/basic_auth/SASL/Makefile.in	2004-06-10 15:30:42 +0600
++++ squid-2.5.STABLE5/helpers/basic_auth/SASL/Makefile.in	2004-06-10 16:20:57 +0600
+@@ -87,6 +87,7 @@
+ INSTALL_STRIP_PROGRAM = @INSTALL_STRIP_PROGRAM@
+ LIBDLMALLOC = @LIBDLMALLOC@
+ LIBREGEX = @LIBREGEX@
++LIBSASL = @LIBSASL@
+ LIB_MALLOC = @LIB_MALLOC@
+ LN = @LN@
+ LN_S = @LN_S@
+@@ -123,7 +124,7 @@
+ INCLUDES = -I$(top_srcdir)/include
+ 
+ libexec_PROGRAMS = sasl_auth
+-LDADD = -L$(top_builddir)/lib -lmiscutil -lsasl $(XTRA_LIBS)
++LDADD = -L$(top_builddir)/lib -lmiscutil $(LIBSASL) $(XTRA_LIBS)
+ EXTRA_DIST = squid_sasl_auth squid_sasl_auth.conf
+ subdir = helpers/basic_auth/SASL
+ mkinstalldirs = $(SHELL) $(top_srcdir)/cfgaux/mkinstalldirs
+diff -Nur squid-2.5.STABLE5.orig/helpers/basic_auth/SASL/sasl_auth.c squid-2.5.STABLE5/helpers/basic_auth/SASL/sasl_auth.c
+--- squid-2.5.STABLE5.orig/helpers/basic_auth/SASL/sasl_auth.c	2004-06-10 15:30:42 +0600
++++ squid-2.5.STABLE5/helpers/basic_auth/SASL/sasl_auth.c	2004-06-10 16:20:57 +0600
+@@ -23,9 +23,9 @@
+  * This program authenticates users against using cyrus-sasl
+  *
+  * Compile this program with: gcc -Wall -o sasl_auth sasl_auth.c -lsasl
++ *             or with SASL2: gcc -Wall -o sasl_auth sasl_auth.c -lsasl2
+  *
+  */
+-#include <sasl.h>
+ #include <stdio.h>
+ #include <errno.h>
+ #include <stdlib.h>
+@@ -33,6 +33,12 @@
+ 
+ #include "util.h"
+ 
++#ifdef HAVE_SASL_SASL_H
++#include <sasl/sasl.h>
++#else
++#include <sasl.h>
++#endif
++
+ #define APP_NAME_SASL	"squid_sasl_auth"
+ 
+ int
+@@ -40,7 +46,9 @@
+ {
+ 	char line[8192];
+ 	char *username, *password;
++#if SASL_VERSION_MAJOR < 2
+ 	const char *errstr;
++#endif
+ 
+ 	int rc;
+         sasl_conn_t *conn = NULL;
+@@ -56,7 +64,11 @@
+ 		return 1;
+ 	}
+ 
++	#if SASL_VERSION_MAJOR < 2
+ 	rc = sasl_server_new( APP_NAME_SASL, NULL, NULL, NULL, 0, &conn );
++	#else
++	rc = sasl_server_new( APP_NAME_SASL, NULL, NULL, NULL, NULL, NULL, 0, &conn );
++	#endif
+ 
+ 	if ( rc != SASL_OK ) {
+ 		fprintf( stderr, "error %d %s\n", rc, sasl_errstring(rc, NULL, NULL ));
+@@ -84,15 +96,21 @@
+ 		rfc1738_unescape(username);
+ 		rfc1738_unescape(password);
+ 
++		#if SASL_VERSION_MAJOR < 2
+ 		rc = sasl_checkpass(conn, username, strlen(username), password, strlen(password), &errstr);
++		#else
++		rc = sasl_checkpass(conn, username, strlen(username), password, strlen(password));
++		#endif
+ 
+ 		if ( rc != SASL_OK ) {
++			#if SASL_VERSION_MAJOR < 2
+ 			if ( errstr ) {
+ 				fprintf( stderr, "errstr %s\n", errstr );
+ 			}
+ 			if ( rc != SASL_BADAUTH ) {
+ 				fprintf( stderr, "error %d %s\n", rc, sasl_errstring(rc, NULL, NULL ));
+ 			}
++			#endif
+ 			fprintf( stdout, "ERR\n" );
+ 		}
+ 		else {
+diff -Nur squid-2.5.STABLE5.orig/include/autoconf.h.in squid-2.5.STABLE5/include/autoconf.h.in
+--- squid-2.5.STABLE5.orig/include/autoconf.h.in	2004-06-10 15:30:41 +0600
++++ squid-2.5.STABLE5/include/autoconf.h.in	2004-06-10 16:20:25 +0600
+@@ -870,5 +870,6 @@
+ /* Enable hostname sanity checks */
+ #undef CHECK_HOSTNAMES
+ 
++#undef HAVE_SASL_SASL_H
+ 
+ #endif /* __CONFIGURE_H__ */

@@ -1,6 +1,6 @@
 Name: squid
 Version: 2.5.STABLE5
-Release: alt3
+Release: alt4
 
 Summary: The Squid proxy caching server
 License: GPL
@@ -21,7 +21,6 @@ Patch3: %name-2.4.STABLE6-alt-without-bind.patch
 Patch4: %name-2.5-perlpath.patch
 Patch5: %name-2.5-automake.patch
 Patch6: %name-errrors-belarusian.patch
-Patch7: %name-2.5.sasl.patch
 
 #Official patches to Squid
 Patch10: %name-2.5.STABLE5-ldap.patch
@@ -43,6 +42,19 @@ Patch25: %name-2.5.STABLE5-turkish_ERR_DNS_FAIL.patch
 Patch26: %name-2.5.STABLE5-vary_negatively.patch
 Patch27: %name-2.5.STABLE5-vary.patch
 Patch28: %name-2.5.STABLE5-version.patch
+Patch29: %name-2.5.STABLE5-sasl_auth_SASL2.patch
+Patch30: %name-2.5.STABLE5-large_cache_mem.patch
+Patch31: %name-2.5.STABLE5-proxy_abuse.patch
+Patch32: %name-2.5.STABLE5-CONNECT_log_size.patch
+Patch33: %name-2.5.STABLE5-least-load.patch
+Patch34: %name-2.5.STABLE5-cacheCurrentUnlinkRequests.patch
+Patch35: %name-2.5.STABLE5-debug_client_ip.patch
+Patch36: %name-2.5.STABLE5-libntlmssp.c.patch
+Patch37: %name-2.5.STABLE5-va_copy.patch
+Patch38: %name-2.5.STABLE5-dns_localhost.patch
+Patch39: %name-2.5.STABLE5-msnt_auth_doc.patch
+Patch40: %name-2.5.STABLE5-ftp_html_doctype.patch
+Patch41: %name-2.5.STABLE5-openbsd_m88k.patch
 
 Obsoletes: %name-novm
 
@@ -83,7 +95,6 @@ ICMP messages directly
 %patch4 -p1
 %patch5 -p1
 %patch6 -p1
-%patch7 -p1
 
 %patch10 -p1
 %patch11 -p1
@@ -104,6 +115,19 @@ ICMP messages directly
 %patch26 -p1
 %patch27 -p1
 %patch28 -p1
+%patch29 -p1
+%patch30 -p1
+%patch31 -p1
+%patch32 -p1
+%patch33 -p1
+%patch34 -p1
+%patch35 -p1
+%patch36 -p1
+%patch37 -p1
+%patch38 -p1
+%patch39 -p1
+%patch40 -p1
+%patch41 -p1
 
 %build
 %set_autoconf_version 2.5
@@ -264,6 +288,10 @@ popd
 %attr(4710,root,%name) %_libdir/%name/pinger
 
 %changelog
+* Thu Jun 10 2004 Konstantin Timoshenko <kt@altlinux.ru> 2.5.STABLE5-alt4
+- Official bugfixes from www.%name-cache.org.
+- fix bugs id #4330
+
 * Wed May 26 2004 Konstantin Timoshenko <kt@altlinux.ru> 2.5.STABLE5-alt3
 - fix bugs id #1629
 

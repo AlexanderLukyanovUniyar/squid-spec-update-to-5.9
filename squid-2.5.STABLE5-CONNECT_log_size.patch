@@ -1,0 +1,59 @@
+Index: squid/src/access_log.c
+diff -c squid/src/access_log.c:1.72.2.4 squid/src/access_log.c:1.72.2.5
+*** squid/src/access_log.c:1.72.2.4	Mon Jul 28 02:59:28 2003
+--- squid/src/access_log.c	Mon Jun  7 15:20:34 2004
+***************
+*** 245,258 ****
+  	client = inet_ntoa(al->cache.caddr);
+      user = accessLogFormatName(al->cache.authuser ?
+  	al->cache.authuser : al->cache.rfc931);
+!     logfilePrintf(logfile, "%9d.%03d %6d %s %s/%03d %ld %s %s %s %s%s/%s %s",
+  	(int) current_time.tv_sec,
+  	(int) current_time.tv_usec / 1000,
+  	al->cache.msec,
+  	client,
+  	log_tags[al->cache.code],
+  	al->http.code,
+! 	(long int) al->cache.size,
+  	al->private.method_str,
+  	al->url,
+  	user && *user ? user : dash_str,
+--- 245,258 ----
+  	client = inet_ntoa(al->cache.caddr);
+      user = accessLogFormatName(al->cache.authuser ?
+  	al->cache.authuser : al->cache.rfc931);
+!     logfilePrintf(logfile, "%9d.%03d %6d %s %s/%03d %lu %s %s %s %s%s/%s %s",
+  	(int) current_time.tv_sec,
+  	(int) current_time.tv_usec / 1000,
+  	al->cache.msec,
+  	client,
+  	log_tags[al->cache.code],
+  	al->http.code,
+! 	(unsigned long) al->cache.size,
+  	al->private.method_str,
+  	al->url,
+  	user && *user ? user : dash_str,
+Index: squid/src/ssl.c
+diff -c squid/src/ssl.c:1.118.2.5 squid/src/ssl.c:1.118.2.6
+*** squid/src/ssl.c:1.118.2.5	Mon Mar 29 02:59:44 2004
+--- squid/src/ssl.c	Mon Jun  7 15:20:34 2004
+***************
+*** 326,332 ****
+  	sslState->server.len -= len;
+  	/* increment total object size */
+  	if (sslState->size_ptr)
+! 	    *sslState->size_ptr += len;
+  	if (sslState->server.len > 0) {
+  	    /* we didn't write the whole thing */
+  	    xmemmove(sslState->server.buf,
+--- 326,335 ----
+  	sslState->server.len -= len;
+  	/* increment total object size */
+  	if (sslState->size_ptr)
+! #if SIZEOF_SIZE_T == 4
+! 	    if (*sslState->size_ptr < 0x7FFF0000)
+! #endif
+! 		*sslState->size_ptr += len;
+  	if (sslState->server.len > 0) {
+  	    /* we didn't write the whole thing */
+  	    xmemmove(sslState->server.buf,

@@ -1,6 +1,6 @@
 Name: squid
 Version: 2.5.STABLE6
-Release: alt2
+Release: alt3
 
 Summary: The Squid proxy caching server
 License: GPL
@@ -24,27 +24,38 @@ Patch6: %name-errrors-belarusian.patch
 Patch7: patch-aa.patch
 
 #Official patches to Squid
-Patch10: %name-2.5.STABLE6-active_requests_delaypool.patch
-Patch11: %name-2.5.STABLE6-ntlm_noreuse_leak.patch
-Patch12: %name-2.5.STABLE6-basic_auth_caseinsensitive.patch
-Patch13: %name-2.5.STABLE6-partial_hit_is_miss.patch
-Patch14: %name-2.5.STABLE6-client_db_gc.patch
-Patch15: %name-2.5.STABLE6-request_header_max_size.patch
-Patch16: %name-2.5.STABLE6-concurrent_dns_lookups.patch
-Patch17: %name-2.5.STABLE6-HEAD.patch
-Patch18: %name-2.5.STABLE6-ufs_create_error.patch
+Patch10: squid-2.5.STABLE6-active_requests_delaypool.patch
+Patch11: squid-2.5.STABLE6-ntlm_noreuse_leak.patch
+Patch12: squid-2.5.STABLE6-basic_auth_caseinsensitive.patch
+Patch13: squid-2.5.STABLE6-partial_hit_is_miss.patch
+Patch14: squid-2.5.STABLE6-client_db_gc.patch
+Patch15: squid-2.5.STABLE6-request_header_max_size.patch
+Patch16: squid-2.5.STABLE6-concurrent_dns_lookups.patch
+Patch17: squid-2.5.STABLE6-HEAD.patch
+Patch18: squid-2.5.STABLE6-ufs_create_error.patch
 # Updated to 2004-08-10 version
-Patch19: %name-2.5.STABLE6-ldap_helpers.patch
-Patch20: %name-2.5.STABLE6-ufs_no_valid_dir.patch
-Patch21: %name-2.5.STABLE6-ntlm_challengereuse_leak.patch
-Patch22: %name-2.5.STABLE6-ntlmtruncated.patch
-Patch23: %name-2.5.STABLE6-errorpage_quote.patch
-Patch24: %name-2.5.STABLE6-heap_segfault.patch
+Patch19: squid-2.5.STABLE6-ldap_helpers.patch
+Patch20: squid-2.5.STABLE6-ufs_no_valid_dir.patch
+Patch21: squid-2.5.STABLE6-ntlm_challengereuse_leak.patch
+Patch22: squid-2.5.STABLE6-ntlmtruncated.patch
+Patch23: squid-2.5.STABLE6-errorpage_quote.patch
+Patch24: squid-2.5.STABLE6-heap_segfault.patch
 # Fails due to ALT-specific defaults (2 extra lines)
 # Rediffed.
-Patch25: %name-2.5.STABLE6-initgroups-alt.patch
+Patch25: squid-2.5.STABLE6-initgroups-alt.patch
 # Indentation changed. Rediffed.
-Patch26: %name-2.5.STABLE6-external_acl_newlines-alt.patch
+Patch26: squid-2.5.STABLE6-external_acl_newlines-alt.patch
+Patch27: squid-2.5.STABLE6-ntlm_fetch_string.patch
+# same issue, but 2 patches changed after patch 27
+#Patch28: squid-2.5.STABLE6-ntlm_noreuse_leak.patch
+#Patch29: squid-2.5.STABLE6-ntlm_challengereuse_leak.patch
+Patch30: squid-2.5.STABLE6-rotate_error.patch
+Patch31: squid-2.5.STABLE6-digest_crash.patch
+Patch32: squid-2.5.STABLE6-acl_times.patch
+Patch33: squid-2.5.STABLE6-http_header_range.patch
+Patch34: squid-2.5.STABLE6-Content-Disposition.patch
+
+
 
 Obsoletes: %name-novm
 
@@ -104,6 +115,14 @@ ICMP messages directly
 %patch24 -p1
 %patch25 -p1
 %patch26 -p1
+%patch27 -p1
+#%patch28 -p1
+#%patch29 -p1
+%patch30 -p1
+%patch31 -p1
+%patch32 -p1
+%patch33 -p1
+%patch34 -p1
 
 %build
 %set_autoconf_version 2.5
@@ -264,6 +283,9 @@ popd
 %attr(4710,root,%name) %_libdir/%name/pinger
 
 %changelog
+* Sat Sep 04 2004 Denis Ovsienko <pilot@altlinux.ru> 2.5.STABLE6-alt3
+- more patches
+
 * Tue Aug 17 2004 Denis Ovsienko <pilot@altlinux.ru> 2.5.STABLE6-alt2
 - Updated FAQ to 2004-08-10
 - Added and rediffed official patches up to 2004-08-14

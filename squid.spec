@@ -1,6 +1,6 @@
 Name: squid
 Version: 2.5.STABLE6
-Release: alt1
+Release: alt2
 
 Summary: The Squid proxy caching server
 License: GPL
@@ -33,9 +33,18 @@ Patch15: %name-2.5.STABLE6-request_header_max_size.patch
 Patch16: %name-2.5.STABLE6-concurrent_dns_lookups.patch
 Patch17: %name-2.5.STABLE6-HEAD.patch
 Patch18: %name-2.5.STABLE6-ufs_create_error.patch
+# Updated to 2004-08-10 version
 Patch19: %name-2.5.STABLE6-ldap_helpers.patch
 Patch20: %name-2.5.STABLE6-ufs_no_valid_dir.patch
 Patch21: %name-2.5.STABLE6-ntlm_challengereuse_leak.patch
+Patch22: %name-2.5.STABLE6-ntlmtruncated.patch
+Patch23: %name-2.5.STABLE6-errorpage_quote.patch
+Patch24: %name-2.5.STABLE6-heap_segfault.patch
+# Fails due to ALT-specific defaults (2 extra lines)
+# Rediffed.
+Patch25: %name-2.5.STABLE6-initgroups-alt.patch
+# Indentation changed. Rediffed.
+Patch26: %name-2.5.STABLE6-external_acl_newlines-alt.patch
 
 Obsoletes: %name-novm
 
@@ -90,6 +99,11 @@ ICMP messages directly
 %patch19 -p1
 %patch20 -p1
 %patch21 -p1
+%patch22 -p1
+%patch23 -p1
+%patch24 -p1
+%patch25 -p1
+%patch26 -p1
 
 %build
 %set_autoconf_version 2.5
@@ -125,7 +139,7 @@ ICMP messages directly
 	--enable-storeio="aufs coss diskd null ufs" \
 	--enable-default-err-language="English"
 
-%__subst 's/^#define SQUID_MAXFD 1024/#define SQUID_MAXFD 8192/' include/autoconf.h
+%__subst 's/^#define SQUID_MAXFD 1024/#define SQUID_MAXFD 16384/' include/autoconf.h
 %make_build
 
 %__mkdir faq
@@ -250,6 +264,11 @@ popd
 %attr(4710,root,%name) %_libdir/%name/pinger
 
 %changelog
+* Tue Aug 17 2004 Denis Ovsienko <pilot@altlinux.ru> 2.5.STABLE6-alt2
+- Updated FAQ to 2004-08-10
+- Added and rediffed official patches up to 2004-08-14
+- build with 16384 file descriptors
+
 * Fri Jul 23 2004 Konstantin Timoshenko <kt@altlinux.ru> 2.5.STABLE6-alt1
 - 2.5.STABLE6
 - Official bugfixes from www.%name-cache.org.

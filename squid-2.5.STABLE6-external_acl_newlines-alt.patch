@@ -1,0 +1,189 @@
+Index: squid/src/cf.data.pre
+diff -c squid/src/cf.data.pre:1.245.2.71 squid/src/cf.data.pre:1.245.2.72
+*** squid/src/cf.data.pre:1.245.2.71	Mon Aug  9 08:29:06 2004
+--- squid/src/cf.data.pre	Sat Aug 14 15:01:33 2004
+***************
+*** 1549,1554 ****
+--- 1549,1555 ----
+  			to service external acl lookups of this type.
+  			Note: see compatibility note below
+  	  cache=n	result cache size, 0 is unbounded (default)
++ 	  protocol=3.0	Use URL-escaped strings instead of quoting
+  	
+  	FORMAT specifications
+  
+***************
+*** 1588,1593 ****
+--- 1589,1597 ----
+  	whitespace, or the whitespace escaped using \. Any quotes or \
+  	characters within the keyword value must be \ escaped.
+  
++ 	If protocol=3.0 then URL escaping of the strings is used instead
++ 	of the above described quoting format.
++ 
+  	Compatibility Note: The children= option was named concurrency= in
+  	Squid-2.5.STABLE3 and earlier and such syntax is still accepted to
+  	keep compatibility within the Squid-2.5 release. However, the meaning
+Index: squid/src/external_acl.c
+diff -c squid/src/external_acl.c:1.1.2.30 squid/src/external_acl.c:1.1.2.31
+*** squid/src/external_acl.c:1.1.2.30	Tue Feb 17 21:00:08 2004
+--- squid/src/external_acl.c	Sat Aug 14 15:01:33 2004
+***************
+*** 89,94 ****
+--- 89,98 ----
+      int cache_entries;
+      dlink_list queue;
+      int require_auth;
++     enum {
++ 	QUOTE_METHOD_SHELL = 1,
++ 	QUOTE_METHOD_URL
++     } quote;
+  };
+  
+  struct _external_acl_format {
+***************
+*** 169,174 ****
+--- 173,179 ----
+      if (!token)
+  	self_destruct();
+      a->name = xstrdup(token);
++     a->quote = QUOTE_METHOD_SHELL;
+  
+      token = strtok(NULL, w_space);
+      /* Parse options */
+***************
+*** 183,188 ****
+--- 188,201 ----
+  	    a->children = atoi(token + 12);
+  	} else if (strncmp(token, "cache=", 6) == 0) {
+  	    a->cache_size = atoi(token + 6);
++ 	} else if (strcmp(token, "protocol=2.5") == 0) {
++ 	    a->quote = QUOTE_METHOD_SHELL;
++ 	} else if (strcmp(token, "protocol=3.0") == 0) {
++ 	    a->quote = QUOTE_METHOD_URL;
++ 	} else if (strcmp(token, "quote=url") == 0) {
++ 	    a->quote = QUOTE_METHOD_URL;
++ 	} else if (strcmp(token, "quote=shell") == 0) {
++ 	    a->quote = QUOTE_METHOD_SHELL;
+  	} else {
+  	    break;
+  	}
+***************
+*** 558,571 ****
+  	    str = "-";
+  	if (!first)
+  	    memBufAppend(&mb, " ", 1);
+! 	strwordquote(&mb, str);
+  	stringClean(&sb);
+  	first = 0;
+      }
+      for (arg = acl_data->arguments; arg; arg = arg->next) {
+  	if (!first)
+  	    memBufAppend(&mb, " ", 1);
+! 	strwordquote(&mb, arg->key);
+  	first = 0;
+      }
+      return mb.buf;
+--- 571,594 ----
+  	    str = "-";
+  	if (!first)
+  	    memBufAppend(&mb, " ", 1);
+! 	if (acl_data->def->quote == QUOTE_METHOD_URL) {
+! 	    const char *quoted = rfc1738_escape(str);
+! 	    memBufAppend(&mb, quoted, strlen(quoted));
+! 	} else {
+! 	    strwordquote(&mb, str);
+! 	}
+  	stringClean(&sb);
+  	first = 0;
+      }
+      for (arg = acl_data->arguments; arg; arg = arg->next) {
+  	if (!first)
+  	    memBufAppend(&mb, " ", 1);
+! 	if (acl_data->def->quote == QUOTE_METHOD_URL) {
+! 	    const char *quoted = rfc1738_escape(arg->key);
+! 	    memBufAppend(&mb, quoted, strlen(quoted));
+! 	} else {
+! 	    strwordquote(&mb, arg->key);
+! 	}
+  	first = 0;
+      }
+      return mb.buf;
+***************
+*** 708,713 ****
+--- 731,738 ----
+  	    value = strchr(token, '=');
+  	    if (value) {
+  		*value++ = '\0';	/* terminate the token, and move up to the value */
++ 		if (state->def->quote == QUOTE_METHOD_URL)
++ 		    rfc1738_unescape(value);
+  		if (strcmp(token, "user") == 0)
+  		    user = value;
+  		else if (strcmp(token, "error") == 0)
+Index: squid/src/tools.c
+diff -c squid/src/tools.c:1.213.2.9 squid/src/tools.c:1.213.2.10
+*** squid/src/tools.c:1.213.2.9	Mon Aug  9 07:54:23 2004
+--- squid/src/tools.c	Sat Aug 14 15:01:33 2004
+***************
+*** 1062,1068 ****
+  	switch (ch) {
+  	case '\\':
+  	    p++;
+! 	    *d++ = ch = *p;
+  	    if (ch)
+  		p++;
+  	    break;
+--- 1062,1079 ----
+  	switch (ch) {
+  	case '\\':
+  	    p++;
+! 	    switch (*p) {
+! 	    case 'n':
+! 		ch = '\n';
+! 		break;
+! 	    case 'r':
+! 		ch = '\r';
+! 		break;
+! 	    default:
+! 		ch = *p;
+! 		break;
+! 	    }
+! 	    *d++ = ch;
+  	    if (ch)
+  		p++;
+  	    break;
+***************
+*** 1101,1110 ****
+  	int l = strcspn(str, "\"\\");
+  	memBufAppend(mb, str, l);
+  	str += l;
+! 	while (*str == '"' || *str == '\\') {
+  	    memBufAppend(mb, "\\", 1);
+  	    memBufAppend(mb, str, 1);
+  	    str++;
+  	}
+      }
+      if (quoted)
+--- 1112,1133 ----
+  	int l = strcspn(str, "\"\\");
+  	memBufAppend(mb, str, l);
+  	str += l;
+! 	switch (*str) {
+! 	case '\n':
+! 	    memBufAppend(mb, "\\n", 2);
+! 	    str++;
+! 	    break;
+! 	case '\r':
+! 	    memBufAppend(mb, "\\r", 2);
+! 	    str++;
+! 	    break;
+! 	case '\0':
+! 	    break;
+! 	default:
+  	    memBufAppend(mb, "\\", 1);
+  	    memBufAppend(mb, str, 1);
+  	    str++;
++ 	    break;
+  	}
+      }
+      if (quoted)

@@ -120,9 +120,9 @@ diff -c squid/helpers/basic_auth/LDAP/squid_ldap_auth.8:1.7.2.5 squid/helpers/ba
   Useful for understanding what goes wrong if the results is
   not what is expected.
 Index: squid/helpers/basic_auth/LDAP/squid_ldap_auth.c
-diff -c squid/helpers/basic_auth/LDAP/squid_ldap_auth.c:1.21.2.10 squid/helpers/basic_auth/LDAP/squid_ldap_auth.c:1.21.2.12
+diff -c squid/helpers/basic_auth/LDAP/squid_ldap_auth.c:1.21.2.10 squid/helpers/basic_auth/LDAP/squid_ldap_auth.c:1.21.2.14
 *** squid/helpers/basic_auth/LDAP/squid_ldap_auth.c:1.21.2.10	Thu Mar  4 02:37:38 2004
---- squid/helpers/basic_auth/LDAP/squid_ldap_auth.c	Wed Jul 21 15:05:29 2004
+--- squid/helpers/basic_auth/LDAP/squid_ldap_auth.c	Tue Aug 10 03:39:29 2004
 ***************
 *** 30,46 ****
    * or (at your option) any later version.
@@ -261,7 +261,7 @@ diff -c squid/helpers/basic_auth/LDAP/squid_ldap_auth.c:1.21.2.10 squid/helpers/
       fprintf(stderr, "Connect timeouts not supported in your LDAP library\n");
   }
 ***************
-*** 185,196 ****
+*** 185,198 ****
   {
       free(p);
   }
@@ -274,13 +274,21 @@ diff -c squid/helpers/basic_auth/LDAP/squid_ldap_auth.c:1.21.2.10 squid/helpers/
   #endif
   
   int
---- 194,264 ----
+  main(int argc, char **argv)
+  {
+--- 194,266 ----
   {
       free(p);
   }
 + 
-+ #endif
-+ 
+  #endif
+  
+  #ifdef LDAP_API_FEATURE_X_OPENLDAP
+! #if LDAP_VENDOR_VERSION > 194
+! #define HAS_URI_SUPPORT 1
+! #endif
+  #endif
+  
 + static LDAP *
 + open_ldap_connection(const char *ldapServer, int port)
 + {
@@ -290,7 +298,7 @@ diff -c squid/helpers/basic_auth/LDAP/squid_ldap_auth.c:1.21.2.10 squid/helpers/
 + 	int rc = ldap_initialize(&ld, ldapServer);
 + 	if (rc != LDAP_SUCCESS) {
 + 	    fprintf(stderr, "\nUnable to connect to LDAPURI:%s\n", ldapServer);
-+ 	    break;
++ 	    exit(1);
 + 	}
 +     } else
 + #endif
@@ -332,23 +340,29 @@ diff -c squid/helpers/basic_auth/LDAP/squid_ldap_auth.c:1.21.2.10 squid/helpers/
 + 	fprintf(stderr, "Could not Activate TLS connection\n");
 + 	exit(1);
 +     }
-  #endif
++ #endif
 +     squid_ldap_set_timelimit(ld, timelimit);
 +     squid_ldap_set_referrals(ld, !noreferrals);
 +     squid_ldap_set_aliasderef(ld, aliasderef);
 +     return ld;
 + }
-  
-  #ifdef LDAP_API_FEATURE_X_OPENLDAP
-! #if LDAP_VENDOR_VERSION > 194
-! #define HAS_URI_SUPPORT 1
-! #endif
-  #endif
-  
++ 
   int
+  main(int argc, char **argv)
+  {
+***************
+*** 214,219 ****
+--- 282,288 ----
+  	case 'z':
+  	case 'Z':
+  	case 'd':
++ 	case 'O':
+  	    break;
+  	default:
+  	    if (strlen(argv[1]) > 2) {
 ***************
 *** 255,260 ****
---- 323,331 ----
+--- 324,332 ----
   	case 'u':
   	    userattr = value;
   	    break;
@@ -380,7 +394,7 @@ diff -c squid/helpers/basic_auth/LDAP/squid_ldap_auth.c:1.21.2.10 squid/helpers/
   	case 'a':
   	    if (strcmp(value, "never") == 0)
   		aliasderef = LDAP_DEREF_NEVER;
---- 340,359 ----
+--- 341,360 ----
   	    break;
   	case 'E':
   #if defined(NETSCAPE_SSL)
@@ -414,7 +428,7 @@ diff -c squid/helpers/basic_auth/LDAP/squid_ldap_auth.c:1.21.2.10 squid/helpers/
   	case 'p':
   	    port = atoi(value);
   	    break;
---- 375,387 ----
+--- 376,389 ----
   	    bindpasswd = value;
   	    break;
   	case 'W':
@@ -425,6 +439,7 @@ diff -c squid/helpers/basic_auth/LDAP/squid_ldap_auth.c:1.21.2.10 squid/helpers/
   	    break;
 + 	case 'O':
 + 	    bind_once = !bind_once;
++ 	    break;
   	case 'p':
   	    port = atoi(value);
   	    break;
@@ -437,7 +452,7 @@ diff -c squid/helpers/basic_auth/LDAP/squid_ldap_auth.c:1.21.2.10 squid/helpers/
   	    case 2:
   		version = LDAP_VERSION2;
   		break;
---- 390,396 ----
+--- 392,398 ----
   	    break;
   #ifdef LDAP_VERSION3
   	case 'v':
@@ -461,7 +476,7 @@ diff -c squid/helpers/basic_auth/LDAP/squid_ldap_auth.c:1.21.2.10 squid/helpers/
   		exit(1);
   	    }
   	    version = LDAP_VERSION3;
---- 398,411 ----
+--- 400,413 ----
   		version = LDAP_VERSION3;
   		break;
   	    default:
@@ -477,9 +492,11 @@ diff -c squid/helpers/basic_auth/LDAP/squid_ldap_auth.c:1.21.2.10 squid/helpers/
   	    }
   	    version = LDAP_VERSION3;
 ***************
-*** 408,471 ****
+*** 406,471 ****
+  	}
+  	rfc1738_unescape(user);
   	rfc1738_unescape(passwd);
-  	tryagain = 1;
+! 	tryagain = 1;
         recover:
 ! 	if (ld == NULL) {
 ! #if HAS_URI_SUPPORT
@@ -542,9 +559,11 @@ diff -c squid/helpers/basic_auth/LDAP/squid_ldap_auth.c:1.21.2.10 squid/helpers/
   	    if (tryagain && squid_ldap_errno(ld) != LDAP_INVALID_CREDENTIALS) {
   		tryagain = 0;
   		ldap_unbind(ld);
---- 481,489 ----
+--- 481,491 ----
+  	}
+  	rfc1738_unescape(user);
   	rfc1738_unescape(passwd);
-  	tryagain = 1;
+! 	tryagain = (ld != NULL);
         recover:
 ! 	if (ld == NULL && persistent)
 ! 	    ld = open_ldap_connection(ldapServer, port);
@@ -561,7 +580,7 @@ diff -c squid/helpers/basic_auth/LDAP/squid_ldap_auth.c:1.21.2.10 squid/helpers/
   	    ldap_unbind(ld);
   	    ld = NULL;
   	}
---- 494,500 ----
+--- 496,502 ----
   	} else {
   	    printf("OK\n");
   	}
@@ -578,7 +597,7 @@ diff -c squid/helpers/basic_auth/LDAP/squid_ldap_auth.c:1.21.2.10 squid/helpers/
   	case '*':
   	case '(':
   	case ')':
---- 509,515 ----
+--- 511,517 ----
   {
       int n = 0;
       while (size > 4 && *src) {
@@ -596,7 +615,7 @@ diff -c squid/helpers/basic_auth/LDAP/squid_ldap_auth.c:1.21.2.10 squid/helpers/
   	    }
   	    break;
   	default:
---- 518,525 ----
+--- 520,527 ----
   	    size -= 3;
   	    if (size > 0) {
   		*escaped++ = '\\';
@@ -616,7 +635,7 @@ diff -c squid/helpers/basic_auth/LDAP/squid_ldap_auth.c:1.21.2.10 squid/helpers/
   
       if (!*password) {
   	/* LDAP can't bind with a blank password. Seen as "anonymous"
---- 533,543 ----
+--- 535,545 ----
   }
   
   static int
@@ -649,7 +668,7 @@ diff -c squid/helpers/basic_auth/LDAP/squid_ldap_auth.c:1.21.2.10 squid/helpers/
   	if (rc != LDAP_SUCCESS) {
   	    if (noreferrals && rc == LDAP_PARTIAL_RESULTS) {
   		/* Everything is fine. This is expected when referrals
---- 554,577 ----
+--- 556,579 ----
   	{NULL};
   	char *userdn;
   	int rc;
@@ -706,7 +725,7 @@ diff -c squid/helpers/basic_auth/LDAP/squid_ldap_auth.c:1.21.2.10 squid/helpers/
 !     if (ldap_simple_bind_s(ld, dn, password) != LDAP_SUCCESS)
 ! 	return 1;
 ! 
-      return 0;
+!     return 0;
   }
   
 ! int readSecret(const char *filename)
@@ -743,7 +762,7 @@ diff -c squid/helpers/basic_auth/LDAP/squid_ldap_auth.c:1.21.2.10 squid/helpers/
   
 !   return 0;
   }
---- 585,677 ----
+--- 587,679 ----
   		    fprintf(stderr, PROGRAM_NAME ": WARNING, SSL error %d (%s)\n", sslerr, ldapssl_err2string(sslerr));
   		}
   #endif
@@ -765,7 +784,7 @@ diff -c squid/helpers/basic_auth/LDAP/squid_ldap_auth.c:1.21.2.10 squid/helpers/
   	snprintf(dn, sizeof(dn), "%s", userdn);
   	squid_ldap_memfree(userdn);
 ! 
-! 	if (ret == 0 && (!bind_once || passwdattr)) {
+! 	if (ret == 0 && (!binddn || !bind_once || passwdattr)) {
 ! 	    /* Reuse the search connection for comparing the user password attribute */
 ! 	    bind_ld = search_ld;
 ! 	    search_ld = NULL;
@@ -775,7 +794,7 @@ diff -c squid/helpers/basic_auth/LDAP/squid_ldap_auth.c:1.21.2.10 squid/helpers/
 ! 	    ldap_msgfree(res);
 ! 	    res = NULL;
 ! 	}
-! 	if (search_ld != persistent_ld) {
+! 	if (search_ld && search_ld != persistent_ld) {
 ! 	    ldap_unbind(search_ld);
 ! 	    search_ld = NULL;
 ! 	}
@@ -799,7 +818,7 @@ diff -c squid/helpers/basic_auth/LDAP/squid_ldap_auth.c:1.21.2.10 squid/helpers/
 ! 	ldap_unbind(bind_ld);
 ! 	bind_ld = NULL;
 !     }
-      return 0;
+!     return ret;
   }
   
 ! int 

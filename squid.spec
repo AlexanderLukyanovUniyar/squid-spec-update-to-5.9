@@ -1,6 +1,6 @@
 Name: squid
 Version: 2.5.STABLE9
-Release: alt2
+Release: alt3
 
 Summary: The Squid proxy caching server
 Summary(ru_RU.KOI8-R): Кэширующий прокси-сервер Squid
@@ -25,6 +25,8 @@ Patch3: %name-2.4.STABLE6-alt-without-bind.patch
 Patch4: %name-2.5-perlpath.patch
 Patch5: %name-2.5-automake.patch
 Patch6: %name-errrors-belarusian.patch
+# See http://stc.nixdev.org/getstat.php
+# DISABLED for now
 Patch7: patch-aa.patch
 
 #Official patches to Squid
@@ -48,6 +50,29 @@ Patch26: squid-2.5.STABLE9-CONNECT_truncated.patch
 Patch27: squid-2.5.STABLE9-LDAP_SUN_SDK.patch
 Patch28: squid-2.5.STABLE9-disable_hostname_checks.patch
 Patch29: squid-2.5.STABLE9-aufs_shutdown.patch
+Patch30: squid-2.5.STABLE9-2GB.patch
+Patch31: squid-2.5.STABLE9-rename_cleanup.patch
+Patch32: squid-2.5.STABLE9-cachemgr_objects.patch
+Patch33: squid-2.5.STABLE9-extaclauth.patch
+Patch34: squid-2.5.STABLE9-syslog.patch
+Patch35: squid-2.5.STABLE9-errpage_user.patch
+Patch36: squid-2.5.STABLE9-debug_newlines.patch
+Patch37: squid-2.5.STABLE9-transparent_port.patch
+Patch38: squid-2.5.STABLE9-squid_k_nohostname.patch
+Patch39: squid-2.5.STABLE9-config_CRLF.patch
+Patch40: squid-2.5.STABLE9-forwardcc.patch
+Patch41: squid-2.5.STABLE9-authinfo.patch
+Patch42: squid-2.5.STABLE9-chroot_pidfile.patch
+Patch43: squid-2.5.STABLE9-cachemgr_conf.patch
+Patch44: squid-2.5.STABLE9-aufs_improvement.patch
+Patch45: squid-2.5.STABLE9_2GB-hot_cache.patch
+Patch46: squid-2.5.STABLE9-diskd.patch
+Patch47: squid-2.5.STABLE9-snmp.patch
+Patch48: squid-2.5.STABLE9-arpacl.patch
+Patch49: squid-2.5.STABLE9-dstdomain_ip.patch
+Patch50: squid-2.5.STABLE9-dns_query-5.patch
+Patch51: squid-2.5.STABLE9-2GB_assert.patch
+Patch52: squid-2.5.STABLE9-always_direct_documentation.patch
 
 Obsoletes: %name-novm
 
@@ -96,7 +121,7 @@ ICMP-сообщений.
 %patch4 -p1
 %patch5 -p1
 %patch6 -p1
-%patch7 -p1
+#patch7 -p1
 
 %patch10 -p1
 %patch11 -p1
@@ -118,6 +143,29 @@ ICMP-сообщений.
 %patch27 -p1
 %patch28 -p1
 %patch29 -p1
+%patch30 -p1
+%patch31 -p1
+%patch32 -p1
+%patch33 -p1
+%patch34 -p1
+%patch35 -p1
+%patch36 -p1
+%patch37 -p1
+%patch38 -p1
+%patch39 -p1
+%patch40 -p1
+%patch41 -p1
+%patch42 -p1
+%patch43 -p1
+%patch44 -p1
+%patch45 -p1
+%patch46 -p1
+%patch47 -p1
+%patch48 -p1
+%patch49 -p1
+%patch50 -p1
+%patch51 -p1
+%patch52 -p1
 
 %build
 %set_autoconf_version 2.5
@@ -151,7 +199,9 @@ ICMP-сообщений.
 	--enable-digest-auth-helpers="password" \
 	--enable-external-acl-helpers="ip_user ldap_group unix_group wbinfo_group winbind_group" \
 	--enable-storeio="aufs coss diskd null ufs" \
-	--enable-default-err-language="English"
+	--enable-default-err-language="English" \
+	--with-large-files \
+	--enable-large-cache-files
 
 %__subst 's/^#define SQUID_MAXFD 1024/#define SQUID_MAXFD 16384/' include/autoconf.h
 %make_build
@@ -232,6 +282,7 @@ popd
 %config(noreplace) %_sysconfdir/%name/mime.conf.default
 %config(noreplace) %_sysconfdir/%name/msntauth.conf
 %config(noreplace) %_sysconfdir/%name/msntauth.conf.default
+%config(noreplace) %_sysconfdir/%name/cachemgr.conf
 
 %config %_initdir/%name
 %config %_sysconfdir/logrotate.d/%name
@@ -282,6 +333,38 @@ popd
 %attr(4710,root,%name) %_libdir/%name/pinger
 
 %changelog
+* Thu May 12 2005 Denis Ovsienko <pilot@altlinux.ru> 2.5.STABLE9-alt3
+- applied:
+ + 2005-04-20 14:59 (Medium) Fails to process requests for files larger than 2GB in size
+ + 2005-03-26 23:53 (Minor) rename() related cleanup
+ + 2005-03-29 09:52 (Cosmetic) New cachemgr pending_objects and client_objects actions
+ + 2005-03-30 22:51 (Cosmetic) external acls requiring authentication does not request new credentials on access denials like proxy_auth does.
+ + 2005-04-26 04:42 (Cosmetic) should syslog to daemon facility not local4
+ + 2005-04-20 21:36 (Cosmetic) Error template substitution for authenitcated user name
+ + 2005-04-21 10:46 (Cosmetic) Missing newlines in debug statements
+ + 2005-04-20 21:55 (Minor) fix transparent proxying when squid listens on NATed non-80 port
+ + 2005-04-20 21:55 (Minor) Unable to run "squid -k" when hostname cannot be determined
+ + 2005-04-21 10:31 (Cosmetic) Correctly read DOS/Windows formatted config files with CRLF as line terminator
+ + 2005-04-22 20:21 (Minor) Unrecognized cache-control directives are silently dropped
+ + 2005-04-24 16:35 (Minor) Make the use of the %m error page to return auth info messages
+ + 2005-04-22 20:48 (Cosmetic) PID file check fails when chrooting
+ + 2005-04-26 04:30 (Minor Security) Fix for CVE-1999-0710: cachemgr malicouse use
+ + 2005-04-25 16:36 (Cosmetic) Minor aufs improvements
+ + 2005-04-30 12:58 (Medium) Poor hot object cache hit ratio and sporadic assertion failed: store_swapin.c: e->mem_status == NOT_IN_MEMORY
+ + 2005-05-01 10:58 (Cosmetic) Cosmetic change to DISKD statistics
+ + 2005-05-04 18:09 (Minor) SNMP Agent updates to support SNMP Version 2 and bulk requests
+ + 2005-05-08 14:01 (Cosmetic) Minor arp ACL improvements
+ + 2005-05-09 01:51 (Minor) Allow dstdomain and dstdom_regex to match IP based hosts
+ + 2005-05-11 19:19 (Security issue) DNS lookups unreliable on untrusted networks
+ + 2005-05-10 22:33 (Medium) assertion failed: store_client.c:343: "storeSwapOutObjectBytesOnDisk(mem) > sc->copy_offset"
+ + 2005-05-10 23:11 (Cosmetic) Extended documentation of the always_direct directive
+- updated:
+ + 2005-04-19 22:46 (Cosmetic) LDAP helpers fails to compile with SUN LDAP SDK
+ + 2005-03-29 08:45 (Minor) Several minor aufs issues
+- updated FAQ to v 1.250 2005/04/22
+- enabled 2GB+ files support
+- disabled aa patch for now
+
 * Tue Mar 22 2005 Denis Ovsienko <pilot@altlinux.ru> 2.5.STABLE9-alt2
 - applied:
  + 2005-03-03 02:26 (Minor Security) Race condition related to Set-Cookie header 

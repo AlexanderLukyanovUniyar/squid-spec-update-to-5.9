@@ -1,0 +1,329 @@
+Index: squid/helpers/basic_auth/LDAP/squid_ldap_auth.c
+diff -c squid/helpers/basic_auth/LDAP/squid_ldap_auth.c:1.21.2.20 squid/helpers/basic_auth/LDAP/squid_ldap_auth.c:1.21.2.21
+*** squid/helpers/basic_auth/LDAP/squid_ldap_auth.c:1.21.2.20	Fri Mar 18 17:53:55 2005
+--- squid/helpers/basic_auth/LDAP/squid_ldap_auth.c	Fri Apr 22 14:29:29 2005
+***************
+*** 525,531 ****
+  	rfc1738_unescape(user);
+  	rfc1738_unescape(passwd);
+  	if (!validUsername(user)) {
+! 	    printf("ERR\n");
+  	    continue;
+  	}
+  	tryagain = (ld != NULL);
+--- 525,531 ----
+  	rfc1738_unescape(user);
+  	rfc1738_unescape(passwd);
+  	if (!validUsername(user)) {
+! 	    printf("ERR No such user\n");
+  	    continue;
+  	}
+  	tryagain = (ld != NULL);
+***************
+*** 539,545 ****
+  		ld = NULL;
+  		goto recover;
+  	    }
+! 	    printf("ERR\n");
+  	} else {
+  	    printf("OK\n");
+  	}
+--- 539,545 ----
+  		ld = NULL;
+  		goto recover;
+  	    }
+! 	    printf("ERR %s\n", ldap_err2string(squid_ldap_errno(ld)));
+  	} else {
+  	    printf("OK\n");
+  	}
+Index: squid/helpers/basic_auth/NCSA/ncsa_auth.c
+diff -c squid/helpers/basic_auth/NCSA/ncsa_auth.c:1.1.2.3 squid/helpers/basic_auth/NCSA/ncsa_auth.c:1.1.2.4
+*** squid/helpers/basic_auth/NCSA/ncsa_auth.c:1.1.2.3	Sat Sep 25 14:53:17 2004
+--- squid/helpers/basic_auth/NCSA/ncsa_auth.c	Fri Apr 22 14:29:29 2005
+***************
+*** 138,146 ****
+  	rfc1738_unescape(passwd);
+  	u = hash_lookup(hash, user);
+  	if (u == NULL) {
+! 	    printf("ERR\n");
+  	} else if (strcmp(u->passwd, (char *) crypt(passwd, u->passwd))) {
+! 	    printf("ERR\n");
+  	} else {
+  	    printf("OK\n");
+  	}
+--- 138,146 ----
+  	rfc1738_unescape(passwd);
+  	u = hash_lookup(hash, user);
+  	if (u == NULL) {
+! 	    printf("ERR No such user\n");
+  	} else if (strcmp(u->passwd, (char *) crypt(passwd, u->passwd))) {
+! 	    printf("ERR Wrong password\n");
+  	} else {
+  	    printf("OK\n");
+  	}
+Index: squid/helpers/basic_auth/YP/yp_auth.c
+diff -c squid/helpers/basic_auth/YP/yp_auth.c:1.2.2.1 squid/helpers/basic_auth/YP/yp_auth.c:1.2.2.2
+*** squid/helpers/basic_auth/YP/yp_auth.c:1.2.2.1	Sun Aug 11 19:13:47 2002
+--- squid/helpers/basic_auth/YP/yp_auth.c	Sun Apr 24 10:28:16 2005
+***************
+*** 71,83 ****
+  
+  	if (!nispasswd) {
+  	    /* User does not exist */
+! 	    printf("ERR\n");
+  	} else if (strcmp(nispasswd, (char *) crypt(passwd, nispasswd)) == 0) {
+  	    /* All ok !, thanks... */
+  	    printf("OK\n");
+  	} else {
+  	    /* Password incorrect */
+! 	    printf("ERR\n");
+  	}
+      }
+      exit(0);
+--- 71,83 ----
+  
+  	if (!nispasswd) {
+  	    /* User does not exist */
+! 	    printf("ERR No such user\n");
+  	} else if (strcmp(nispasswd, (char *) crypt(passwd, nispasswd)) == 0) {
+  	    /* All ok !, thanks... */
+  	    printf("OK\n");
+  	} else {
+  	    /* Password incorrect */
+! 	    printf("ERR Wrong password\n");
+  	}
+      }
+      exit(0);
+Index: squid/helpers/basic_auth/getpwnam/getpwnam_auth.c
+diff -c squid/helpers/basic_auth/getpwnam/getpwnam_auth.c:1.1.2.1 squid/helpers/basic_auth/getpwnam/getpwnam_auth.c:1.1.2.2
+*** squid/helpers/basic_auth/getpwnam/getpwnam_auth.c:1.1.2.1	Sun Aug 11 19:13:47 2002
+--- squid/helpers/basic_auth/getpwnam/getpwnam_auth.c	Sun Apr 24 10:28:16 2005
+***************
+*** 70,79 ****
+  	rfc1738_unescape(passwd);
+  	pwd = getpwnam(user);
+  	if (pwd == NULL) {
+! 	    printf(ERR);
+  	} else {
+  	    if (strcmp(pwd->pw_passwd, (char *) crypt(passwd, pwd->pw_passwd))) {
+! 		printf(ERR);
+  	    } else {
+  		printf(OK);
+  	    }
+--- 70,79 ----
+  	rfc1738_unescape(passwd);
+  	pwd = getpwnam(user);
+  	if (pwd == NULL) {
+! 	    printf("ERR No such user\n");
+  	} else {
+  	    if (strcmp(pwd->pw_passwd, (char *) crypt(passwd, pwd->pw_passwd))) {
+! 		printf("ERR Wrong password\n");
+  	    } else {
+  		printf(OK);
+  	    }
+Index: squid/helpers/digest_auth/password/digest_pw_auth.c
+diff -c squid/helpers/digest_auth/password/digest_pw_auth.c:1.1.2.1 squid/helpers/digest_auth/password/digest_pw_auth.c:1.1.2.2
+*** squid/helpers/digest_auth/password/digest_pw_auth.c:1.1.2.1	Wed Oct 16 22:55:48 2002
+--- squid/helpers/digest_auth/password/digest_pw_auth.c	Fri Apr 22 14:29:29 2005
+***************
+*** 149,155 ****
+  	}
+  	u = hash_lookup(hash, user);
+  	if (u == NULL) {
+! 	    printf("ERR\n");
+  	} else {
+  	    DigestCalcHA1("md5", user, realm, u->passwd, NULL, NULL, HA1, HHA1);
+  	    printf("%s\n", HHA1);
+--- 149,155 ----
+  	}
+  	u = hash_lookup(hash, user);
+  	if (u == NULL) {
+! 	    printf("ERR No such user\n");
+  	} else {
+  	    DigestCalcHA1("md5", user, realm, u->passwd, NULL, NULL, HA1, HHA1);
+  	    printf("%s\n", HHA1);
+Index: squid/src/cf.data.pre
+diff -c squid/src/cf.data.pre:1.245.2.90 squid/src/cf.data.pre:1.245.2.91
+*** squid/src/cf.data.pre:1.245.2.90	Tue Apr 19 16:52:56 2005
+--- squid/src/cf.data.pre	Fri Apr 22 14:29:29 2005
+***************
+*** 1309,1315 ****
+  	"program" cmdline
+  	Specify the command for the external authenticator.  Such a program
+  	reads a line containing "username password" and replies "OK" or
+! 	"ERR" in an endless loop.
+  
+  	By default, the basic authentication sheme is not used unless a
+  	program is specified.
+--- 1309,1316 ----
+  	"program" cmdline
+  	Specify the command for the external authenticator.  Such a program
+  	reads a line containing "username password" and replies "OK" or
+! 	"ERR" in an endless loop. "ERR" responses may optionally be followed
+! 	by a error description available as %m in the returned error page.
+  
+  	By default, the basic authentication sheme is not used unless a
+  	program is specified.
+***************
+*** 1362,1367 ****
+--- 1363,1370 ----
+  	reads a line containing "username":"realm" and replies with the
+  	appropriate H(A1) value base64 encoded or ERR if the user (or his H(A1)
+  	hash) does not exists.  See rfc 2616 for the definition of H(A1).
++ 	"ERR" responses may optionally be followed by a error description
++ 	available as %m in the returned error page.
+  
+  	By default, the digest authentication scheme is not used unless a
+  	program is specified.
+Index: squid/src/auth/basic/auth_basic.c
+diff -c squid/src/auth/basic/auth_basic.c:1.14.2.9 squid/src/auth/basic/auth_basic.c:1.14.2.10
+*** squid/src/auth/basic/auth_basic.c:1.14.2.9	Fri Mar 18 17:15:29 2005
+--- squid/src/auth/basic/auth_basic.c	Fri Apr 22 14:29:31 2005
+***************
+*** 270,276 ****
+      debug(29, 9) ("authenticateBasicHandleReply: {%s}\n", reply ? reply : "<NULL>");
+      if (reply) {
+  	if ((t = strchr(reply, ' ')))
+! 	    *t = '\0';
+  	if (*reply == '\0')
+  	    reply = NULL;
+      }
+--- 270,276 ----
+      debug(29, 9) ("authenticateBasicHandleReply: {%s}\n", reply ? reply : "<NULL>");
+      if (reply) {
+  	if ((t = strchr(reply, ' ')))
+! 	    *t++ = '\0';
+  	if (*reply == '\0')
+  	    reply = NULL;
+      }
+***************
+*** 280,287 ****
+      basic_auth = auth_user->scheme_data;
+      if (reply && (strncasecmp(reply, "OK", 2) == 0))
+  	basic_auth->flags.credentials_ok = 1;
+!     else
+  	basic_auth->flags.credentials_ok = 3;
+      basic_auth->credentials_checkedtime = squid_curtime;
+      valid = cbdataValid(r->data);
+      if (valid)
+--- 280,291 ----
+      basic_auth = auth_user->scheme_data;
+      if (reply && (strncasecmp(reply, "OK", 2) == 0))
+  	basic_auth->flags.credentials_ok = 1;
+!     else {
+  	basic_auth->flags.credentials_ok = 3;
++ 	safe_free(r->auth_user_request->message);
++ 	if (t && *t)
++ 	    r->auth_user_request->message = xstrdup(t);
++     }
+      basic_auth->credentials_checkedtime = squid_curtime;
+      valid = cbdataValid(r->data);
+      if (valid)
+Index: squid/src/auth/digest/auth_digest.c
+diff -c squid/src/auth/digest/auth_digest.c:1.10.2.13 squid/src/auth/digest/auth_digest.c:1.10.2.14
+*** squid/src/auth/digest/auth_digest.c:1.10.2.13	Sat Aug 28 16:31:15 2004
+--- squid/src/auth/digest/auth_digest.c	Fri Apr 22 14:29:31 2005
+***************
+*** 720,725 ****
+--- 720,727 ----
+  		RequestMethodStr[METHOD_GET], digest_request->uri, HA2, Response);
+  	    if (strcasecmp(digest_request->response, Response)) {
+  		digest_request->flags.credentials_ok = 3;
++ 		safe_free(auth_user_request->message);
++ 		auth_user_request->message = xstrdup("Incorrect password");
+  		return;
+  	    } else {
+  		const char *useragent = httpHeaderGetStr(&request->header, HDR_USER_AGENT);
+***************
+*** 737,742 ****
+--- 739,746 ----
+  	    }
+  	} else {
+  	    digest_request->flags.credentials_ok = 3;
++ 	    safe_free(auth_user_request->message);
++ 	    auth_user_request->message = xstrdup("Incorrect password");
+  	    return;
+  	}
+      }
+***************
+*** 746,751 ****
+--- 750,757 ----
+  	    digest_user->username);
+  	digest_request->flags.nonce_stale = 1;
+  	digest_request->flags.credentials_ok = 3;
++ 	safe_free(auth_user_request->message);
++ 	auth_user_request->message = xstrdup("Stale nonce");
+  	return;
+      }
+      /* password was checked and did match */
+***************
+*** 892,898 ****
+      debug(29, 9) ("authenticateDigestHandleReply: {%s}\n", reply ? reply : "<NULL>");
+      if (reply) {
+  	if ((t = strchr(reply, ' ')))
+! 	    *t = '\0';
+  	if (*reply == '\0' || *reply == '\n')
+  	    reply = NULL;
+      }
+--- 898,904 ----
+      debug(29, 9) ("authenticateDigestHandleReply: {%s}\n", reply ? reply : "<NULL>");
+      if (reply) {
+  	if ((t = strchr(reply, ' ')))
+! 	    *t++ = '\0';
+  	if (*reply == '\0' || *reply == '\n')
+  	    reply = NULL;
+      }
+***************
+*** 901,909 ****
+      assert(auth_user_request->scheme_data != NULL);
+      digest_request = auth_user_request->scheme_data;
+      digest_user = auth_user_request->auth_user->scheme_data;
+!     if (reply && (strncasecmp(reply, "ERR", 3) == 0))
+  	digest_request->flags.credentials_ok = 3;
+!     else if (reply) {
+  	CvtBin(reply, digest_user->HA1);
+  	digest_user->HA1created = 1;
+      }
+--- 907,918 ----
+      assert(auth_user_request->scheme_data != NULL);
+      digest_request = auth_user_request->scheme_data;
+      digest_user = auth_user_request->auth_user->scheme_data;
+!     if (reply && (strncasecmp(reply, "ERR", 3) == 0)) {
+  	digest_request->flags.credentials_ok = 3;
+! 	safe_free(auth_user_request->message);
+! 	if (t && *t)
+! 	    auth_user_request->message = xstrdup(t);
+!     } else if (reply) {
+  	CvtBin(reply, digest_user->HA1);
+  	digest_user->HA1created = 1;
+      }
+Index: squid/src/auth/ntlm/auth_ntlm.c
+diff -c squid/src/auth/ntlm/auth_ntlm.c:1.17.2.21 squid/src/auth/ntlm/auth_ntlm.c:1.17.2.22
+*** squid/src/auth/ntlm/auth_ntlm.c:1.17.2.21	Thu Feb  3 16:22:12 2005
+--- squid/src/auth/ntlm/auth_ntlm.c	Fri Apr 22 14:29:31 2005
+***************
+*** 549,554 ****
+--- 549,558 ----
+  	ntlm_request->auth_state = AUTHENTICATE_STATE_FAILED;
+  	authenticateNTLMResetServer(ntlm_request);
+  	debug(29, 4) ("authenticateNTLMHandleReply: Error validating user via NTLM. Error returned '%s'\n", reply);
++ 	reply += 3;
++ 	safe_free(auth_user_request->message);
++ 	if (*reply)
++ 	    auth_user_request->message = xstrdup(reply);
+      } else if (strncasecmp(reply, "BH ", 3) == 0) {
+  	/* TODO kick off a refresh process. This can occur after a YR or after
+  	 * a KK. If after a YR release the helper and resubmit the request via 
+***************
+*** 579,584 ****
+--- 583,592 ----
+  	    /* the helper broke on a KK */
+  	    debug(29, 1) ("authenticateNTLMHandleReply: Error validating user via NTLM. Error returned '%s'\n", reply);
+  	    ntlm_request->auth_state = AUTHENTICATE_STATE_FAILED;
++ 	    reply += 3;
++ 	    safe_free(auth_user_request->message);
++ 	    if (*reply)
++ 		auth_user_request->message = xstrdup(reply);
+  	}
+      } else {
+  	fatalf("authenticateNTLMHandleReply: *** Unsupported helper response ***, '%s'\n", reply);

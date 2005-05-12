@@ -1,0 +1,15 @@
+Index: squid/src/cache_cf.c
+diff -c squid/src/cache_cf.c:1.396.2.24 squid/src/cache_cf.c:1.396.2.25
+*** squid/src/cache_cf.c:1.396.2.24	Wed Apr 20 15:52:26 2005
+--- squid/src/cache_cf.c	Thu Apr 21 04:18:46 2005
+***************
+*** 281,286 ****
+--- 281,288 ----
+  	config_lineno++;
+  	if ((token = strchr(config_input_line, '\n')))
+  	    *token = '\0';
++ 	if ((token = strchr(config_input_line, '\r')))
++ 	    *token = '\0';
+  	if (config_input_line[0] == '#')
+  	    continue;
+  	if (config_input_line[0] == '\0')

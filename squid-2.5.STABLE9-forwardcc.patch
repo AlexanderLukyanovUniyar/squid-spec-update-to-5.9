@@ -1,0 +1,100 @@
+Index: squid/src/HttpHdrCc.c
+diff -c squid/src/HttpHdrCc.c:1.22 squid/src/HttpHdrCc.c:1.22.2.1
+*** squid/src/HttpHdrCc.c:1.22	Thu Jan 11 17:37:13 2001
+--- squid/src/HttpHdrCc.c	Fri Apr 22 14:18:43 2005
+***************
+*** 103,117 ****
+      const char *pos = NULL;
+      int type;
+      int ilen;
+      assert(cc && str);
+  
+      /* iterate through comma separated list */
+      while (strListGetItem(str, ',', &item, &ilen, &pos)) {
+! 	/* strip '=' statements @?@ */
+! 	if ((p = strchr(item, '=')) && (p - item < ilen))
+! 	    ilen = p++ - item;
+  	/* find type */
+! 	type = httpHeaderIdByName(item, ilen,
+  	    CcFieldsInfo, CC_ENUM_END);
+  	if (type < 0) {
+  	    debug(65, 2) ("hdr cc: unknown cache-directive: near '%s' in '%s'\n", item, strBuf(*str));
+--- 103,120 ----
+      const char *pos = NULL;
+      int type;
+      int ilen;
++     int nlen;
+      assert(cc && str);
+  
+      /* iterate through comma separated list */
+      while (strListGetItem(str, ',', &item, &ilen, &pos)) {
+! 	/* isolate directive name */
+! 	if ((p = memchr(item, '=', ilen)))
+! 	    nlen = p++ - item;
+! 	else
+! 	    nlen = ilen;
+  	/* find type */
+! 	type = httpHeaderIdByName(item, nlen,
+  	    CcFieldsInfo, CC_ENUM_END);
+  	if (type < 0) {
+  	    debug(65, 2) ("hdr cc: unknown cache-directive: near '%s' in '%s'\n", item, strBuf(*str));
+***************
+*** 147,154 ****
+  		cc->max_stale = -1;
+  	    }
+  	    break;
+  	default:
+! 	    /* note that we ignore most of '=' specs */
+  	    break;
+  	}
+      }
+--- 150,162 ----
+  		cc->max_stale = -1;
+  	    }
+  	    break;
++ 	case CC_OTHER:
++ 	    if (strLen(cc->other))
++ 		strCat(cc->other, ", ");
++ 	    stringAppend(&cc->other, item, ilen);
++ 	    break;
+  	default:
+! 	    /* note that we ignore most of '=' specs (RFC-VIOLATION) */
+  	    break;
+  	}
+      }
+***************
+*** 159,164 ****
+--- 167,174 ----
+  httpHdrCcDestroy(HttpHdrCc * cc)
+  {
+      assert(cc);
++     if (strBuf(cc->other))
++ 	stringClean(&cc->other);
+      memFree(cc, MEM_HTTP_HDR_CC);
+  }
+  
+***************
+*** 200,205 ****
+--- 210,217 ----
+  	    pcount++;
+  	}
+      }
++     if (strLen(cc->other))
++ 	packerPrintf(p, (pcount ? ", %s" : "%s"), strBuf(cc->other));
+  }
+  
+  void
+Index: squid/src/structs.h
+diff -c squid/src/structs.h:1.408.2.41 squid/src/structs.h:1.408.2.42
+*** squid/src/structs.h:1.408.2.41	Sat Mar 26 10:36:01 2005
+--- squid/src/structs.h	Fri Apr 22 14:18:43 2005
+***************
+*** 869,874 ****
+--- 869,875 ----
+      int max_age;
+      int s_maxage;
+      int max_stale;
++     String other;
+  };
+  
+  /* http byte-range-spec */

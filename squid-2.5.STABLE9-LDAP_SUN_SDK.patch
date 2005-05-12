@@ -176,6 +176,23 @@ diff -c squid/configure:1.248.2.82 squid/configure:1.248.2.84
   s%@NEED_OWN_SNPRINTF_TRUE@%$NEED_OWN_SNPRINTF_TRUE%g
   s%@NEED_OWN_SNPRINTF_FALSE@%$NEED_OWN_SNPRINTF_FALSE%g
   s%@REGEXLIB@%$REGEXLIB%g
+Index: squid/helpers/basic_auth/LDAP/Makefile.am
+diff -c squid/helpers/basic_auth/LDAP/Makefile.am:1.1.2.4 squid/helpers/basic_auth/LDAP/Makefile.am:1.1.2.5
+*** squid/helpers/basic_auth/LDAP/Makefile.am:1.1.2.4	Sun Aug 11 19:13:37 2002
+--- squid/helpers/basic_auth/LDAP/Makefile.am	Fri Mar 18 17:53:55 2005
+***************
+*** 11,15 ****
+  EXTRA_DIST		= squid_ldap_auth.8
+  squid_ldap_auth_SOURCES	= squid_ldap_auth.c
+  
+! LDADD = -L$(top_builddir)/lib -lmiscutil -lldap -llber $(XTRA_LIBS)
+  INCLUDES      = -I$(top_srcdir)/include
+--- 11,15 ----
+  EXTRA_DIST		= squid_ldap_auth.8
+  squid_ldap_auth_SOURCES	= squid_ldap_auth.c
+  
+! LDADD = -L$(top_builddir)/lib -lmiscutil -lldap $(LIB_LBER) $(XTRA_LIBS)
+  INCLUDES      = -I$(top_srcdir)/include
 Index: squid/helpers/basic_auth/LDAP/Makefile.in
 diff -c squid/helpers/basic_auth/LDAP/Makefile.in:1.8.2.13 squid/helpers/basic_auth/LDAP/Makefile.in:1.8.2.14
 *** squid/helpers/basic_auth/LDAP/Makefile.in:1.8.2.13	Sat Jul 10 06:11:41 2004

@@ -1,0 +1,991 @@
+Index: squid/include/rfc1035.h
+diff -c squid/include/rfc1035.h:1.6.2.1 squid/include/rfc1035.h:1.6.2.2
+*** squid/include/rfc1035.h:1.6.2.1	Wed Dec 17 18:04:22 2003
+--- squid/include/rfc1035.h	Tue May 10 05:48:20 2005
+***************
+*** 56,73 ****
+      unsigned short rdlength;
+      char *rdata;
+  };
+! extern unsigned short rfc1035BuildAQuery(const char *hostname,
+      char *buf,
+!     size_t * szp);
+! extern unsigned short rfc1035BuildPTRQuery(const struct in_addr,
+      char *buf,
+-     size_t * szp);
+- extern unsigned short rfc1035RetryQuery(char *);
+- extern int rfc1035AnswersUnpack(const char *buf,
+      size_t sz,
+!     rfc1035_rr ** records,
+!     unsigned short *id);
+! extern void rfc1035RRDestroy(rfc1035_rr * rr, int n);
+  extern int rfc1035_errno;
+  extern const char *rfc1035_error_message;
+  
+--- 56,101 ----
+      unsigned short rdlength;
+      char *rdata;
+  };
+! typedef struct _rfc1035_query rfc1035_query;
+! struct _rfc1035_query {
+!     char name[RFC1035_MAXHOSTNAMESZ];
+!     unsigned short qtype;
+!     unsigned short qclass;
+! };
+! typedef struct _rfc1035_message rfc1035_message;
+! struct _rfc1035_message {
+!     unsigned short id;
+!     unsigned int qr:1;
+!     unsigned int opcode:4;
+!     unsigned int aa:1;
+!     unsigned int tc:1;
+!     unsigned int rd:1;
+!     unsigned int ra:1;
+!     unsigned int rcode:4;
+!     unsigned short qdcount;
+!     unsigned short ancount;
+!     unsigned short nscount;
+!     unsigned short arcount;
+!     rfc1035_query *query;
+!     rfc1035_rr *answer;
+! };
+! 
+! extern ssize_t rfc1035BuildAQuery(const char *hostname,
+      char *buf,
+!     size_t sz,
+!     unsigned short qid,
+!     rfc1035_query * query);
+! extern ssize_t rfc1035BuildPTRQuery(const struct in_addr,
+      char *buf,
+      size_t sz,
+!     unsigned short qid,
+!     rfc1035_query * query);
+! extern void rfc1035SetQueryID(char *, unsigned short qid);
+! extern int rfc1035MessageUnpack(const char *buf,
+!     size_t sz,
+!     rfc1035_message ** answer);
+! extern int rfc1035QueryCompare(const rfc1035_query *, const rfc1035_query *);
+! extern void rfc1035MessageDestroy(rfc1035_message * message);
+  extern int rfc1035_errno;
+  extern const char *rfc1035_error_message;
+  
+Index: squid/lib/rfc1035.c
+diff -c squid/lib/rfc1035.c:1.22.2.8 squid/lib/rfc1035.c:1.22.2.11
+*** squid/lib/rfc1035.c:1.22.2.8	Fri Mar 25 19:50:50 2005
+--- squid/lib/rfc1035.c	Wed May 11 08:24:28 2005
+***************
+*** 40,45 ****
+--- 40,46 ----
+   */
+  
+  #include "config.h"
++ #include "util.h"
+  
+  #if HAVE_STDIO_H
+  #include <stdio.h>
+***************
+*** 82,111 ****
+  #endif
+  
+  
+- typedef struct _rfc1035_header rfc1035_header;
+  
+  int rfc1035_errno;
+  const char *rfc1035_error_message;
+- struct _rfc1035_header {
+-     unsigned short id;
+-     unsigned int qr:1;
+-     unsigned int opcode:4;
+-     unsigned int aa:1;
+-     unsigned int tc:1;
+-     unsigned int rd:1;
+-     unsigned int ra:1;
+-     unsigned int rcode:4;
+-     unsigned short qdcount;
+-     unsigned short ancount;
+-     unsigned short nscount;
+-     unsigned short arcount;
+- };
+- 
+- static const char *Alphanum =
+- "abcdefghijklmnopqrstuvwxyz"
+- "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+- "0123456789";
+- 
+  
+  /*
+   * rfc1035HeaderPack()
+--- 83,91 ----
+***************
+*** 114,120 ****
+   * Returns number of octets packed (should always be 12)
+   */
+  static int
+! rfc1035HeaderPack(char *buf, size_t sz, rfc1035_header * hdr)
+  {
+      int off = 0;
+      unsigned short s;
+--- 94,100 ----
+   * Returns number of octets packed (should always be 12)
+   */
+  static int
+! rfc1035HeaderPack(char *buf, size_t sz, rfc1035_message * hdr)
+  {
+      int off = 0;
+      unsigned short s;
+***************
+*** 187,200 ****
+  rfc1035NamePack(char *buf, size_t sz, const char *name)
+  {
+      int off = 0;
+!     char *copy = strdup(name);
+      char *t;
+      /*
+       * NOTE: use of strtok here makes names like foo....com valid.
+       */
+      for (t = strtok(copy, "."); t; t = strtok(NULL, "."))
+  	off += rfc1035LabelPack(buf + off, sz - off, t);
+!     free(copy);
+      off += rfc1035LabelPack(buf + off, sz - off, NULL);
+      assert(off <= sz);
+      return off;
+--- 167,180 ----
+  rfc1035NamePack(char *buf, size_t sz, const char *name)
+  {
+      int off = 0;
+!     char *copy = xstrdup(name);
+      char *t;
+      /*
+       * NOTE: use of strtok here makes names like foo....com valid.
+       */
+      for (t = strtok(copy, "."); t; t = strtok(NULL, "."))
+  	off += rfc1035LabelPack(buf + off, sz - off, t);
+!     xfree(copy);
+      off += rfc1035LabelPack(buf + off, sz - off, NULL);
+      assert(off <= sz);
+      return off;
+***************
+*** 229,236 ****
+  /*
+   * rfc1035HeaderUnpack()
+   * 
+!  * Unpacks a RFC1035 message header buffer into a rfc1035_header
+!  * structure.
+   *
+   * Updates the buffer offset, which is the same as number of
+   * octects unpacked since the header starts at offset 0.
+--- 209,216 ----
+  /*
+   * rfc1035HeaderUnpack()
+   * 
+!  * Unpacks a RFC1035 message header buffer into the header fields
+!  * of the rfc1035_message structure.
+   *
+   * Updates the buffer offset, which is the same as number of
+   * octects unpacked since the header starts at offset 0.
+***************
+*** 238,244 ****
+   * Returns 0 (success) or 1 (error)
+   */
+  static int
+! rfc1035HeaderUnpack(const char *buf, size_t sz, int *off, rfc1035_header * h)
+  {
+      unsigned short s;
+      unsigned short t;
+--- 218,224 ----
+   * Returns 0 (success) or 1 (error)
+   */
+  static int
+! rfc1035HeaderUnpack(const char *buf, size_t sz, int *off, rfc1035_message * h)
+  {
+      unsigned short s;
+      unsigned short t;
+***************
+*** 411,436 ****
+      RR->rdlength = rdlength;
+      switch (RR->type) {
+      case RFC1035_TYPE_PTR:
+! 	RR->rdata = malloc(RFC1035_MAXHOSTNAMESZ);
+  	rdata_off = *off;
+  	RR->rdlength = 0;	/* Filled in by rfc1035NameUnpack */
+  	if (rfc1035NameUnpack(buf, sz, &rdata_off, &RR->rdlength, RR->rdata, RFC1035_MAXHOSTNAMESZ, 0))
+  	    return 1;
+! 	if (rdata_off != ((*off) + rdlength)) {
+  	    /*
+  	     * This probably doesn't happen for valid packets, but
+  	     * I want to make sure that NameUnpack doesn't go beyond
+  	     * the RDATA area.
+  	     */
+  	    RFC1035_UNPACK_DEBUG;
+! 	    free(RR->rdata);
+  	    memset(RR, '\0', sizeof(*RR));
+  	    return 1;
+  	}
+  	break;
+      case RFC1035_TYPE_A:
+      default:
+! 	RR->rdata = malloc(rdlength);
+  	memcpy(RR->rdata, buf + (*off), rdlength);
+  	break;
+      }
+--- 391,416 ----
+      RR->rdlength = rdlength;
+      switch (RR->type) {
+      case RFC1035_TYPE_PTR:
+! 	RR->rdata = xmalloc(RFC1035_MAXHOSTNAMESZ);
+  	rdata_off = *off;
+  	RR->rdlength = 0;	/* Filled in by rfc1035NameUnpack */
+  	if (rfc1035NameUnpack(buf, sz, &rdata_off, &RR->rdlength, RR->rdata, RFC1035_MAXHOSTNAMESZ, 0))
+  	    return 1;
+! 	if (rdata_off > ((*off) + rdlength)) {
+  	    /*
+  	     * This probably doesn't happen for valid packets, but
+  	     * I want to make sure that NameUnpack doesn't go beyond
+  	     * the RDATA area.
+  	     */
+  	    RFC1035_UNPACK_DEBUG;
+! 	    xfree(RR->rdata);
+  	    memset(RR, '\0', sizeof(*RR));
+  	    return 1;
+  	}
+  	break;
+      case RFC1035_TYPE_A:
+      default:
+! 	RR->rdata = xmalloc(rdlength);
+  	memcpy(RR->rdata, buf + (*off), rdlength);
+  	break;
+      }
+***************
+*** 439,453 ****
+      return 0;
+  }
+  
+- static unsigned short
+- rfc1035Qid(void)
+- {
+-     static unsigned short qid = 0x0001;
+-     if (++qid == 0xFFFF)
+- 	qid = 0x0001;
+-     return qid;
+- }
+- 
+  static void
+  rfc1035SetErrno(int n)
+  {
+--- 419,424 ----
+***************
+*** 485,491 ****
+      }
+  }
+  
+! void
+  rfc1035RRDestroy(rfc1035_rr * rr, int n)
+  {
+      if (rr == NULL)
+--- 456,462 ----
+      }
+  }
+  
+! static void
+  rfc1035RRDestroy(rfc1035_rr * rr, int n)
+  {
+      if (rr == NULL)
+***************
+*** 493,505 ****
+      assert(n > 0);
+      while (n--) {
+  	if (rr[n].rdata)
+! 	    free(rr[n].rdata);
+      }
+!     free(rr);
+  }
+  
+  /*
+!  * rfc1035AnswersUnpack()
+   *
+   * Takes the contents of a DNS reply and fills in an array
+   * of resource record structures.  The records array is allocated
+--- 464,550 ----
+      assert(n > 0);
+      while (n--) {
+  	if (rr[n].rdata)
+! 	    xfree(rr[n].rdata);
+!     }
+!     xfree(rr);
+! }
+! 
+! /*
+!  * rfc1035QueryUnpack()
+!  * 
+!  * Unpacks a RFC1035 Query Record into 'query' from a message buffer.
+!  *
+!  * Updates the new message buffer offset.
+!  *
+!  * Returns 0 (success) or 1 (error)
+!  */
+! static int
+! rfc1035QueryUnpack(const char *buf, size_t sz, int *off, rfc1035_query * query)
+! {
+!     unsigned short s;
+!     if (rfc1035NameUnpack(buf, sz, off, NULL, query->name, RFC1035_MAXHOSTNAMESZ, 0)) {
+! 	RFC1035_UNPACK_DEBUG;
+! 	memset(query, '\0', sizeof(*query));
+! 	return 1;
+!     }
+!     if (*off + 4 > sz) {
+! 	RFC1035_UNPACK_DEBUG;
+! 	memset(query, '\0', sizeof(*query));
+! 	return 1;
+!     }
+!     memcpy(&s, buf + *off, 2);
+!     *off += 2;
+!     query->qtype = ntohs(s);
+!     memcpy(&s, buf + *off, 2);
+!     *off += 2;
+!     query->qclass = ntohs(s);
+!     return 0;
+! }
+! 
+! void
+! rfc1035MessageDestroy(rfc1035_message * msg)
+! {
+!     if (!msg)
+! 	return;
+!     if (msg->query)
+! 	xfree(msg->query);
+!     if (msg->answer)
+! 	rfc1035RRDestroy(msg->answer, msg->ancount);
+!     xfree(msg);
+! }
+! 
+! /*
+!  * rfc1035QueryCompare()
+!  * 
+!  * Compares two rfc1035_query entries
+!  *
+!  * Returns 0 (equal) or !=0 (different)
+!  */
+! int
+! rfc1035QueryCompare(const rfc1035_query * a, const rfc1035_query * b)
+! {
+!     size_t la, lb;
+!     if (a->qtype != b->qtype)
+! 	return 1;
+!     if (a->qclass != b->qclass)
+! 	return 1;
+!     la = strlen(a->name);
+!     lb = strlen(b->name);
+!     if (la != lb) {
+! 	/* Trim root label(s) */
+! 	while (la > 0 && a->name[la - 1] == '.')
+! 	    la--;
+! 	while (lb > 0 && b->name[lb - 1] == '.')
+! 	    lb--;
+      }
+!     if (la != lb)
+! 	return 1;
+! 
+!     return strncasecmp(a->name, b->name, la);
+  }
+  
+  /*
+!  * rfc1035MessageUnpack()
+   *
+   * Takes the contents of a DNS reply and fills in an array
+   * of resource record structures.  The records array is allocated
+***************
+*** 510,569 ****
+   */
+  
+  int
+! rfc1035AnswersUnpack(const char *buf,
+      size_t sz,
+!     rfc1035_rr ** records,
+!     unsigned short *id)
+  {
+      int off = 0;
+-     int l;
+      int i;
+      int nr = 0;
+!     rfc1035_header hdr;
+      rfc1035_rr *recs;
+!     memset(&hdr, '\0', sizeof(hdr));
+!     if (rfc1035HeaderUnpack(buf + off, sz - off, &off, &hdr)) {
+  	RFC1035_UNPACK_DEBUG;
+  	rfc1035SetErrno(rfc1035_unpack_error);
+  	return -rfc1035_unpack_error;
+      }
+-     *id = hdr.id;
+      rfc1035_errno = 0;
+      rfc1035_error_message = NULL;
+!     if (hdr.rcode) {
+  	RFC1035_UNPACK_DEBUG;
+! 	rfc1035SetErrno((int) hdr.rcode);
+! 	return -rfc1035_errno;
+      }
+!     i = (int) hdr.qdcount;
+!     /* skip question */
+!     while (i--) {
+! 	do {
+! 	    l = (int) (unsigned char) *(buf + off);
+! 	    off++;
+! 	    if (l > 191) {	/* compression */
+! 		off++;
+! 		break;
+! 	    } else if (l > RFC1035_MAXLABELSZ) {
+! 		/* illegal combination of compression bits */
+! 		RFC1035_UNPACK_DEBUG;
+! 		rfc1035SetErrno(rfc1035_unpack_error);
+! 		return -rfc1035_unpack_error;
+! 	    } else {
+! 		off += l;
+! 	    }
+! 	} while (l > 0);	/* a zero-length label terminates */
+! 	off += 4;		/* qtype, qclass */
+! 	if (off > sz) {
+  	    RFC1035_UNPACK_DEBUG;
+  	    rfc1035SetErrno(rfc1035_unpack_error);
+  	    return -rfc1035_unpack_error;
+  	}
+      }
+!     if (hdr.ancount == 0)
+  	return 0;
+!     recs = calloc((int) hdr.ancount, sizeof(*recs));
+!     for (i = 0; i < (int) hdr.ancount; i++) {
+  	if (off >= sz) {	/* corrupt packet */
+  	    RFC1035_UNPACK_DEBUG;
+  	    break;
+--- 555,606 ----
+   */
+  
+  int
+! rfc1035MessageUnpack(const char *buf,
+      size_t sz,
+!     rfc1035_message ** answer)
+  {
+      int off = 0;
+      int i;
+      int nr = 0;
+!     rfc1035_message *msg;
+      rfc1035_rr *recs;
+!     rfc1035_query *querys;
+!     msg = xcalloc(1, sizeof(*msg));
+!     if (rfc1035HeaderUnpack(buf + off, sz - off, &off, msg)) {
+  	RFC1035_UNPACK_DEBUG;
+  	rfc1035SetErrno(rfc1035_unpack_error);
++ 	xfree(msg);
+  	return -rfc1035_unpack_error;
+      }
+      rfc1035_errno = 0;
+      rfc1035_error_message = NULL;
+!     i = (int) msg->qdcount;
+!     if (i != 1) {
+! 	/* This can not be an answer to our queries.. */
+  	RFC1035_UNPACK_DEBUG;
+! 	rfc1035SetErrno(rfc1035_unpack_error);
+! 	xfree(msg);
+! 	return -rfc1035_unpack_error;
+      }
+!     querys = msg->query = xcalloc((int) msg->qdcount, sizeof(*querys));
+!     for (i = 0; i < (int) msg->qdcount; i++) {
+! 	if (rfc1035QueryUnpack(buf, sz, &off, &querys[i])) {
+  	    RFC1035_UNPACK_DEBUG;
+  	    rfc1035SetErrno(rfc1035_unpack_error);
++ 	    rfc1035MessageDestroy(msg);
+  	    return -rfc1035_unpack_error;
+  	}
+      }
+!     *answer = msg;
+!     if (msg->rcode) {
+! 	RFC1035_UNPACK_DEBUG;
+! 	rfc1035SetErrno((int) msg->rcode);
+! 	return -rfc1035_errno;
+!     }
+!     if (msg->ancount == 0)
+  	return 0;
+!     recs = msg->answer = xcalloc((int) msg->ancount, sizeof(*recs));
+!     for (i = 0; i < (int) msg->ancount; i++) {
+  	if (off >= sz) {	/* corrupt packet */
+  	    RFC1035_UNPACK_DEBUG;
+  	    break;
+***************
+*** 579,589 ****
+  	 * we expected to unpack some answers (ancount != 0), but
+  	 * didn't actually get any.
+  	 */
+! 	free(recs);
+  	rfc1035SetErrno(rfc1035_unpack_error);
+  	return -rfc1035_unpack_error;
+      }
+-     *records = recs;
+      return nr;
+  }
+  
+--- 616,626 ----
+  	 * we expected to unpack some answers (ancount != 0), but
+  	 * didn't actually get any.
+  	 */
+! 	rfc1035MessageDestroy(msg);
+! 	*answer = NULL;
+  	rfc1035SetErrno(rfc1035_unpack_error);
+  	return -rfc1035_unpack_error;
+      }
+      return nr;
+  }
+  
+***************
+*** 595,615 ****
+   * probably be at least 512 octets.  The 'szp' initially
+   * specifies the size of the buffer, on return it contains
+   * the size of the message (i.e. how much to write).
+!  * Return value is the query ID.
+   */
+! unsigned short
+! rfc1035BuildAQuery(const char *hostname, char *buf, size_t * szp)
+  {
+!     static rfc1035_header h;
+      size_t offset = 0;
+-     size_t sz = *szp;
+      memset(&h, '\0', sizeof(h));
+!     /* the first char of hostname must be alphanmeric */
+!     if (NULL == strchr(Alphanum, *hostname)) {
+! 	rfc1035SetErrno(3);
+! 	return 0;
+!     }
+!     h.id = rfc1035Qid();
+      h.qr = 0;
+      h.rd = 1;
+      h.opcode = 0;		/* QUERY */
+--- 632,646 ----
+   * probably be at least 512 octets.  The 'szp' initially
+   * specifies the size of the buffer, on return it contains
+   * the size of the message (i.e. how much to write).
+!  * Returns the size of the query
+   */
+! ssize_t
+! rfc1035BuildAQuery(const char *hostname, char *buf, size_t sz, unsigned short qid, rfc1035_query * query)
+  {
+!     static rfc1035_message h;
+      size_t offset = 0;
+      memset(&h, '\0', sizeof(h));
+!     h.id = qid;
+      h.qr = 0;
+      h.rd = 1;
+      h.opcode = 0;		/* QUERY */
+***************
+*** 620,628 ****
+  	hostname,
+  	RFC1035_TYPE_A,
+  	RFC1035_CLASS_IN);
+      assert(offset <= sz);
+!     *szp = (size_t) offset;
+!     return h.id;
+  }
+  
+  /*
+--- 651,663 ----
+  	hostname,
+  	RFC1035_TYPE_A,
+  	RFC1035_CLASS_IN);
++     if (query) {
++ 	query->qtype = RFC1035_TYPE_A;
++ 	query->qclass = RFC1035_CLASS_IN;
++ 	xstrncpy(query->name, hostname, sizeof(query->name));
++     }
+      assert(offset <= sz);
+!     return offset;
+  }
+  
+  /*
+***************
+*** 633,646 ****
+   * probably be at least 512 octets.  The 'szp' initially
+   * specifies the size of the buffer, on return it contains
+   * the size of the message (i.e. how much to write).
+!  * Return value is the query ID.
+   */
+! unsigned short
+! rfc1035BuildPTRQuery(const struct in_addr addr, char *buf, size_t * szp)
+  {
+!     static rfc1035_header h;
+      size_t offset = 0;
+-     size_t sz = *szp;
+      static char rev[32];
+      unsigned int i;
+      memset(&h, '\0', sizeof(h));
+--- 668,680 ----
+   * probably be at least 512 octets.  The 'szp' initially
+   * specifies the size of the buffer, on return it contains
+   * the size of the message (i.e. how much to write).
+!  * Returns the size of the query
+   */
+! ssize_t
+! rfc1035BuildPTRQuery(const struct in_addr addr, char *buf, size_t sz, unsigned short qid, rfc1035_query * query)
+  {
+!     static rfc1035_message h;
+      size_t offset = 0;
+      static char rev[32];
+      unsigned int i;
+      memset(&h, '\0', sizeof(h));
+***************
+*** 650,656 ****
+  	(i >> 8) & 255,
+  	(i >> 16) & 255,
+  	(i >> 24) & 255);
+!     h.id = rfc1035Qid();
+      h.qr = 0;
+      h.rd = 1;
+      h.opcode = 0;		/* QUERY */
+--- 684,690 ----
+  	(i >> 8) & 255,
+  	(i >> 16) & 255,
+  	(i >> 24) & 255);
+!     h.id = qid;
+      h.qr = 0;
+      h.rd = 1;
+      h.opcode = 0;		/* QUERY */
+***************
+*** 661,669 ****
+  	rev,
+  	RFC1035_TYPE_PTR,
+  	RFC1035_CLASS_IN);
+      assert(offset <= sz);
+!     *szp = offset;
+!     return h.id;
+  }
+  
+  /*
+--- 695,707 ----
+  	rev,
+  	RFC1035_TYPE_PTR,
+  	RFC1035_CLASS_IN);
++     if (query) {
++ 	query->qtype = RFC1035_TYPE_PTR;
++ 	query->qclass = RFC1035_CLASS_IN;
++ 	xstrncpy(query->name, rev, sizeof(query->name));
++     }
+      assert(offset <= sz);
+!     return offset;
+  }
+  
+  /*
+***************
+*** 671,683 ****
+   * just need a new ID for it.  Lucky for us ID
+   * is the first field in the message buffer.
+   */
+! unsigned short
+! rfc1035RetryQuery(char *buf)
+  {
+-     unsigned short qid = rfc1035Qid();
+      unsigned short s = htons(qid);
+      memcpy(buf, &s, sizeof(s));
+-     return qid;
+  }
+  
+  #if DRIVER
+--- 709,719 ----
+   * just need a new ID for it.  Lucky for us ID
+   * is the first field in the message buffer.
+   */
+! void
+! rfc1035SetQueryID(char *buf, unsigned short qid)
+  {
+      unsigned short s = htons(qid);
+      memcpy(buf, &s, sizeof(s));
+  }
+  
+  #if DRIVER
+Index: squid/src/dns_internal.c
+diff -c squid/src/dns_internal.c:1.45.2.6 squid/src/dns_internal.c:1.45.2.9
+*** squid/src/dns_internal.c:1.45.2.6	Mon Mar  7 06:31:35 2005
+--- squid/src/dns_internal.c	Wed May 11 13:18:47 2005
+***************
+*** 55,61 ****
+  
+  struct _idns_query {
+      hash_link hash;
+!     char query[RFC1035_MAXHOSTNAMESZ + 1];
+      char buf[512];
+      size_t sz;
+      unsigned short id;
+--- 55,61 ----
+  
+  struct _idns_query {
+      hash_link hash;
+!     rfc1035_query query;
+      char buf[512];
+      size_t sz;
+      unsigned short id;
+***************
+*** 442,447 ****
+--- 442,466 ----
+      return NULL;
+  }
+  
++ static unsigned short
++ idnsQueryID(void)
++ {
++     unsigned short id = squid_random() & 0xFFFF;
++     unsigned short first_id = id;
++ 
++     while (idnsFindQuery(id)) {
++ 	id++;
++ 
++ 	if (id == first_id) {
++ 	    debug(78, 1) ("idnsQueryID: Warning, too many pending DNS requests\n");
++ 	    break;
++ 	}
++     }
++ 
++     return id;
++ }
++ 
++ 
+  static void
+  idnsCallback(idns_query * q, rfc1035_rr * answers, int n, const char *error)
+  {
+***************
+*** 469,498 ****
+  idnsGrokReply(const char *buf, size_t sz)
+  {
+      int n;
+!     rfc1035_rr *answers = NULL;
+!     unsigned short rid = 0xFFFF;
+      idns_query *q;
+!     n = rfc1035AnswersUnpack(buf,
+  	sz,
+! 	&answers,
+! 	&rid);
+!     debug(78, 3) ("idnsGrokReply: ID %#hx, %d answers\n", rid, n);
+!     if (rid == 0xFFFF) {
+! 	debug(78, 1) ("idnsGrokReply: Unknown error\n");
+! 	/* XXX leak answers? */
+  	return;
+      }
+!     q = idnsFindQuery(rid);
+      if (q == NULL) {
+  	debug(78, 3) ("idnsGrokReply: Late response\n");
+! 	rfc1035RRDestroy(answers, n);
+  	return;
+      }
+      dlinkDelete(&q->lru, &lru_list);
+      idnsRcodeCount(n, q->attempt);
+      q->error = NULL;
+      if (n < 0) {
+! 	debug(78, 3) ("idnsGrokReply: error %d\n", rfc1035_errno);
+  	q->error = rfc1035_error_message;
+  	q->rcode = -n;
+  	if (q->rcode == 2 && ++q->attempt < MAX_ATTEMPT) {
+--- 488,521 ----
+  idnsGrokReply(const char *buf, size_t sz)
+  {
+      int n;
+!     rfc1035_message *message = NULL;
+      idns_query *q;
+!     n = rfc1035MessageUnpack(buf,
+  	sz,
+! 	&message);
+!     if (message == NULL) {
+! 	debug(78, 2) ("idnsGrokReply: Malformed DNS response\n");
+  	return;
+      }
+!     debug(78, 3) ("idnsGrokReply: ID %#hx, %d answers\n", message->id, n);
+! 
+!     q = idnsFindQuery(message->id);
+! 
+      if (q == NULL) {
+  	debug(78, 3) ("idnsGrokReply: Late response\n");
+! 	rfc1035MessageDestroy(message);
+! 	return;
+!     }
+!     if (rfc1035QueryCompare(&q->query, message->query) != 0) {
+! 	debug(78, 3) ("idnsGrokReply: Query mismatch (%s != %s)\n", q->query.name, message->query->name);
+! 	rfc1035MessageDestroy(message);
+  	return;
+      }
+      dlinkDelete(&q->lru, &lru_list);
+      idnsRcodeCount(n, q->attempt);
+      q->error = NULL;
+      if (n < 0) {
+! 	debug(78, 3) ("idnsGrokReply: error %s (%d)\n", rfc1035_error_message, rfc1035_errno);
+  	q->error = rfc1035_error_message;
+  	q->rcode = -n;
+  	if (q->rcode == 2 && ++q->attempt < MAX_ATTEMPT) {
+***************
+*** 501,515 ****
+  	     * unable to process this query due to a problem with
+  	     * the name server."
+  	     */
+! 	    assert(NULL == answers);
+  	    q->start_t = current_time;
+! 	    q->id = rfc1035RetryQuery(q->buf);
+  	    idnsSendQuery(q);
+  	    return;
+  	}
+      }
+!     idnsCallback(q, answers, n, q->error);
+!     rfc1035RRDestroy(answers, n);
+      memFree(q, MEM_IDNS_QUERY);
+  }
+  
+--- 524,540 ----
+  	     * unable to process this query due to a problem with
+  	     * the name server."
+  	     */
+! 	    rfc1035MessageDestroy(message);
+  	    q->start_t = current_time;
+! 	    q->id = idnsQueryID();
+! 	    rfc1035SetQueryID(q->buf, q->id);
+  	    idnsSendQuery(q);
+  	    return;
+  	}
+      }
+!     idnsCallback(q, message->answer, n, q->error);
+!     rfc1035MessageDestroy(message);
+! 
+      memFree(q, MEM_IDNS_QUERY);
+  }
+  
+***************
+*** 527,533 ****
+  	from_len = sizeof(from);
+  	memset(&from, '\0', from_len);
+  	statCounter.syscalls.sock.recvfroms++;
+! 	len = recvfrom(fd, rbuf, 512, 0, (struct sockaddr *) &from, &from_len);
+  	if (len == 0)
+  	    break;
+  	if (len < 0) {
+--- 552,558 ----
+  	from_len = sizeof(from);
+  	memset(&from, '\0', from_len);
+  	statCounter.syscalls.sock.recvfroms++;
+! 	len = recvfrom(fd, rbuf, sizeof(rbuf), 0, (struct sockaddr *) &from, &from_len);
+  	if (len == 0)
+  	    break;
+  	if (len < 0) {
+***************
+*** 563,585 ****
+  	    }
+  	    continue;
+  	}
+- 	if (len > 512) {
+- 	    /*
+- 	     * Check for non-conforming replies.  RFC 1035 says
+- 	     * DNS/UDP messages must be 512 octets or less.  If we
+- 	     * get one that is too large, we generate a warning
+- 	     * and then pretend that we only got 512 octets.  This
+- 	     * should prevent the rfc1035.c code from reading past
+- 	     * the end of our buffer.
+- 	     */
+- 	    static int other_large_pkts = 0;
+- 	    int x;
+- 	    x = (ns < 0) ? ++other_large_pkts : ++nameservers[ns].large_pkts;
+- 	    if (isPowTen(x))
+- 		debug(78, 1) ("WARNING: Got %d large DNS replies from %s\n",
+- 		    x, inet_ntoa(from.sin_addr));
+- 	    len = 512;
+- 	}
+  	idnsGrokReply(rbuf, len);
+      }
+      if (lru_list.head)
+--- 588,593 ----
+***************
+*** 722,731 ****
+  }
+  
+  static void
+! idnsCacheQuery(idns_query * q, const char *key)
+  {
+!     xstrncpy(q->query, key, sizeof(q->query));
+!     q->hash.key = q->query;
+      hash_join(idns_lookup_hash, &q->hash);
+  }
+  
+--- 730,738 ----
+  }
+  
+  static void
+! idnsCacheQuery(idns_query * q)
+  {
+!     q->hash.key = q->query.name;
+      hash_join(idns_lookup_hash, &q->hash);
+  }
+  
+***************
+*** 736,744 ****
+      if (idnsCachedLookup(name, callback, data))
+  	return;
+      q = memAllocate(MEM_IDNS_QUERY);
+!     q->sz = sizeof(q->buf);
+!     q->id = rfc1035BuildAQuery(name, q->buf, &q->sz);
+!     if (0 == q->id) {
+  	/* problem with query data -- query not sent */
+  	callback(data, NULL, 0, "Internal error");
+  	memFree(q, MEM_IDNS_QUERY);
+--- 743,751 ----
+      if (idnsCachedLookup(name, callback, data))
+  	return;
+      q = memAllocate(MEM_IDNS_QUERY);
+!     q->id = idnsQueryID();
+!     q->sz = rfc1035BuildAQuery(name, q->buf, sizeof(q->buf), q->id, &q->query);
+!     if (q->sz < 0) {
+  	/* problem with query data -- query not sent */
+  	callback(data, NULL, 0, "Internal error");
+  	memFree(q, MEM_IDNS_QUERY);
+***************
+*** 750,756 ****
+      q->callback_data = data;
+      cbdataLock(q->callback_data);
+      q->start_t = current_time;
+!     idnsCacheQuery(q, name);
+      idnsSendQuery(q);
+  }
+  
+--- 757,763 ----
+      q->callback_data = data;
+      cbdataLock(q->callback_data);
+      q->start_t = current_time;
+!     idnsCacheQuery(q);
+      idnsSendQuery(q);
+  }
+  
+***************
+*** 762,776 ****
+      if (idnsCachedLookup(ip, callback, data))
+  	return;
+      q = memAllocate(MEM_IDNS_QUERY);
+!     q->sz = sizeof(q->buf);
+!     q->id = rfc1035BuildPTRQuery(addr, q->buf, &q->sz);
+      debug(78, 3) ("idnsPTRLookup: buf is %d bytes for %s, id = %#hx\n",
+  	(int) q->sz, ip, q->id);
+      q->callback = callback;
+      q->callback_data = data;
+      cbdataLock(q->callback_data);
+      q->start_t = current_time;
+!     idnsCacheQuery(q, ip);
+      idnsSendQuery(q);
+  }
+  
+--- 769,789 ----
+      if (idnsCachedLookup(ip, callback, data))
+  	return;
+      q = memAllocate(MEM_IDNS_QUERY);
+!     q->id = idnsQueryID();
+!     q->sz = rfc1035BuildPTRQuery(addr, q->buf, sizeof(q->buf), q->id, &q->query);
+      debug(78, 3) ("idnsPTRLookup: buf is %d bytes for %s, id = %#hx\n",
+  	(int) q->sz, ip, q->id);
++     if (q->sz < 0) {
++ 	/* problem with query data -- query not sent */
++ 	callback(data, NULL, 0, "Internal error");
++ 	memFree(q, MEM_IDNS_QUERY);
++ 	return;
++     }
+      q->callback = callback;
+      q->callback_data = data;
+      cbdataLock(q->callback_data);
+      q->start_t = current_time;
+!     idnsCacheQuery(q);
+      idnsSendQuery(q);
+  }
+  

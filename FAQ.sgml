@@ -1818,7 +1818,7 @@ address whatsoever.  This is perhaps the reason why client IP addresses
 have been omitted from the HTTP/1.1 specification.
 
 <P>
-Because of the weakness of this header support for access controls based
+Because of the weakness of this header, support for access controls based
 on X-Forwarder-For is not yet available in any officially released version of
 squid.  However, unofficial patches are available from the <url
 url="http://devel.squid-cache.org/follow_xff/index.html" name="follow_xff">
@@ -9263,8 +9263,8 @@ diff -p -u -r1.40 -r1.41
   * SUCH DAMAGE.
   *
   *	@(#)uipc_socket.c	8.3 (Berkeley) 4/15/94
-- *	$Id: FAQ.sgml,v 1.246 2005/03/04 23:49:39 hno Exp $
-+ *	$Id: FAQ.sgml,v 1.246 2005/03/04 23:49:39 hno Exp $
+- *	$Id: FAQ.sgml,v 1.250 2005/04/22 19:29:50 hno Exp $
++ *	$Id: FAQ.sgml,v 1.250 2005/04/22 19:29:50 hno Exp $
   */
 
  #include <sys/param.h>
@@ -12151,31 +12151,14 @@ Simply add your new <em/cache_dir/ line to <em/squid.conf/, then
 run <em/squid -z/ again.  Squid will create swap directories on the
 new disk and leave the existing ones in place.
 
-<sect1>Squid 2 performs badly on Linux
-<P>
-by <url url="mailto:hno@squid-cache.org" name="Henrik Nordstrom">
-<P>
-You may have enabled Asyncronous I/O with the <em/--enable-async-io/
-configure option.
-Be careful when using threads on Linux. Most versions of libc5 and
-very early versions of glibc have problems with threaded applications.
-I would not recommend <em/--enable-async-io/ on Linux unless your system
-uses glibc 2.1.3 or later.
+<sect1>Empty placeholder
 
-<P>
-You should also know that <em/--enable-async-io/ is not optimal unless
-you have a very busy cache. For low loads the cache performs slightly
-better without <em/--enable-async-io/.
+This entry has been deleted.
 
-Try recompiling Squid without <em/--enable-async-io/. If a non-threaded
-Squid performs better then your libc probably can't handle threads
-correctly. (don't forget "make clean" after running configure)
-
-<sect1>How do I configure proxy authentication with Squid-2?
+<sect1>How do I configure proxy authentication?
 <label id="configuring-proxy-auth">
 <P>
-For Squid-2, the implementation and configuration has changed.
-Authentication is now handled via external processes.
+Authentication is handled via external processes.
 Arjan's <url url="http://www.iae.nl/users/devet/squid/proxy&lowbar;auth/" name="proxy auth page">
 describes how to set it up.  Some simple instructions are given below as well.
 
@@ -12190,15 +12173,18 @@ We assume you have configured an ACL entry with proxy_auth, for example:
 <item>
 You will need to compile and install an external authenticator program.
 Most people will want to use <em/ncsa_auth/.  The source for this program
-is included in the source distribution, in the <em>auth_modules/NCSA</em>
+is included in the source distribution, in the <em>helpers/basic_auth/NCSA</em>
 directory.
 <verb>
-	% cd auth_modules/NCSA
+	% cd helpers/basic_auth/NCSA
 	% make
 	% make install
 </verb>
-You should now have an <em/ncsa_auth/ program in the same directory where
-your <em/squid/ binary lives.
+
+You should now have an <em/ncsa_auth/ program in the &lt;prefix&gt;/libexec/ directory where
+the helpers for <em/squid/ lives (usually /usr/local/squid/libexec unless overridden by
+configure flags). You can also select with the --enable-basic-auth-helpers=... option which
+helpers should be installed by default when you install Squid.
 
 <item>
 You may need to create a password file.  If you have been using
@@ -12212,7 +12198,7 @@ Configure the external authenticator in <em/squid.conf/.
 For <em/ncsa_auth/ you need to give the pathname to the executable and
 the password file as an argument.  For example:
 <verb>
-	auth_param basic program /usr/local/squid/bin/ncsa_auth /usr/local/squid/etc/passwd
+	auth_param basic program /usr/local/squid/libexec/ncsa_auth /usr/local/squid/etc/passwd
 </verb>
 </enum>
 
@@ -13883,7 +13869,6 @@ Add acl entries to require authentication:
 <p>
 
 <bf>Test Squid with auth</bf>
-<p>
 <itemize>
 
 <item>
@@ -13894,7 +13879,6 @@ a password prompt should NOT pop up.
 <p>
 Confirm the traffic really is being authorized by tailing access.log.
 The domain\username should be present.
-<p>
 </item>
 
 <item>
@@ -13908,17 +13892,13 @@ smb.conf.  Otherwise, the username must be entered in "domain+username" format.
 (where + is the domain separator set in smb.conf)
 </item>
 </itemize>
-<p>
-<p>
-If no usernames appear in access.log and/or no password dialogs appear
+<p>If no usernames appear in access.log and/or no password dialogs appear
 in either browser, then the acl/http_access portions of squid.conf are
 not correct. 
-<p>
 <p>Note that when using NTLM authentication, you will see two 
 "TCP_DENIED/407" entries in access.log for every request. This
 is due to the challenge-response process of NTLM.
-<p>
-<bf>References</bf>
+<p><bf>References</bf>
 <p>
 <url url="http://www.samba.org/samba/docs/man/Samba-HOWTO-Collection.html#WINBIND" name="Samba Winbind Overview">
 <p>
@@ -13937,6 +13917,31 @@ is due to the challenge-response process of NTLM.
 <url url="http://www.samba.org/samba/docs/man/smbclient.1.html" name="smbclient man page">
 <p>
 <url url="http://www.samba.org/samba/docs/man/ntlm_auth.1.html" name="ntlm_auth man page">
+
+<sect1>Authentication in accelerator mode
+
+<p>
+Authentication is by default disabled in acceleartor mode in Squid-2.X due to
+conflicts with transparent interception. To enable this feature,
+at the top of acl.c add the following line:
+
+<code>#define AUTH_ON_ACCELERATION 1</code>
+
+<p>Then "make install".
+
+<P>This feature is somewhat hidden because
+<itemize>
+<item>It hasn't been fully thought over yet. There are issues in caching
+when combined with authentication, and more so when there is also
+authentication to the backend servers..
+<item>It easilly collides with transparent proxying, and many people
+simply refuses to read warnings that a feature cannot be used in a
+transparent proxy and try so anyhow.
+</itemize>
+
+<P>The whole concept of "acceleration" in Squid is currently being reworked
+for the Squid-3.0 release to fix this and a number of other issues.
+
 
 <!-- %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% -->
 
@@ -14007,7 +14012,7 @@ want to make a cron job that regularly verifies that your proxy blocks
 access to port 25.
 
 <verb>
-$Id: FAQ.sgml,v 1.246 2005/03/04 23:49:39 hno Exp $
+$Id: FAQ.sgml,v 1.250 2005/04/22 19:29:50 hno Exp $
 </verb>
 </article>
 <!--  LocalWords:  SSL MSIE Netmanage Chameleon WebSurfer unchecking remotehost

@@ -1,0 +1,111 @@
+Index: squid/src/stat.c
+diff -c squid/src/stat.c:1.351.2.14 squid/src/stat.c:1.351.2.16
+*** squid/src/stat.c:1.351.2.14	Sat Mar 26 17:40:59 2005
+--- squid/src/stat.c	Tue Mar 29 02:52:00 2005
+***************
+*** 36,43 ****
+  
+  #include "squid.h"
+  
+- #define DEBUG_OPENFD 1
+- 
+  typedef int STOBJFLT(const StoreEntry *);
+  typedef struct {
+      StoreEntry *sentry;
+--- 36,41 ----
+***************
+*** 63,71 ****
+  static OBJH stat_io_get;
+  static OBJH stat_objects_get;
+  static OBJH stat_vmobjects_get;
+- #if DEBUG_OPENFD
+  static OBJH statOpenfdObj;
+- #endif
+  static EVH statObjects;
+  static OBJH info_get;
+  static OBJH statFiledescriptors;
+--- 61,67 ----
+***************
+*** 374,380 ****
+      statObjectsStart(sentry, statObjectsVmFilter);
+  }
+  
+- #if DEBUG_OPENFD
+  static int
+  statObjectsOpenfdFilter(const StoreEntry * e)
+  {
+--- 370,375 ----
+***************
+*** 391,397 ****
+      statObjectsStart(sentry, statObjectsOpenfdFilter);
+  }
+  
+! #endif
+  
+  #ifdef XMALLOC_STATISTICS
+  static void
+--- 386,420 ----
+      statObjectsStart(sentry, statObjectsOpenfdFilter);
+  }
+  
+! static int
+! statObjectsPendingFilter(const StoreEntry * e)
+! {
+!     if (e->store_status != STORE_PENDING)
+! 	return 0;
+!     return 1;
+! }
+! 
+! static void
+! statPendingObj(StoreEntry * sentry)
+! {
+!     statObjectsStart(sentry, statObjectsPendingFilter);
+! }
+! 
+! static int
+! statObjectsClientsFilter(const StoreEntry * e)
+! {
+!     if (e->mem_obj == NULL)
+! 	return 0;
+!     if (e->mem_obj->clients.head == NULL)
+! 	return 0;
+!     return 1;
+! }
+! 
+! static void
+! statClientsObj(StoreEntry * sentry)
+! {
+!     statObjectsStart(sentry, statObjectsClientsFilter);
+! }
+  
+  #ifdef XMALLOC_STATISTICS
+  static void
+***************
+*** 863,873 ****
+      cachemgrRegister("vm_objects",
+  	"In-Memory and In-Transit Objects",
+  	stat_vmobjects_get, 0, 0);
+- #if DEBUG_OPENFD
+      cachemgrRegister("openfd_objects",
+  	"Objects with Swapout files open",
+  	statOpenfdObj, 0, 0);
+! #endif
+      cachemgrRegister("io",
+  	"Server-side network read() size histograms",
+  	stat_io_get, 0, 1);
+--- 886,900 ----
+      cachemgrRegister("vm_objects",
+  	"In-Memory and In-Transit Objects",
+  	stat_vmobjects_get, 0, 0);
+      cachemgrRegister("openfd_objects",
+  	"Objects with Swapout files open",
+  	statOpenfdObj, 0, 0);
+!     cachemgrRegister("pending_objects",
+! 	"Objects being retreived from the network",
+! 	statPendingObj, 0, 0);
+!     cachemgrRegister("client_objects",
+! 	"Objects being sent to clients",
+! 	statClientsObj, 0, 0);
+      cachemgrRegister("io",
+  	"Server-side network read() size histograms",
+  	stat_io_get, 0, 1);

@@ -1,0 +1,29 @@
+Index: squid/src/errorpage.c
+diff -c squid/src/errorpage.c:1.167.2.12 squid/src/errorpage.c:1.167.2.13
+*** squid/src/errorpage.c:1.167.2.12	Fri Aug  6 05:05:05 2004
+--- squid/src/errorpage.c	Wed Apr 20 15:33:48 2005
+***************
+*** 412,417 ****
+--- 412,418 ----
+  #define CVT_BUF_SZ 512
+  
+  /*
++  * a - User identity                            x
+   * B - URL with FTP %2f hack                    x
+   * c - Squid error code                         x
+   * e - errno                                    x
+***************
+*** 449,454 ****
+--- 450,461 ----
+  
+      memBufReset(&mb);
+      switch (token) {
++     case 'a':
++ 	if (r->auth_user_request)
++ 	    p = authenticateUserRequestUsername(r->auth_user_request);
++ 	if (!p)
++ 	    p = "-";
++ 	break;
+      case 'B':
+  	p = r ? ftpUrlWith2f(r) : "[no URL]";
+  	break;

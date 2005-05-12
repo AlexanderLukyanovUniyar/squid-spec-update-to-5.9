@@ -1,0 +1,39 @@
+Index: squid/src/tools.c
+diff -c squid/src/tools.c:1.213.2.14 squid/src/tools.c:1.213.2.15
+*** squid/src/tools.c:1.213.2.14	Sat Mar 26 16:27:10 2005
+--- squid/src/tools.c	Fri Apr 22 14:45:12 2005
+***************
+*** 617,622 ****
+--- 617,623 ----
+  {
+      FILE *pid_fp = NULL;
+      const char *f = Config.pidFilename;
++     char *chroot_f = NULL;
+      pid_t pid = -1;
+      int i;
+  
+***************
+*** 624,629 ****
+--- 625,636 ----
+  	fprintf(stderr, "%s: ERROR: No pid file name defined\n", appname);
+  	exit(1);
+      }
++     if (Config.chroot_dir && geteuid() == 0) {
++ 	int len = strlen(Config.chroot_dir) + 1 + strlen(f) + 1;
++ 	chroot_f = xmalloc(len);
++ 	snprintf(chroot_f, len, "%s/%s", Config.chroot_dir, f);
++ 	f = chroot_f;
++     }
+      pid_fp = fopen(f, "r");
+      if (pid_fp != NULL) {
+  	pid = 0;
+***************
+*** 637,642 ****
+--- 644,650 ----
+  	    exit(1);
+  	}
+      }
++     safe_free(chroot_f);
+      return pid;
+  }
+  

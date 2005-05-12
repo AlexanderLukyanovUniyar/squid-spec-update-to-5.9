@@ -1,0 +1,69 @@
+Index: squid/src/acl.c
+diff -c squid/src/acl.c:1.270.2.37 squid/src/acl.c:1.270.2.38
+*** squid/src/acl.c:1.270.2.37	Sun May  8 07:48:03 2005
+--- squid/src/acl.c	Sun May  8 19:48:09 2005
+***************
+*** 1623,1630 ****
+  	}
+  	/* NOTREACHED */
+      case ACL_DST_DOMAIN:
+  	if ((ia = ipcacheCheckNumeric(r->host)) == NULL)
+! 	    return aclMatchDomainList(&ae->data, r->host);
+  	fqdn = fqdncache_gethostbyaddr(ia->in_addrs[0], FQDN_LOOKUP_IF_MISS);
+  	if (fqdn)
+  	    return aclMatchDomainList(&ae->data, fqdn);
+--- 1623,1632 ----
+  	}
+  	/* NOTREACHED */
+      case ACL_DST_DOMAIN:
++ 	if (aclMatchDomainList(&ae->data, r->host))
++ 	    return 1;
+  	if ((ia = ipcacheCheckNumeric(r->host)) == NULL)
+! 	    return 0;
+  	fqdn = fqdncache_gethostbyaddr(ia->in_addrs[0], FQDN_LOOKUP_IF_MISS);
+  	if (fqdn)
+  	    return aclMatchDomainList(&ae->data, fqdn);
+***************
+*** 1649,1656 ****
+  	return aclMatchDomainList(&ae->data, "none");
+  	/* NOTREACHED */
+      case ACL_DST_DOM_REGEX:
+  	if ((ia = ipcacheCheckNumeric(r->host)) == NULL)
+! 	    return aclMatchRegex(ae->data, r->host);
+  	fqdn = fqdncache_gethostbyaddr(ia->in_addrs[0], FQDN_LOOKUP_IF_MISS);
+  	if (fqdn)
+  	    return aclMatchRegex(ae->data, fqdn);
+--- 1651,1660 ----
+  	return aclMatchDomainList(&ae->data, "none");
+  	/* NOTREACHED */
+      case ACL_DST_DOM_REGEX:
++ 	if (aclMatchRegex(ae->data, r->host))
++ 	    return 1;
+  	if ((ia = ipcacheCheckNumeric(r->host)) == NULL)
+! 	    return 0;
+  	fqdn = fqdncache_gethostbyaddr(ia->in_addrs[0], FQDN_LOOKUP_IF_MISS);
+  	if (fqdn)
+  	    return aclMatchRegex(ae->data, fqdn);
+Index: squid/src/cf.data.pre
+diff -c squid/src/cf.data.pre:1.245.2.92 squid/src/cf.data.pre:1.245.2.93
+*** squid/src/cf.data.pre:1.245.2.92	Sun May  8 07:48:03 2005
+--- squid/src/cf.data.pre	Sun May  8 19:48:09 2005
+***************
+*** 2024,2031 ****
+  	acl aclname srcdom_regex [-i] xxx ...   # regex matching client name
+  	acl aclname dstdom_regex [-i] xxx ...   # regex matching server
+  	  # For dstdomain and dstdom_regex  a reverse lookup is tried if a IP
+! 	  # based URL is used. The name "none" is used if the reverse lookup
+! 	  # fails.
+  
+  	acl aclname time     [day-abbrevs]  [h1:m1-h2:m2]
+  	    day-abbrevs:
+--- 2024,2031 ----
+  	acl aclname srcdom_regex [-i] xxx ...   # regex matching client name
+  	acl aclname dstdom_regex [-i] xxx ...   # regex matching server
+  	  # For dstdomain and dstdom_regex  a reverse lookup is tried if a IP
+! 	  # based URL is used and no match is found. The name "none" is used
+! 	  # if the reverse lookup fails.
+  
+  	acl aclname time     [day-abbrevs]  [h1:m1-h2:m2]
+  	    day-abbrevs:

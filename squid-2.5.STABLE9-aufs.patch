@@ -292,3 +292,36 @@ diff -c squid/src/fs/aufs/store_io_aufs.c:1.15.2.12 squid/src/fs/aufs/store_io_a
       store_open_disk_fd--;
       statCounter.syscalls.disk.closes++;
       debug(79, 9) ("%s:%d\n", __FILE__, __LINE__);
+Index: squid/src/fs/aufs/async_io.c
+diff -c squid/src/fs/aufs/async_io.c:1.10.2.7 squid/src/fs/aufs/async_io.c:1.10.2.8
+*** squid/src/fs/aufs/async_io.c:1.10.2.7	Fri Mar 25 19:50:54 2005
+--- squid/src/fs/aufs/async_io.c	Tue Mar 29 01:44:14 2005
+***************
+*** 79,93 ****
+  static int initialised = 0;
+  static OBJH aioStats;
+  static MemPool *squidaio_ctrl_pool;
+- static void aioFDWasClosed(int fd);
+- 
+- static void
+- aioFDWasClosed(int fd)
+- {
+-     if (fd_table[fd].flags.closing)
+- 	fd_close(fd);
+- }
+- 
+  
+  void
+  aioInit(void)
+--- 79,84 ----
+***************
+*** 337,344 ****
+  	/* free temporary read buffer */
+  	if (ctrlp->operation == _AIO_READ)
+  	    squidaio_xfree(ctrlp->bufp, ctrlp->len);
+- 	if (ctrlp->operation == _AIO_CLOSE)
+- 	    aioFDWasClosed(ctrlp->fd);
+  	memPoolFree(squidaio_ctrl_pool, ctrlp);
+      }
+      return retval;
+--- 328,333 ----

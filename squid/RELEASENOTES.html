@@ -7,7 +7,7 @@
 <BODY>
 <H1>Squid 2.5 release notes</H1>
 
-<H2>Squid Developers</H2>$Id: release-2.5.html,v 1.1.2.44 2005/02/23 00:26:20 hno Exp $
+<H2>Squid Developers</H2>$Id: release-2.5.html,v 1.1.2.54 2005/05/11 15:00:58 hno Exp $
 <HR>
 <EM>This document contains the release notes for version 2.5 of Squid.
 Squid is a WWW Cache application developed by the National Laboratory
@@ -144,15 +144,11 @@ management of timeouts while connecting to origin servers or peers</P>
 
 <H2><A NAME="s3">3. Known issues and limitations</A></H2>
 
-<P>There is a few known issues and limitations in this version of Squid which we hope to correct in a later release</P>
+<P>There is a few known issues in this version of Squid which we hope to correct in a later release</P>
 <P>
 <DL>
 <DT><B>Bug 
 <A HREF="http://www.squid-cache.org/bugs/show_bug.cgi?id=761">#761</A></B><DD><P>assertion failed: cbdata.c:249: "c-&gt;locks &gt; 0" when using diskd</P>
-<DT><B>Bug 
-<A HREF="http://www.squid-cache.org/bugs/show_bug.cgi?id=1193">#1193</A></B><DD><P>Interception fails if intercepting multiple ports and Squid is not listening on the same ports</P>
-<DT><B>Bug 
-<A HREF="http://www.squid-cache.org/bugs/show_bug.cgi?id=1094">#1094</A></B><DD><P>cachemgr.cgi should have a built-in access control layer to prevent malicious use</P>
 <DT><B>Bug 
 <A HREF="http://www.squid-cache.org/bugs/show_bug.cgi?id=649">#649</A></B><DD><P>Problems refreshing pages stored with 'vary' information</P>
 <DT><B>Bug 
@@ -162,9 +158,7 @@ management of timeouts while connecting to origin servers or peers</P>
 <DT><B>Bug 
 <A HREF="http://www.squid-cache.org/bugs/show_bug.cgi?id=888">#888</A></B><DD><P>ntlm_user_pool assertion error on shutdown</P>
 <DT><B>Bug 
-<A HREF="http://www.squid-cache.org/bugs/show_bug.cgi?id=1223">#1223</A></B><DD><P>Authentication could be more informative on why a login failed</P>
-<DT><B>Bug 
-<A HREF="http://www.squid-cache.org/bugs/show_bug.cgi?id=1227">#1227</A></B><DD><P>Syslog facility should not be hardcoded to "local4"</P>
+<A HREF="http://www.squid-cache.org/bugs/show_bug.cgi?id=1275">#1275</A></B><DD><P>Squid internal icons served up with slightly incorrect HTTP headers</P>
 </DL>
 </P>
 
@@ -209,7 +203,7 @@ corruption issues, and some aufs performance improvements.</LI>
 <LI>now possible to specify acl values with spaces in them
 via the "include file" technique</LI>
 <LI>winbind helpers updated to match Samba-2.2.7a and should
-work with Samba-2.2.6 or later (required). For compability with
+work with Samba-2.2.6 or later (required). For compatibility with
 older Samba versions A new configure option --with-samba-sources=...
 has been added to allow you to specify which Samba version the
 helpers should be built for if different than the above versions.</LI>
@@ -285,7 +279,7 @@ when requesting icons.</LI>
 matches to the "login" component of Internet style URLs
 (protocol://user:password@host/path/to/file).</LI>
 <LI>Squid now respects the Telnet protocol on connections to FTP
-servers. The ftp_telnet_protocol directice can be used to revert back
+servers. The ftp_telnet_protocol directive can be used to revert back
 to the old incorrect implementation.</LI>
 <LI>Several NTLM related bugfixes and improvements fixing the problem
 of random auth popups and account lockouts. Support for the NEGOTIATE
@@ -388,9 +382,37 @@ requests.</LI>
 <LI>Additional workarounds for broken web servers rejected by 2.5.STABLE8.</LI>
 <LI>No longer automatically retries requests on 403 Access Denied or
 many other server errors. New squid.conf directive retry_on_error to revert
-back to the old behaviour if needed.</LI>
+back to the old behavior if needed.</LI>
 <LI>a number of other minor and cosmetic bugfixes. See the list of 
 <A HREF="http://www.squid-cache.org/Versions/v2/2.5/bugs/#STABLE8">squid-2.5.STABLE8 patches</A> and the 
+<A HREF="ChangeLog">ChangeLog</A> file for details.</LI>
+</UL>
+</P>
+
+<H2><A NAME="s12">12. Key changes squid-2.5.STABLE9 to 2.5.STABLE10:</A></H2>
+
+<P>
+<UL>
+<LI>Fixed a Set-Cookie race condition causing inconsistent cache
+behaviour</LI>
+<LI>Abort on misconfigured http_access rules to prevent unexpected
+results from partial configuration</LI>
+<LI>FTP directory listings corrected again (broken by 2.5.STABLE9)</LI>
+<LI>Support for proxying huge objects greater than 2GB in size</LI>
+<LI>IP-Filter 4.0 support in --enable-ipf-transparent</LI>
+<LI>cachemgr.cgi now uses a configuration controlling which servers
+may be managed. This to prevent abuse of the program. See <CODE>&lt;prefix&gt;/etc/cachemgr.conf</CODE>
+for details. The configuration is read first from the current directory
+(normally where you installed cachemgr.cgi) and if not found there from
+<CODE>&lt;prefix&gt;/etc/cachemgr.conf</CODE>. If neither is found only access
+to localhost and the full server name is provided, or the cachemgr default
+host if specified to configure.</LI>
+<LI>The internal DNS client has been hardened against spoofing of DNS
+responses.</LI>
+<LI>The SNMP agent now supports the use of SNMPv2, and has a few
+other related minor bugfixes.</LI>
+<LI>a number of other minor and cosmetic bugfixes. See the list of 
+<A HREF="http://www.squid-cache.org/Versions/v2/2.5/bugs/#STABLE9">squid-2.5.STABLE9 patches</A> and the 
 <A HREF="ChangeLog">ChangeLog</A> file for details.</LI>
 </UL>
 </P>

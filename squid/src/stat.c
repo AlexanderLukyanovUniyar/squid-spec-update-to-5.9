@@ -1,6 +1,6 @@
 
 /*
- * $Id: stat.c,v 1.351.2.12 2005/02/13 21:19:44 serassio Exp $
+ * $Id: stat.c,v 1.351.2.16 2005/03/29 09:52:00 hno Exp $
  *
  * DEBUG: section 18    Cache Manager Statistics
  * AUTHOR: Harvest Derived
@@ -36,8 +36,6 @@
 
 #include "squid.h"
 
-#define DEBUG_OPENFD 1
-
 typedef int STOBJFLT(const StoreEntry *);
 typedef struct {
     StoreEntry *sentry;
@@ -63,9 +61,7 @@ static double statCPUUsage(int minutes);
 static OBJH stat_io_get;
 static OBJH stat_objects_get;
 static OBJH stat_vmobjects_get;
-#if DEBUG_OPENFD
 static OBJH statOpenfdObj;
-#endif
 static EVH statObjects;
 static OBJH info_get;
 static OBJH statFiledescriptors;
@@ -274,22 +270,22 @@ statStoreEntry(MemBuf * mb, StoreEntry * e)
     memBufPrintf(mb, "\tSwap Dir %d, File %#08X\n",
 	e->swap_dirn, e->swap_filen);
     if (mem != NULL) {
-	memBufPrintf(mb, "\tinmem_lo: %d\n", (int) mem->inmem_lo);
-	memBufPrintf(mb, "\tinmem_hi: %d\n", (int) mem->inmem_hi);
-	memBufPrintf(mb, "\tswapout: %d bytes queued\n",
-	    (int) mem->swapout.queue_offset);
+	memBufPrintf(mb, "\tinmem_lo: %" PRINTF_OFF_T "\n", mem->inmem_lo);
+	memBufPrintf(mb, "\tinmem_hi: %" PRINTF_OFF_T "\n", mem->inmem_hi);
+	memBufPrintf(mb, "\tswapout: %" PRINTF_OFF_T " bytes queued\n",
+	    mem->swapout.queue_offset);
 	if (mem->swapout.sio)
-	    memBufPrintf(mb, "\tswapout: %d bytes written\n",
-		(int) storeOffset(mem->swapout.sio));
+	    memBufPrintf(mb, "\tswapout: %" PRINTF_OFF_T " bytes written\n",
+		storeOffset(mem->swapout.sio));
 	for (i = 0, node = mem->clients.head; node; node = node->next, i++) {
 	    sc = (store_client *) node->data;
 	    if (sc->callback_data == NULL)
 		continue;
 	    memBufPrintf(mb, "\tClient #%d, %p\n", i, sc->callback_data);
-	    memBufPrintf(mb, "\t\tcopy_offset: %d\n",
-		(int) sc->copy_offset);
-	    memBufPrintf(mb, "\t\tseen_offset: %d\n",
-		(int) sc->seen_offset);
+	    memBufPrintf(mb, "\t\tcopy_offset: %" PRINTF_OFF_T "\n",
+		sc->copy_offset);
+	    memBufPrintf(mb, "\t\tseen_offset: %" PRINTF_OFF_T "\n",
+		sc->seen_offset);
 	    memBufPrintf(mb, "\t\tcopy_size: %d\n",
 		(int) sc->copy_size);
 	    memBufPrintf(mb, "\t\tflags:");
@@ -374,7 +370,6 @@ stat_vmobjects_get(StoreEntry * sentry)
     statObjectsStart(sentry, statObjectsVmFilter);
 }
 
-#if DEBUG_OPENFD
 static int
 statObjectsOpenfdFilter(const StoreEntry * e)
 {
@@ -391,7 +386,35 @@ statOpenfdObj(StoreEntry * sentry)
     statObjectsStart(sentry, statObjectsOpenfdFilter);
 }
 
-#endif
+static int
+statObjectsPendingFilter(const StoreEntry * e)
+{
+    if (e->store_status != STORE_PENDING)
+	return 0;
+    return 1;
+}
+
+static void
+statPendingObj(StoreEntry * sentry)
+{
+    statObjectsStart(sentry, statObjectsPendingFilter);
+}
+
+static int
+statObjectsClientsFilter(const StoreEntry * e)
+{
+    if (e->mem_obj == NULL)
+	return 0;
+    if (e->mem_obj->clients.head == NULL)
+	return 0;
+    return 1;
+}
+
+static void
+statClientsObj(StoreEntry * sentry)
+{
+    statObjectsStart(sentry, statObjectsClientsFilter);
+}
 
 #ifdef XMALLOC_STATISTICS
 static void
@@ -432,7 +455,7 @@ statFiledescriptors(StoreEntry * sentry)
 	f = &fd_table[i];
 	if (!f->flags.open)
 	    continue;
-	storeAppendPrintf(sentry, "%4d %-6.6s %4d %7d%c %7d%c %-21s %s\n",
+	storeAppendPrintf(sentry, "%4d %-6.6s %4d %7" PRINTF_OFF_T "%c %7" PRINTF_OFF_T "%c %-21s %s\n",
 	    i,
 	    fdTypeStr[f->type],
 	    f->timeout_handler ? (int) (f->timeout - squid_curtime) / 60 : 0,
@@ -863,11 +886,15 @@ statInit(void)
     cachemgrRegister("vm_objects",
 	"In-Memory and In-Transit Objects",
 	stat_vmobjects_get, 0, 0);
-#if DEBUG_OPENFD
     cachemgrRegister("openfd_objects",
 	"Objects with Swapout files open",
 	statOpenfdObj, 0, 0);
-#endif
+    cachemgrRegister("pending_objects",
+	"Objects being retreived from the network",
+	statPendingObj, 0, 0);
+    cachemgrRegister("client_objects",
+	"Objects being sent to clients",
+	statClientsObj, 0, 0);
     cachemgrRegister("io",
 	"Server-side network read() size histograms",
 	stat_io_get, 0, 1);
@@ -1397,7 +1424,7 @@ statByteHitRatio(int minutes)
      */
     cd = CountHist[0].cd.kbytes_recv.kb - CountHist[minutes].cd.kbytes_recv.kb;
     if (s < cd)
-	debug(18, 1) ("STRANGE: srv_kbytes=%d, cd_kbytes=%d\n", s, cd);
+	debug(18, 1) ("STRANGE: srv_kbytes=%d, cd_kbytes=%d\n", (int) s, (int) cd);
     s -= cd;
 #endif
     if (c > s)
@@ -1421,7 +1448,7 @@ statClientRequests(StoreEntry * s)
 	storeAppendPrintf(s, "Connection: %p\n", conn);
 	if (conn) {
 	    fd = conn->fd;
-	    storeAppendPrintf(s, "\tFD %d, read %d, wrote %d\n", fd,
+	    storeAppendPrintf(s, "\tFD %d, read %" PRINTF_OFF_T ", wrote %" PRINTF_OFF_T "\n", fd,
 		fd_table[fd].bytes_read, fd_table[fd].bytes_written);
 	    storeAppendPrintf(s, "\tFD desc: %s\n", fd_table[fd].desc);
 	    storeAppendPrintf(s, "\tin: buf %p, offset %ld, size %ld\n",

@@ -1,6 +1,6 @@
 
 /*
- * $Id: mime.c,v 1.102.2.4 2005/01/22 00:56:14 hno Exp $
+ * $Id: mime.c,v 1.102.2.5 2005/03/26 02:50:53 hno Exp $
  *
  * DEBUG: section 25    MIME Parsing
  * AUTHOR: Harvest Derived
@@ -442,7 +442,7 @@ mimeLoadIconFile(const char *icon)
     httpReplyReset(reply = e->mem_obj->reply);
     httpBuildVersion(&version, 1, 0);
     httpReplySetHeaders(reply, version, HTTP_OK, NULL,
-	type, (int) sb.st_size, sb.st_mtime, -1);
+	type, sb.st_size, sb.st_mtime, -1);
     reply->cache_control = httpHdrCcCreate();
     httpHdrCcSetMaxAge(reply->cache_control, 86400);
     httpHeaderPutCc(&reply->header, reply->cache_control);

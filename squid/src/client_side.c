@@ -1,6 +1,6 @@
 
 /*
- * $Id: client_side.c,v 1.561.2.71 2005/02/20 19:07:45 hno Exp $
+ * $Id: client_side.c,v 1.561.2.76 2005/04/20 21:46:06 hno Exp $
  *
  * DEBUG: section 33    Client-side Routines
  * AUTHOR: Duane Wessels
@@ -125,8 +125,8 @@ static int clientHierarchical(clientHttpRequest * http);
 static int clientCheckContentLength(request_t * r);
 static DEFER httpAcceptDefer;
 static log_type clientProcessRequest2(clientHttpRequest * http);
-static int clientReplyBodyTooLarge(clientHttpRequest *, ssize_t clen);
-static int clientRequestBodyTooLarge(int clen);
+static int clientReplyBodyTooLarge(clientHttpRequest *, squid_off_t clen);
+static int clientRequestBodyTooLarge(squid_off_t clen);
 static void clientProcessBody(ConnStateData * conn);
 static void clientEatRequestBody(clientHttpRequest *);
 static BODY_HANDLER clientReadBody;
@@ -572,6 +572,7 @@ clientHandleIMSReply(void *data, char *buf, ssize_t size)
 	}
     } else {
 	/* the client can handle this reply, whatever it is */
+	http->flags.hit = 0;
 	http->log_type = LOG_TCP_REFRESH_MISS;
 	if (HTTP_NOT_MODIFIED == mem->reply->sline.status) {
 	    httpReplyUpdateOnNotModified(http->old_entry->mem_obj->reply,
@@ -602,7 +603,7 @@ clientHandleIMSReply(void *data, char *buf, ssize_t size)
 int
 modifiedSince(StoreEntry * entry, request_t * request)
 {
-    int object_length;
+    squid_off_t object_length;
     MemObject *mem = entry->mem_obj;
     time_t mod_time = entry->lastmod;
     debug(33, 3) ("modifiedSince: '%s'\n", storeUrl(entry));
@@ -1224,10 +1225,10 @@ clientIfRangeMatch(clientHttpRequest * http, HttpReply * rep)
  * warning: assumes that HTTP headers for individual ranges at the
  *          time of the actuall assembly will be exactly the same as
  *          the headers when clientMRangeCLen() is called */
-static int
+static squid_off_t
 clientMRangeCLen(clientHttpRequest * http)
 {
-    int clen = 0;
+    squid_off_t clen = 0;
     HttpHdrRangePos pos = HttpHdrRangeInitPos;
     const HttpHdrRangeSpec *spec;
     MemBuf mb;
@@ -1246,8 +1247,8 @@ clientMRangeCLen(clientHttpRequest * http)
 	/* account for range content */
 	clen += spec->length;
 
-	debug(33, 6) ("clientMRangeCLen: (clen += %ld + %ld) == %d\n",
-	    (long int) mb.size, (long int) spec->length, clen);
+	debug(33, 6) ("clientMRangeCLen: (clen += %ld + %" PRINTF_OFF_T ") == %" PRINTF_OFF_T "\n",
+	    (long int) mb.size, spec->length, clen);
     }
     /* account for the terminating boundary */
     memBufReset(&mb);
@@ -1265,7 +1266,6 @@ clientBuildRangeHeader(clientHttpRequest * http, HttpReply * rep)
     HttpHeader *hdr = rep ? &rep->header : 0;
     const char *range_err = NULL;
     request_t *request = http->request;
-    int is_hit = isTcpHit(http->log_type);
     assert(request->range);
     /* check if we still want to do ranges */
     if (!rep)
@@ -1286,7 +1286,7 @@ clientBuildRangeHeader(clientHttpRequest * http, HttpReply * rep)
 	range_err = "too complex range header";
     else if (!request->flags.cachable)	/* from we_do_ranges in http.c */
 	range_err = "non-cachable request";
-    else if (!is_hit && httpHdrRangeOffsetLimit(http->request->range))
+    else if (!http->flags.hit && httpHdrRangeOffsetLimit(http->request->range))
 	range_err = "range outside range_offset_limit";
     /* get rid of our range specs on error */
     if (range_err) {
@@ -1295,9 +1295,9 @@ clientBuildRangeHeader(clientHttpRequest * http, HttpReply * rep)
 	http->request->range = NULL;
     } else {
 	const int spec_count = http->request->range->specs.count;
-	int actual_clen = -1;
+	squid_off_t actual_clen = -1;
 
-	debug(33, 3) ("clientBuildRangeHeader: range spec count: %d virgin clen: %d\n",
+	debug(33, 3) ("clientBuildRangeHeader: range spec count: %d virgin clen: %" PRINTF_OFF_T "\n",
 	    spec_count, rep->content_length);
 	assert(spec_count > 0);
 	/* ETags should not be returned with Partial Content replies? */
@@ -1329,8 +1329,8 @@ clientBuildRangeHeader(clientHttpRequest * http, HttpReply * rep)
 	/* replace Content-Length header */
 	assert(actual_clen >= 0);
 	httpHeaderDelById(hdr, HDR_CONTENT_LENGTH);
-	httpHeaderPutInt(hdr, HDR_CONTENT_LENGTH, actual_clen);
-	debug(33, 3) ("clientBuildRangeHeader: actual content length: %d\n", actual_clen);
+	httpHeaderPutSize(hdr, HDR_CONTENT_LENGTH, actual_clen);
+	debug(33, 3) ("clientBuildRangeHeader: actual content length: %" PRINTF_OFF_T "\n", actual_clen);
     }
 }
 
@@ -1343,7 +1343,6 @@ static void
 clientBuildReplyHeader(clientHttpRequest * http, HttpReply * rep)
 {
     HttpHeader *hdr = &rep->header;
-    int is_hit = isTcpHit(http->log_type);
     request_t *request = http->request;
 #if DONT_FILTER_THESE
     /* but you might want to if you run Squid as an HTTP accelerator */
@@ -1354,7 +1353,7 @@ clientBuildReplyHeader(clientHttpRequest * http, HttpReply * rep)
     /* here: Keep-Alive is a field-name, not a connection directive! */
     httpHeaderDelByName(hdr, "Keep-Alive");
     /* remove Set-Cookie if a hit */
-    if (is_hit)
+    if (http->flags.hit)
 	httpHeaderDelById(hdr, HDR_SET_COOKIE);
     /* handle Connection header */
     if (httpHeaderHas(hdr, HDR_CONNECTION)) {
@@ -1383,7 +1382,7 @@ clientBuildReplyHeader(clientHttpRequest * http, HttpReply * rep)
     /*
      * Add a estimated Age header on cache hits.
      */
-    if (is_hit) {
+    if (http->flags.hit) {
 	/*
 	 * Remove any existing Age header sent by upstream caches
 	 * (note that the existing header is passed along unmodified
@@ -1431,7 +1430,7 @@ clientBuildReplyHeader(clientHttpRequest * http, HttpReply * rep)
 	authenticateFixHeader(rep, request->auth_user_request, request, http->flags.accel, 0);
     /* Append X-Cache */
     httpHeaderPutStrf(hdr, HDR_X_CACHE, "%s from %s",
-	is_hit ? "HIT" : "MISS", getMyHostname());
+	http->flags.hit ? "HIT" : "MISS", getMyHostname());
 #if USE_CACHE_DIGESTS
     /* Append X-Cache-Lookup: -- temporary hack, to be removed @?@ @?@ */
     httpHeaderPutStrf(hdr, HDR_X_CACHE_LOOKUP, "%s from %s:%d",
@@ -1505,6 +1504,7 @@ clientCacheHit(void *data, char *buf, ssize_t size)
     MemObject *mem;
     request_t *r = http->request;
     debug(33, 3) ("clientCacheHit: %s, %d bytes\n", http->uri, (int) size);
+    http->flags.hit = 0;
     if (http->entry == NULL) {
 	memFree(buf, MEM_CLIENT_SOCK_BUF);
 	debug(33, 3) ("clientCacheHit: request aborted\n");
@@ -1592,7 +1592,12 @@ clientCacheHit(void *data, char *buf, ssize_t size)
 	clientPurgeRequest(http);
 	return;
     }
-    if (checkNegativeHit(e)) {
+    http->flags.hit = 1;
+    if (checkNegativeHit(e)
+#if HTTP_VIOLATIONS
+	&& !r->flags.nocache_hack
+#endif
+	) {
 	http->log_type = LOG_TCP_NEGATIVE_HIT;
 	clientSendMoreData(data, buf, size);
     } else if (!Config.onoff.offline && refreshCheckHTTP(e, r) && !http->flags.internal) {
@@ -1729,11 +1734,11 @@ static void
 clientPackRange(clientHttpRequest * http,
     HttpHdrRangeIter * i,
     const char **buf,
-    ssize_t * size,
+    size_t * size,
     MemBuf * mb)
 {
-    const ssize_t copy_sz = i->debt_size <= *size ? i->debt_size : *size;
-    off_t body_off = http->out.offset - i->prefix_size;
+    const size_t copy_sz = i->debt_size <= *size ? i->debt_size : *size;
+    squid_off_t body_off = http->out.offset - i->prefix_size;
     assert(*size > 0);
     assert(i->spec);
     /*
@@ -1777,7 +1782,7 @@ clientPackRange(clientHttpRequest * http,
  * increments iterator "i"
  * used by clientPackMoreRanges */
 static int
-clientCanPackMoreRanges(const clientHttpRequest * http, HttpHdrRangeIter * i, ssize_t size)
+clientCanPackMoreRanges(const clientHttpRequest * http, HttpHdrRangeIter * i, size_t size)
 {
     /* first update "i" if needed */
     if (!i->debt_size) {
@@ -1792,17 +1797,17 @@ clientCanPackMoreRanges(const clientHttpRequest * http, HttpHdrRangeIter * i, ss
 /* extracts "ranges" from buf and appends them to mb, updating all offsets and such */
 /* returns true if we need more data */
 static int
-clientPackMoreRanges(clientHttpRequest * http, const char *buf, ssize_t size, MemBuf * mb)
+clientPackMoreRanges(clientHttpRequest * http, const char *buf, size_t size, MemBuf * mb)
 {
     HttpHdrRangeIter *i = &http->range_iter;
     /* offset in range specs does not count the prefix of an http msg */
-    off_t body_off = http->out.offset - i->prefix_size;
+    squid_off_t body_off = http->out.offset - i->prefix_size;
     assert(size >= 0);
     /* check: reply was parsed and range iterator was initialized */
     assert(i->prefix_size > 0);
     /* filter out data according to range specs */
     while (clientCanPackMoreRanges(http, i, size)) {
-	off_t start;		/* offset of still missing data */
+	squid_off_t start;	/* offset of still missing data */
 	assert(i->spec);
 	start = i->spec->offset + i->spec->length - i->debt_size;
 	debug(33, 3) ("clientPackMoreRanges: in:  offset: %ld size: %ld\n",
@@ -1876,7 +1881,7 @@ clientMaxBodySize(request_t * request, clientHttpRequest * http, HttpReply * rep
 }
 
 static int
-clientReplyBodyTooLarge(clientHttpRequest * http, ssize_t clen)
+clientReplyBodyTooLarge(clientHttpRequest * http, squid_off_t clen)
 {
     if (0 == http->maxBodySize)
 	return 0;		/* disabled */
@@ -1888,7 +1893,7 @@ clientReplyBodyTooLarge(clientHttpRequest * http, ssize_t clen)
 }
 
 static int
-clientRequestBodyTooLarge(int clen)
+clientRequestBodyTooLarge(squid_off_t clen)
 {
     if (0 == Config.maxRequestBodySize)
 	return 0;		/* disabled */
@@ -1939,9 +1944,9 @@ clientSendMoreData(void *data, char *buf, ssize_t size)
     int fd = conn->fd;
     HttpReply *rep = NULL;
     const char *body_buf = buf;
-    ssize_t body_size = size;
+    squid_off_t body_size = size;
     MemBuf mb;
-    ssize_t check_size = 0;
+    squid_off_t check_size = 0;
     debug(33, 5) ("clientSendMoreData: %s, %d bytes\n", http->uri, (int) size);
     assert(size <= CLIENT_SOCK_SZ);
     assert(http->request != NULL);
@@ -2184,14 +2189,14 @@ clientWriteComplete(int fd, char *bufnotused, size_t size, int errflag, void *da
     StoreEntry *entry = http->entry;
     int done;
     http->out.size += size;
-    debug(33, 5) ("clientWriteComplete: FD %d, sz %ld, err %d, off %ld, len %d\n",
-	fd, (long int) size, errflag, (long int) http->out.offset, entry ? objectLen(entry) : 0);
+    debug(33, 5) ("clientWriteComplete: FD %d, sz %d, err %d, off %" PRINTF_OFF_T ", len %" PRINTF_OFF_T "\n",
+	fd, (int) size, errflag, http->out.offset, entry ? objectLen(entry) : (squid_off_t) 0);
     if (size > 0) {
 	kb_incr(&statCounter.client_http.kbytes_out, size);
 	if (isTcpHit(http->log_type))
 	    kb_incr(&statCounter.client_http.hit_kbytes_out, size);
     }
-#if SIZEOF_SIZE_T == 4
+#if SIZEOF_SQUID_OFF_T <= 4
     if (http->out.size > 0x7FFF0000) {
 	debug(33, 1) ("WARNING: closing FD %d to prevent counter overflow\n", fd);
 	debug(33, 1) ("\tclient %s\n", inet_ntoa(http->conn->peer.sin_addr));
@@ -2200,7 +2205,7 @@ clientWriteComplete(int fd, char *bufnotused, size_t size, int errflag, void *da
 	comm_close(fd);
     } else
 #endif
-#if SIZEOF_OFF_T == 4
+#if SIZEOF_SQUID_OFF_T <= 4
     if (http->out.offset > 0x7FFF0000) {
 	debug(33, 1) ("WARNING: closing FD %d to prevent counter overflow\n", fd);
 	debug(33, 1) ("\tclient %s\n", inet_ntoa(http->conn->peer.sin_addr));
@@ -2276,6 +2281,7 @@ clientProcessOnlyIfCachedMiss(clientHttpRequest * http)
     char *url = http->uri;
     request_t *r = http->request;
     ErrorState *err = NULL;
+    http->flags.hit = 0;
     debug(33, 4) ("clientProcessOnlyIfCachedMiss: '%s %s'\n",
 	RequestMethodStr[r->method], url);
     http->al.http.code = HTTP_GATEWAY_TIMEOUT;
@@ -2589,7 +2595,7 @@ parseHttpRequest(ConnStateData * conn, method_t * method_p, int *status,
     static int pffd = -1;
 #endif
 #if LINUX_NETFILTER
-    size_t sock_sz = sizeof(conn->me);
+    socklen_t sock_sz = sizeof(conn->me);
 #endif
 
     /* pre-set these values to make aborting simpler */
@@ -2722,15 +2728,101 @@ parseHttpRequest(ConnStateData * conn, method_t * method_p, int *status,
     }
     /* see if we running in Config2.Accel.on, if so got to convert it to URL */
     else if (Config2.Accel.on && *url == '/') {
+	int vport;
+	if (vhost_mode) {
+#if IPF_TRANSPARENT
+	    natLookup.nl_inport = http->conn->me.sin_port;
+	    natLookup.nl_outport = http->conn->peer.sin_port;
+	    natLookup.nl_inip = http->conn->me.sin_addr;
+	    natLookup.nl_outip = http->conn->peer.sin_addr;
+	    natLookup.nl_flags = IPN_TCP;
+	    if (natfd < 0) {
+		int save_errno;
+		enter_suid();
+#ifdef IPL_NAME
+		natfd = open(IPL_NAME, O_RDONLY, 0);
+#else
+		natfd = open(IPL_NAT, O_RDONLY, 0);
+#endif
+		save_errno = errno;
+		leave_suid();
+		errno = save_errno;
+	    }
+	    if (natfd < 0) {
+		debug(50, 1) ("parseHttpRequest: NAT open failed: %s\n",
+		    xstrerror());
+		dlinkDelete(&http->active, &ClientActiveRequests);
+		xfree(http->uri);
+		cbdataFree(http);
+		xfree(inbuf);
+	    } else {
+		/*
+		 * IP-Filter changed the type for SIOCGNATL between
+		 * 3.3 and 3.4.  It also changed the cmd value for
+		 * SIOCGNATL, so at least we can detect it.  We could
+		 * put something in configure and use ifdefs here, but
+		 * this seems simpler.
+		 */
+		if (63 == siocgnatl_cmd) {
+		    struct natlookup *nlp = &natLookup;
+		    x = ioctl(natfd, SIOCGNATL, &nlp);
+		} else {
+		    x = ioctl(natfd, SIOCGNATL, &natLookup);
+		}
+		if (x < 0) {
+		    if (errno != ESRCH) {
+			debug(50, 1) ("parseHttpRequest: NAT lookup failed: ioctl(SIOCGNATL)\n");
+			close(natfd);
+			natfd = -1;
+			dlinkDelete(&http->active, &ClientActiveRequests);
+			xfree(http->uri);
+			cbdataFree(http);
+			xfree(inbuf);
+		    }
+		} else {
+		    conn->me.sin_port = natLookup.nl_realport;
+		    http->conn->me.sin_addr = natLookup.nl_realip;
+		}
+	    }
+#elif PF_TRANSPARENT
+	    if (pffd < 0)
+		pffd = open("/dev/pf", O_RDWR);
+	    if (pffd < 0) {
+		debug(50, 1) ("parseHttpRequest: PF open failed: %s\n",
+		    xstrerror());
+		return parseHttpRequestAbort(conn, "error:pf-open-failed");
+	    }
+	    memset(&nl, 0, sizeof(struct pfioc_natlook));
+	    nl.saddr.v4.s_addr = http->conn->peer.sin_addr.s_addr;
+	    nl.sport = http->conn->peer.sin_port;
+	    nl.daddr.v4.s_addr = http->conn->me.sin_addr.s_addr;
+	    nl.dport = http->conn->me.sin_port;
+	    nl.af = AF_INET;
+	    nl.proto = IPPROTO_TCP;
+	    nl.direction = PF_OUT;
+	    if (ioctl(pffd, DIOCNATLOOK, &nl)) {
+		if (errno != ENOENT) {
+		    debug(50, 1) ("parseHttpRequest: PF lookup failed: ioctl(DIOCNATLOOK)\n");
+		    close(pffd);
+		    pffd = -1;
+		}
+	    } else {
+		conn->me.sin_port = nl.rdport;
+		http->conn->me.sin_addr = nl.rdaddr.v4;
+	    }
+#elif LINUX_NETFILTER
+	    /* If the call fails the address structure will be unchanged */
+	    getsockopt(conn->fd, SOL_IP, SO_ORIGINAL_DST, &conn->me, &sock_sz);
+#endif
+	}
+	if (vport_mode)
+	    vport = (int) ntohs(http->conn->me.sin_port);
+	else
+	    vport = (int) Config.Accel.port;
 	/* prepend the accel prefix */
 	if (Config.onoff.accel_uses_host_header && (t = mime_get_header(req_hdr, "Host"))) {
-	    int vport;
 	    char *q;
 	    const char *protocol_name = "http";
-	    if (vport_mode)
-		vport = (int) ntohs(http->conn->me.sin_port);
-	    else
-		vport = (int) Config.Accel.port;
 	    /* If a Host: header was specified, use it to build the URL 
 	     * instead of the one in the Config file. */
 	    /*
@@ -2759,118 +2851,15 @@ parseHttpRequest(ConnStateData * conn, method_t * method_p, int *status,
 	    snprintf(http->uri, url_sz, "%s://%s:%d%s",
 		protocol_name, t, vport, url);
 	} else if (vhost_mode) {
-	    int vport;
 	    /* Put the local socket IP address as the hostname */
 	    url_sz = strlen(url) + 32 + Config.appendDomainLen;
 	    http->uri = xcalloc(url_sz, 1);
-	    if (vport_mode)
-		vport = (int) ntohs(http->conn->me.sin_port);
-	    else
-		vport = (int) Config.Accel.port;
-#if IPF_TRANSPARENT
-	    natLookup.nl_inport = http->conn->me.sin_port;
-	    natLookup.nl_outport = http->conn->peer.sin_port;
-	    natLookup.nl_inip = http->conn->me.sin_addr;
-	    natLookup.nl_outip = http->conn->peer.sin_addr;
-	    natLookup.nl_flags = IPN_TCP;
-	    if (natfd < 0) {
-		int save_errno;
-		enter_suid();
-		natfd = open(IPL_NAT, O_RDONLY, 0);
-		save_errno = errno;
-		leave_suid();
-		errno = save_errno;
-	    }
-	    if (natfd < 0) {
-		debug(50, 1) ("parseHttpRequest: NAT open failed: %s\n",
-		    xstrerror());
-		dlinkDelete(&http->active, &ClientActiveRequests);
-		xfree(http->uri);
-		cbdataFree(http);
-		xfree(inbuf);
-		return parseHttpRequestAbort(conn, "error:nat-open-failed");
-	    }
-	    /*
-	     * IP-Filter changed the type for SIOCGNATL between
-	     * 3.3 and 3.4.  It also changed the cmd value for
-	     * SIOCGNATL, so at least we can detect it.  We could
-	     * put something in configure and use ifdefs here, but
-	     * this seems simpler.
-	     */
-	    if (63 == siocgnatl_cmd) {
-		struct natlookup *nlp = &natLookup;
-		x = ioctl(natfd, SIOCGNATL, &nlp);
-	    } else {
-		x = ioctl(natfd, SIOCGNATL, &natLookup);
-	    }
-	    if (x < 0) {
-		if (errno != ESRCH) {
-		    debug(50, 1) ("parseHttpRequest: NAT lookup failed: ioctl(SIOCGNATL)\n");
-		    close(natfd);
-		    natfd = -1;
-		    dlinkDelete(&http->active, &ClientActiveRequests);
-		    xfree(http->uri);
-		    cbdataFree(http);
-		    xfree(inbuf);
-		    return parseHttpRequestAbort(conn, "error:nat-lookup-failed");
-		} else
-		    snprintf(http->uri, url_sz, "http://%s:%d%s",
-			inet_ntoa(http->conn->me.sin_addr),
-			vport, url);
-	    } else {
-		if (vport_mode)
-		    vport = ntohs(natLookup.nl_realport);
-		snprintf(http->uri, url_sz, "http://%s:%d%s",
-		    inet_ntoa(natLookup.nl_realip),
-		    vport, url);
-	    }
-#elif PF_TRANSPARENT
-	    if (pffd < 0)
-		pffd = open("/dev/pf", O_RDWR);
-	    if (pffd < 0) {
-		debug(50, 1) ("parseHttpRequest: PF open failed: %s\n",
-		    xstrerror());
-		return parseHttpRequestAbort(conn, "error:pf-open-failed");
-	    }
-	    memset(&nl, 0, sizeof(struct pfioc_natlook));
-	    nl.saddr.v4.s_addr = http->conn->peer.sin_addr.s_addr;
-	    nl.sport = http->conn->peer.sin_port;
-	    nl.daddr.v4.s_addr = http->conn->me.sin_addr.s_addr;
-	    nl.dport = http->conn->me.sin_port;
-	    nl.af = AF_INET;
-	    nl.proto = IPPROTO_TCP;
-	    nl.direction = PF_OUT;
-	    if (ioctl(pffd, DIOCNATLOOK, &nl)) {
-		if (errno != ENOENT) {
-		    debug(50, 1) ("parseHttpRequest: PF lookup failed: ioctl(DIOCNATLOOK)\n");
-		    close(pffd);
-		    pffd = -1;
-		    return parseHttpRequestAbort(conn, "error:pf-lookup-failed");
-		} else
-		    snprintf(http->uri, url_sz, "http://%s:%d%s",
-			inet_ntoa(http->conn->me.sin_addr),
-			vport, url);
-	    } else
-		snprintf(http->uri, url_sz, "http://%s:%d%s",
-		    inet_ntoa(nl.rdaddr.v4),
-		    ntohs(nl.rdport), url);
-#else
-#if LINUX_NETFILTER
-	    /* If the call fails the address structure will be unchanged */
-	    getsockopt(conn->fd, SOL_IP, SO_ORIGINAL_DST, &conn->me, &sock_sz);
-	    debug(33, 5) ("parseHttpRequest: addr = %s", inet_ntoa(conn->me.sin_addr));
-	    if (vport_mode)
-		vport = (int) ntohs(http->conn->me.sin_port);
-#endif
 	    snprintf(http->uri, url_sz, "http://%s:%d%s",
 		inet_ntoa(http->conn->me.sin_addr),
 		vport, url);
-#endif
 	    debug(33, 5) ("VHOST REWRITE: '%s'\n", http->uri);
 	} else if (vport_mode) {
-	    int vport;
 	    const char *protocol_name = "http";
-	    vport = (int) ntohs(http->conn->me.sin_port);
 	    url_sz = strlen(url) + 32 + Config.appendDomainLen +
 		strlen(Config.Accel.host);
 	    http->uri = xcalloc(url_sz, 1);
@@ -3124,7 +3113,7 @@ clientReadRequest(int fd, void *data)
 	    /*
 	     * cache the Content-length value in request_t.
 	     */
-	    request->content_length = httpHeaderGetInt(&request->header,
+	    request->content_length = httpHeaderGetSize(&request->header,
 		HDR_CONTENT_LENGTH);
 	    request->flags.internal = http->flags.internal;
 	    safe_free(prefix);
@@ -3636,7 +3625,7 @@ clientCheckTransferDone(clientHttpRequest * http)
     StoreEntry *entry = http->entry;
     MemObject *mem;
     http_reply *reply;
-    int sendlen;
+    squid_off_t sendlen;
     if (entry == NULL)
 	return 0;
     /*
@@ -3699,7 +3688,7 @@ clientCheckTransferDone(clientHttpRequest * http)
 static int
 clientGotNotEnough(clientHttpRequest * http)
 {
-    int cl = httpReplyBodySize(http->request->method, http->entry->mem_obj->reply);
+    squid_off_t cl = httpReplyBodySize(http->request->method, http->entry->mem_obj->reply);
     int hs = http->entry->mem_obj->reply->hdr_sz;
     assert(cl >= 0);
     if (http->out.offset < cl + hs)

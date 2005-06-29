@@ -1,5 +1,5 @@
 /*
- * $Id: config.h,v 1.4.2.2 2005/02/20 11:02:56 hno Exp $
+ * $Id: config.h,v 1.4.2.5 2005/04/23 01:32:27 hno Exp $
  *
  * AUTHOR: Duane Wessels
  *
@@ -130,6 +130,8 @@
 
 #if !defined(CACHEMGR_HOSTNAME)
 #define CACHEMGR_HOSTNAME ""
+#else
+#define CACHEMGR_HOSTNAME_DEFINED 1
 #endif
 
 #if SQUID_UDP_SO_SNDBUF > 16384
@@ -162,6 +164,7 @@
 #define xisdigit(x) isdigit((unsigned char)x)
 #define xisascii(x) isascii((unsigned char)x)
 #define xislower(x) islower((unsigned char)x)
+#define xisupper(x) isupper((unsigned char)x)
 #define xisalpha(x) isalpha((unsigned char)x)
 #define xisalnum(x) isalnum((unsigned char)x)
 #define xisgraph(x) isgraph((unsigned char)x)

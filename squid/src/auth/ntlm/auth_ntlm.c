@@ -1,6 +1,6 @@
 
 /*
- * $Id: auth_ntlm.c,v 1.17.2.21 2005/02/03 23:22:12 hno Exp $
+ * $Id: auth_ntlm.c,v 1.17.2.22 2005/04/22 20:29:31 hno Exp $
  *
  * DEBUG: section 29    NTLM Authenticator
  * AUTHOR: Robert Collins
@@ -549,6 +549,10 @@ authenticateNTLMHandleReply(void *data, void *srv, char *reply)
 	ntlm_request->auth_state = AUTHENTICATE_STATE_FAILED;
 	authenticateNTLMResetServer(ntlm_request);
 	debug(29, 4) ("authenticateNTLMHandleReply: Error validating user via NTLM. Error returned '%s'\n", reply);
+	reply += 3;
+	safe_free(auth_user_request->message);
+	if (*reply)
+	    auth_user_request->message = xstrdup(reply);
     } else if (strncasecmp(reply, "BH ", 3) == 0) {
 	/* TODO kick off a refresh process. This can occur after a YR or after
 	 * a KK. If after a YR release the helper and resubmit the request via 
@@ -579,6 +583,10 @@ authenticateNTLMHandleReply(void *data, void *srv, char *reply)
 	    /* the helper broke on a KK */
 	    debug(29, 1) ("authenticateNTLMHandleReply: Error validating user via NTLM. Error returned '%s'\n", reply);
 	    ntlm_request->auth_state = AUTHENTICATE_STATE_FAILED;
+	    reply += 3;
+	    safe_free(auth_user_request->message);
+	    if (*reply)
+		auth_user_request->message = xstrdup(reply);
 	}
     } else {
 	fatalf("authenticateNTLMHandleReply: *** Unsupported helper response ***, '%s'\n", reply);

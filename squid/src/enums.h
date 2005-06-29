@@ -1,6 +1,6 @@
 
 /*
- * $Id: enums.h,v 1.203.2.14 2005/01/17 22:13:04 hno Exp $
+ * $Id: enums.h,v 1.203.2.15 2005/03/26 02:50:52 hno Exp $
  *
  *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/
@@ -274,7 +274,8 @@ typedef enum {
     ftPCc,
     ftPContRange,
     ftPRange,
-    ftDate_1123_or_ETag
+    ftDate_1123_or_ETag,
+    ftSize
 } field_type;
 
 /* possible owners of http header */
@@ -623,6 +624,7 @@ enum {
     STORE_META_HITMETERING,	/* reserved for hit metering */
     STORE_META_VALID,
     STORE_META_VARY_HEADERS,	/* Stores Vary request headers */
+    STORE_META_STD_LFS,		/* standard metadata in lfs format */
     STORE_META_END
 };
 
@@ -638,6 +640,7 @@ typedef enum {
     SWAP_LOG_NOP,
     SWAP_LOG_ADD,
     SWAP_LOG_DEL,
+    SWAP_LOG_VERSION,
     SWAP_LOG_MAX
 } swap_log_op;
 

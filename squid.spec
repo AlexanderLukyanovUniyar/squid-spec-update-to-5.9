@@ -1,13 +1,13 @@
 Name: squid
-Version: 2.5.STABLE9
-Release: alt3
+Version: 2.5.STABLE10
+Release: alt2
 
 Summary: The Squid proxy caching server
 Summary(ru_RU.KOI8-R): Кэширующий прокси-сервер Squid
-License: GPL
+License: GPL-2
 Group: System/Servers
 
-Url:http://www.%name-cache.org
+Url: http://www.squid-cache.org/
 Packager: Squid Development Team <squid@packages.altlinux.org>
 
 Source: %url/Versions/v2/%name-%version.tar.bz2
@@ -18,69 +18,36 @@ Source4: wbinfo_group.sh
 
 # Other patches
 # rediffed for 2.5.S7
-Patch1: %name-2.5.STABLE7-make.patch
+Patch1: squid-2.5.STABLE7-make.patch
 # rediffed for 2.5.S7
-Patch2: %name-2.5.STABLE7-config.patch
-Patch3: %name-2.4.STABLE6-alt-without-bind.patch
-Patch4: %name-2.5-perlpath.patch
-Patch5: %name-2.5-automake.patch
-Patch6: %name-errrors-belarusian.patch
+Patch2: squid-2.5.STABLE7-config.patch
+Patch3: squid-2.4.STABLE6-alt-without-bind.patch
+Patch4: squid-2.5-perlpath.patch
+Patch5: squid-2.5-automake.patch
+Patch6: squid-errrors-belarusian.patch
 # See http://stc.nixdev.org/getstat.php
 # DISABLED for now
 Patch7: patch-aa.patch
+Patch8: squid-2.5.STABLE10-alt-perlreq.patch
 
 #Official patches to Squid
-Patch10: squid-2.5.STABLE9-setcookie.patch
-Patch11: squid-2.5.STABLE9-ftp_EPLF.patch
-Patch12: squid-2.5.STABLE9-ftp_base_href.patch
-Patch13: squid-2.5.STABLE9-acl_error.patch
-Patch14: squid-2.5.STABLE9-date.patch
-Patch15: squid-2.5.STABLE9-reload_into_ims.patch
-Patch16: squid-2.5.STABLE9-delay_access_doc.patch
-Patch17: squid-2.5.STABLE9-config_overflow.patch
-Patch18: squid-2.5.STABLE9-bzero.patch
-Patch19: squid-2.5.STABLE9-pid_t.patch
-Patch20: squid-2.5.STABLE9-ctype.patch
-Patch21: squid-2.5.STABLE9-defer_digest_fetch.patch
-Patch22: squid-2.5.STABLE9-dup_content_length.patch
-Patch23: squid-2.5.STABLE9-excess_data.patch
-Patch24: squid-2.5.STABLE9-aufs.patch
-Patch25: squid-2.5.STABLE9-long_basic_auth.patch
-Patch26: squid-2.5.STABLE9-CONNECT_truncated.patch
-Patch27: squid-2.5.STABLE9-LDAP_SUN_SDK.patch
-Patch28: squid-2.5.STABLE9-disable_hostname_checks.patch
-Patch29: squid-2.5.STABLE9-aufs_shutdown.patch
-Patch30: squid-2.5.STABLE9-2GB.patch
-Patch31: squid-2.5.STABLE9-rename_cleanup.patch
-Patch32: squid-2.5.STABLE9-cachemgr_objects.patch
-Patch33: squid-2.5.STABLE9-extaclauth.patch
-Patch34: squid-2.5.STABLE9-syslog.patch
-Patch35: squid-2.5.STABLE9-errpage_user.patch
-Patch36: squid-2.5.STABLE9-debug_newlines.patch
-Patch37: squid-2.5.STABLE9-transparent_port.patch
-Patch38: squid-2.5.STABLE9-squid_k_nohostname.patch
-Patch39: squid-2.5.STABLE9-config_CRLF.patch
-Patch40: squid-2.5.STABLE9-forwardcc.patch
-Patch41: squid-2.5.STABLE9-authinfo.patch
-Patch42: squid-2.5.STABLE9-chroot_pidfile.patch
-Patch43: squid-2.5.STABLE9-cachemgr_conf.patch
-Patch44: squid-2.5.STABLE9-aufs_improvement.patch
-Patch45: squid-2.5.STABLE9_2GB-hot_cache.patch
-Patch46: squid-2.5.STABLE9-diskd.patch
-Patch47: squid-2.5.STABLE9-snmp.patch
-Patch48: squid-2.5.STABLE9-arpacl.patch
-Patch49: squid-2.5.STABLE9-dstdomain_ip.patch
-Patch50: squid-2.5.STABLE9-dns_query-5.patch
-Patch51: squid-2.5.STABLE9-2GB_assert.patch
-Patch52: squid-2.5.STABLE9-always_direct_documentation.patch
+Patch10: squid-2.5.STABLE10-content_length.patch
+Patch11: squid-2.5.STABLE10-spanish.patch
+Patch12: squid-2.5.STABLE10-internal_date.patch
+Patch13: squid-2.5.STABLE10-chroot.patch
+Patch14: squid-2.5.STABLE10-transparent.patch
+Patch15: squid-2.5.STABLE10-redirect_flags.patch
+Patch16: squid-2.5.STABLE10-cache_dir_change.patch
+Patch17: squid-2.5.STABLE10-snmp_getnext.patch
+Patch18: squid-2.5.STABLE10-ftp_title-2.patch
+Patch19: squid-2.5.STABLE10-ftp_basehref.patch
 
 Obsoletes: %name-novm
 
 BuildConflicts: bind-devel
 BuildPreReq: rpm-build >= 4.0.4-alt10, autoconf >= 2.54
-PreReq: net-snmp-mibs
-
 BuildRequires: OpenSP libldap-devel libpam0-devel libsasl2-devel libssl-devel perl-Authen-Smb sgml-tools
+Requires: %name-common %name-server %name-helpers %name-helpers-perl %name-cachemgr
 
 %description
 Squid is a high-performance proxy caching server for Web clients,
@@ -100,18 +67,94 @@ Squid --- высокопроизводительный кэширующий прокси-сервер для web-клиентов
 неудачных запросов.
 Установите squid, если вам необходим кэширующий прокси-сервер.
 
-%package pinger
-Summary: The pinger process for Squid proxy caching server
-Summary(ru_RU.KOI8-R): Процесс pinger для кэширующего прокси-сервера Squid.
+
+
+%package server
+Summary: main Squid server and its necessary files
+Summary(ru_RU.KOI8-R): главный сервер Squid и необходимые ему файлы
 Group: System/Servers
-Requires: %name = %version-%release
+PreReq: net-snmp-mibs
+Requires: %name-common
+Conflicts: %name <= 2.5.STABLE9-alt3
 
-%description pinger
-Pinger process for Squid to send and receive ICMP messages directly.
+%description server
+This package contains Squid main server and its necessary files.
+Install squid package to get all Squid parts.
 
-%description -l ru_RU.KOI8-R pinger
-Процесс pinger для Squid предназначен для прямой отправки и получения
-ICMP-сообщений.
+%description -l ru_RU.KOI8-R server
+Этот пакет содержит главный сервер Squid и необходимые для его работы файлы.
+Установите пакет squid, чтобы получить все компоненты Squid.
+
+
+
+%package cachemgr
+Summary: Squid CGI cache manager
+Summary(ru_RU.KOI8-R): CGI-диспетчер для Squid
+Group: Networking/WWW
+Requires: %name-common
+Conflicts: %name <= 2.5.STABLE9-alt3
+
+%description cachemgr
+This package contains Squid cache manager. It is a standalone CGI application which
+can be used to manage Squid processes remotely over HTTP.
+Install squid package to get all Squid parts.
+
+%description -l ru_RU.KOI8-R cachemgr
+Этот пакет содержит диспетчер для Squid. Это самостоятельное приложение CGI, которое
+может быть использовано для управления процессами Squid удалённо через HTTP.
+Установите пакет squid, чтобы получить все компоненты Squid.
+
+
+
+%package common
+Summary: Squid common files
+Summary(ru_RU.KOI8-R): общие файлы для Squid
+Group: System/Servers
+PreReq: shadow-groups
+Conflicts: %name <= 2.5.STABLE9-alt3
+
+%description common
+This package contains common Squid files.
+Install squid package to get all Squid parts.
+
+%description -l ru_RU.KOI8-R common
+Этот пакет содержит файлы, необходимые для squid-server и squid-cachemgr.
+Установите пакет squid, чтобы получить все компоненты Squid.
+
+
+%package helpers
+Summary: Squid helpers
+Summary(ru_RU.KOI8-R): вспомогательные программы для squid-server
+Group: System/Servers
+Requires: %name-common
+Conflicts: %name <= 2.5.STABLE9-alt3
+Obsoletes: %name-pinger
+
+%description helpers
+This package contains Squid helpers for different kinds of authentication
+as well as pinger and diskd.
+Install squid package to get all Squid parts.
+
+%description -l ru_RU.KOI8-R helpers
+Этот пакет содержит вспомогательные программы для squid-server, поддерживающие
+различные виды аутентификации, а также pinger и diskd.
+Установите пакет squid, чтобы получить все компоненты Squid.
+
+%package helpers-perl
+Summary: Squid Perl helpers
+Summary(ru_RU.KOI8-R): вспомогательные Perl-программы для squid-server
+Group: System/Servers
+Requires: %name-common
+Conflicts: %name <= 2.5.STABLE9-alt3
+
+%description helpers-perl
+This package contains Perl Squid helpers for different kinds of authentication.
+Install squid package to get all Squid parts.
+
+%description -l ru_RU.KOI8-R helpers-perl
+Этот пакет содержит вспомогательные Perl-программы для squid-server, поддерживающие
+различные виды аутентификации.
+Установите пакет squid, чтобы получить все компоненты Squid.
 
 %prep
 %setup -q
@@ -122,6 +165,7 @@ ICMP-сообщений.
 %patch5 -p1
 %patch6 -p1
 #patch7 -p1
+%patch8 -p1
 
 %patch10 -p1
 %patch11 -p1
@@ -133,39 +177,7 @@ ICMP-сообщений.
 %patch17 -p1
 %patch18 -p1
 %patch19 -p1
-%patch20 -p1
-%patch21 -p1
-%patch22 -p1
-%patch23 -p1
-%patch24 -p1
-%patch25 -p1
-%patch26 -p1
-%patch27 -p1
-%patch28 -p1
-%patch29 -p1
-%patch30 -p1
-%patch31 -p1
-%patch32 -p1
-%patch33 -p1
-%patch34 -p1
-%patch35 -p1
-%patch36 -p1
-%patch37 -p1
-%patch38 -p1
-%patch39 -p1
-%patch40 -p1
-%patch41 -p1
-%patch42 -p1
-%patch43 -p1
-%patch44 -p1
-%patch45 -p1
-%patch46 -p1
-%patch47 -p1
-%patch48 -p1
-%patch49 -p1
-%patch50 -p1
-%patch51 -p1
-%patch52 -p1
+
 
 %build
 %set_autoconf_version 2.5
@@ -210,6 +222,7 @@ ICMP-сообщений.
 %__cp $RPM_SOURCE_DIR/FAQ.sgml faq
 pushd faq
 sgml2html FAQ.sgml
+rm FAQ.sgml
 popd
 
 %install
@@ -230,7 +243,8 @@ popd
 %__install -p -m644 $RPM_BUILD_DIR/%name-%version/helpers/external_acl/ldap_group/squid_ldap_group.8 %buildroot%_man8dir
 %__install -p -m644 $RPM_BUILD_DIR/%name-%version/helpers/basic_auth/LDAP/squid_ldap_auth.8 %buildroot%_man8dir
 %__install -p -m644 $RPM_BUILD_DIR/%name-%version/helpers/external_acl/unix_group/squid_unix_group.8 %buildroot%_man8dir
-%__install -p -m644 $RPM_BUILD_DIR/%name-%version/doc/%name.8 %buildroot%_man8dir
+%__install -p -m644 $RPM_BUILD_DIR/%name-%version/doc/squid.8 %buildroot%_man8dir
+%__install -p -m644 $RPM_BUILD_DIR/%name-%version/doc/cachemgr.cgi.8 %buildroot%_man8dir
 
 %__install -D -p -m644 $RPM_BUILD_DIR/%name-%version/helpers/basic_auth/SMB/COPYING-2.0 helpers/doc/SMB.COPYING-2.0
 %__install -D -p -m644 $RPM_BUILD_DIR/%name-%version/helpers/basic_auth/SMB/README helpers/doc/SMB.README
@@ -257,56 +271,64 @@ popd
 %__mv %buildroot%_datadir/%name/mib.txt %buildroot%_datadir/snmp/mibs/SQUID-MIB.txt
 
 %pre
-/usr/sbin/groupadd -r -f %name >/dev/null 2>&1
-/usr/sbin/useradd -r -n -g %name -d %_spooldir/%name -s /dev/null %name >/dev/null 2>&1 ||:
+%_sbindir/groupadd -r -f %name >/dev/null 2>&1
+%_sbindir/useradd -r -n -g %name -d %_spooldir/%name -s /dev/null %name >/dev/null 2>&1 ||:
+# fixing #6321, step 1/2
+%_bindir/gpasswd -a squid shadow
 
 %__chown %name:%name %_logdir/%name/*.log >/dev/null 2>&1 ||:
 %__chmod 660 %_logdir/%name/*.log >/dev/null 2>&1 ||:
 
-%post
+%post server
 %post_service %name
 
-%preun
+%preun server
 %preun_service %name
+
 %triggerpostun -- squid < 2.4.STABLE4-alt1
 [ $2 -gt 0 ] || exit 0
 %__chown -R %name:%name %_spooldir/%name >/dev/null 2>&1 ||:
 
 %files
-%doc faq/* README ChangeLog QUICKSTART doc/*
-%doc scripts/*.pl helpers/doc/*
+%doc COPYRIGHT README ChangeLog QUICKSTART RELEASENOTES.html SPONSORS
+%doc faq/* doc/debug-sections.txt
 
+%files server
 %config(noreplace) %_sysconfdir/%name/%name.conf
 %config(noreplace) %_sysconfdir/%name/%name.conf.default
 %config(noreplace) %_sysconfdir/%name/mime.conf
 %config(noreplace) %_sysconfdir/%name/mime.conf.default
-%config(noreplace) %_sysconfdir/%name/msntauth.conf
-%config(noreplace) %_sysconfdir/%name/msntauth.conf.default
-%config(noreplace) %_sysconfdir/%name/cachemgr.conf
-
 %config %_initdir/%name
 %config %_sysconfdir/logrotate.d/%name
-
 %_datadir/%name/errors
 %_datadir/%name/icons
 %_datadir/snmp/mibs/SQUID-MIB.txt
+%_sbindir/%name
+%_sbindir/squidclient
+%_sbindir/RunAccel
+%_sbindir/RunCache
+%_man8dir/squid.8.gz
+%attr(3770,root,%name) %dir %_logdir/%name
+%attr(2770,root,%name) %dir %_spooldir/%name
 
-%dir %_libdir/%name
-%_libdir/%name/cachemgr.cgi
-%_libdir/%name/digest_pw_auth
+%files helpers
+%doc helpers/doc/*
+%config(noreplace) %_sysconfdir/%name/msntauth.conf
+%config(noreplace) %_sysconfdir/%name/msntauth.conf.default
+%attr(4710,root,%name) %_libdir/%name/pinger
 %_libdir/%name/diskd
+%_libdir/%name/digest_pw_auth
 %_libdir/%name/fakeauth_auth
 %_libdir/%name/getpwname_auth
 %_libdir/%name/ip_user_check
 %_libdir/%name/msnt_auth
 %_libdir/%name/ncsa_auth
-%_libdir/%name/no_check.pl
 %_libdir/%name/ntlm_auth
-%_libdir/%name/pam_auth
+# fixing #6321, step 2/2
+%attr(2711,root,auth) %_libdir/%name/pam_auth
 %_libdir/%name/sasl_auth
 %_libdir/%name/smb_auth
 %_libdir/%name/smb_auth.sh
-%_libdir/%name/smb_auth.pl
 %_libdir/%name/squid_ldap_auth
 %_libdir/%name/squid_ldap_group
 %_libdir/%name/squid_unix_group
@@ -314,25 +336,52 @@ popd
 %_libdir/%name/wb_auth
 %_libdir/%name/wb_group
 %_libdir/%name/wb_ntlmauth
-%_libdir/%name/wbinfo_group.pl
 %_libdir/%name/wbinfo_group.sh
 %_libdir/%name/yp_auth
+%_man8dir/pam_auth.8.gz
+%_man8dir/squid_ldap_auth.8.gz
+%_man8dir/squid_ldap_group.8.gz
+%_man8dir/squid_unix_group.8.gz
 
-%_sbindir/%name
-%_sbindir/squidclient
-%_sbindir/RunAccel
-%_sbindir/RunCache
+%files helpers-perl
+%doc scripts/*.pl
+%_libdir/%name/no_check.pl
+%_libdir/%name/smb_auth.pl
+%_libdir/%name/wbinfo_group.pl
 
-%_man8dir/*
+%files cachemgr
+%config(noreplace) %_sysconfdir/%name/cachemgr.conf
+%_libdir/%name/cachemgr.cgi
+%_man8dir/cachemgr.cgi.8.gz
 
+%files common
 %attr(750,root,%name) %dir %_sysconfdir/%name
-%attr(3770,root,%name) %dir %_logdir/%name
-%attr(2770,root,%name) %dir %_spooldir/%name
+%attr(750,root,%name) %dir %_libdir/%name
 
-%files pinger
-%attr(4710,root,%name) %_libdir/%name/pinger
 
 %changelog
+* Wed Jun 29 2005 Denis Ovsienko <pilot@altlinux.ru> 2.5.STABLE10-alt2
+- impoving #6321 resolution
+
+* Fri Jun 24 2005 Denis Ovsienko <pilot@altlinux.ru> 2.5.STABLE10-alt1
+- new version
+- #6321 fix
+- #1491 and associated cleanups
+- #6307 fix
+- #7062 fix
+- eliminated pinger package
+- applied:
+ + 2005-05-25 23:01 (Cosmetic) Double content-length often harmless
+ + 2005-06-06 21:38 (Cosmetic) Updated Spanish error messages
+ + 2005-06-09 08:01 (Minor) Squid internal icons served up with slightly incorrect HTTP headers
+ + 2005-06-13 22:55 (Minor) squid -k fails in combination with chroot after patch for bug 1157
+ + 2005-06-13 22:55 (Minor) Core dump with --enable-ipf-transparent if access to NAT device not granted
+ + 2005-06-13 22:55 (Minor) httpd_accel_signle_host incompatible with redireection
+ + 2005-06-19 09:39 (Minor) squid -k reconfigure internal corruption if the type of a cache_dir is changed
+ + 2005-06-19 21:03 (Minor) SNMP GETNEXT fails if the given OID is outside the Squid MIB
+ + 2005-06-22 10:45 (Cosmetic) Title in FTP listings somewhat messed up
+ + 2005-06-21 22:28 (Minor) FTP listings uses "BASE HREF" much more than it needs to
+
 * Thu May 12 2005 Denis Ovsienko <pilot@altlinux.ru> 2.5.STABLE9-alt3
 - applied:
  + 2005-04-20 14:59 (Medium) Fails to process requests for files larger than 2GB in size

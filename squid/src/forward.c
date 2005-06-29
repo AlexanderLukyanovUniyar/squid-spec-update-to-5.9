@@ -1,6 +1,6 @@
 
 /*
- * $Id: forward.c,v 1.82.2.14 2005/02/23 00:06:35 hno Exp $
+ * $Id: forward.c,v 1.82.2.15 2005/03/26 02:50:53 hno Exp $
  *
  * DEBUG: section 17    Request Forwarding
  * AUTHOR: Duane Wessels
@@ -693,9 +693,18 @@ fwdCheckDeferRead(int fd, void *data)
 #endif
     if (EBIT_TEST(e->flags, ENTRY_FWD_HDR_WAIT))
 	return rc;
-    if (mem->inmem_hi - storeLowestMemReaderOffset(e) < READ_AHEAD_GAP)
-	return rc;
-    return 1;
+    if (EBIT_TEST(e->flags, RELEASE_REQUEST)) {
+	/* Just a small safety cap to defer storing more data into the object
+	 * if there already is way too much. This handles the case when there
+	 * is disk clients pending on a too large object being fetched and a
+	 * few other corner cases.
+	 */
+	if (mem->inmem_hi - mem->inmem_lo > SM_PAGE_SIZE + Config.Store.maxInMemObjSize + READ_AHEAD_GAP)
+	    return 1;
+    }
+    if (mem->inmem_hi - storeLowestMemReaderOffset(e) > READ_AHEAD_GAP)
+	return 1;
+    return rc;
 }
 
 void

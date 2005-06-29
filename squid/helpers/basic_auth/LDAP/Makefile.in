@@ -16,7 +16,7 @@
 #
 #  Makefile for the Squid LDAP authentication helper
 #
-#  $Id: Makefile.in,v 1.8.2.13 2004/07/10 12:11:41 hno Exp $
+#  $Id: Makefile.in,v 1.8.2.14 2005/03/19 00:55:41 hno Exp $
 #
 #  Uncomment and customize the following to suit your needs:
 #
@@ -88,6 +88,7 @@ INSTALL_STRIP_PROGRAM = @INSTALL_STRIP_PROGRAM@
 LIBDLMALLOC = @LIBDLMALLOC@
 LIBREGEX = @LIBREGEX@
 LIBSASL = @LIBSASL@
+LIB_LBER = @LIB_LBER@
 LIB_MALLOC = @LIB_MALLOC@
 LN = @LN@
 LN_S = @LN_S@
@@ -127,7 +128,7 @@ man_MANS = squid_ldap_auth.8
 EXTRA_DIST = squid_ldap_auth.8
 squid_ldap_auth_SOURCES = squid_ldap_auth.c
 
-LDADD = -L$(top_builddir)/lib -lmiscutil -lldap -llber $(XTRA_LIBS)
+LDADD = -L$(top_builddir)/lib -lmiscutil -lldap $(LIB_LBER) $(XTRA_LIBS)
 INCLUDES = -I$(top_srcdir)/include
 subdir = helpers/basic_auth/LDAP
 mkinstalldirs = $(SHELL) $(top_srcdir)/cfgaux/mkinstalldirs

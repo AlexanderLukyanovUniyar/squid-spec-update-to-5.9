@@ -1,6 +1,6 @@
 
 /*
- * $Id: tools.c,v 1.213.2.11 2005/02/13 21:19:44 serassio Exp $
+ * $Id: tools.c,v 1.213.2.15 2005/04/22 20:45:12 hno Exp $
  *
  * DEBUG: section 21    Misc Functions
  * AUTHOR: Harvest Derived
@@ -341,8 +341,10 @@ fatal_common(const char *message)
     fprintf(debug_log, "Squid Cache (Version %s): Terminated abnormally.\n",
 	version_string);
     fflush(debug_log);
-    PrintRusage();
-    dumpMallocStats();
+    if (!shutting_down) {
+	PrintRusage();
+	dumpMallocStats();
+    }
 }
 
 /* fatal */
@@ -357,7 +359,7 @@ fatal(const char *message)
 	storeDirWriteCleanLogs(0);
     fatal_common(message);
     if (shutting_down)
-	exit(0);
+	exit(1);
     else
 	abort();
 }
@@ -615,12 +617,19 @@ readPidFile(void)
 {
     FILE *pid_fp = NULL;
     const char *f = Config.pidFilename;
+    char *chroot_f = NULL;
     pid_t pid = -1;
     int i;
 
     if (f == NULL || !strcmp(Config.pidFilename, "none")) {
 	fprintf(stderr, "%s: ERROR: No pid file name defined\n", appname);
 	exit(1);
+    }
+    if (Config.chroot_dir && geteuid() == 0) {
+	int len = strlen(Config.chroot_dir) + 1 + strlen(f) + 1;
+	chroot_f = xmalloc(len);
+	snprintf(chroot_f, len, "%s/%s", Config.chroot_dir, f);
+	f = chroot_f;
     }
     pid_fp = fopen(f, "r");
     if (pid_fp != NULL) {
@@ -635,6 +644,7 @@ readPidFile(void)
 	    exit(1);
 	}
     }
+    safe_free(chroot_f);
     return pid;
 }
 
@@ -839,7 +849,7 @@ dlinkDelete(dlink_node * m, dlink_list * list)
 }
 
 void
-kb_incr(kb_t * k, size_t v)
+kb_incr(kb_t * k, squid_off_t v)
 {
     k->bytes += v;
     k->kb += (k->bytes >> 10);
@@ -937,6 +947,9 @@ int
 xrename(const char *from, const char *to)
 {
     debug(21, 2) ("xrename: renaming %s to %s\n", from, to);
+#if defined(_SQUID_OS2_) || defined(_SQUID_CYGWIN_) || defined(_SQUID_MSWIN_)
+    remove(to);
+#endif
     if (0 == rename(from, to))
 	return 0;
     debug(21, errno == ENOENT ? 2 : 1) ("xrename: Cannot rename %s to %s: %s\n",

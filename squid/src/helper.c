@@ -1,6 +1,6 @@
 
 /*
- * $Id: helper.c,v 1.34.2.17 2004/11/06 15:24:51 hno Exp $
+ * $Id: helper.c,v 1.34.2.18 2005/03/26 02:50:53 hno Exp $
  *
  * DEBUG: section 84    Helper process maintenance
  * AUTHOR: Harvest Derived?
@@ -374,7 +374,7 @@ helperStats(StoreEntry * sentry, helper * hlp)
 	    srv->flags.closing ? 'C' : ' ',
 	    srv->flags.shutdown ? 'S' : ' ',
 	    tt < 0.0 ? 0.0 : tt,
-	    (int) srv->offset,
+	    srv->offset,
 	    srv->request ? log_quote(srv->request->buf) : "(none)");
     }
     storeAppendPrintf(sentry, "\nFlags key:\n\n");
@@ -423,7 +423,7 @@ helperStatefulStats(StoreEntry * sentry, statefulhelper * hlp)
 	    srv->flags.reserved ? 'R' : ' ',
 	    srv->flags.shutdown ? 'S' : ' ',
 	    tt < 0.0 ? 0.0 : tt,
-	    (int) srv->offset,
+	    srv->offset,
 	    srv->request ? log_quote(srv->request->buf) : "(none)");
     }
     storeAppendPrintf(sentry, "\nFlags key:\n\n");

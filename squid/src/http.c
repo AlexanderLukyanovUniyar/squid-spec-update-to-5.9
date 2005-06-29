@@ -1,6 +1,6 @@
 
 /*
- * $Id: http.c,v 1.384.2.28 2005/02/11 10:52:59 hno Exp $
+ * $Id: http.c,v 1.384.2.30 2005/03/26 02:50:53 hno Exp $
  *
  * DEBUG: section 11    Hypertext Transfer Protocol (HTTP)
  * AUTHOR: Harvest Derived
@@ -528,9 +528,9 @@ httpPconnTransferDone(HttpStateData * httpState)
     /* return 1 if we got the last of the data on a persistent connection */
     MemObject *mem = httpState->entry->mem_obj;
     HttpReply *reply = mem->reply;
-    int clen;
+    squid_off_t clen;
     debug(11, 3) ("httpPconnTransferDone: FD %d\n", httpState->fd);
-    debug(11, 5) ("httpPconnTransferDone: content_length=%d\n",
+    debug(11, 5) ("httpPconnTransferDone: content_length=%" PRINTF_OFF_T "\n",
 	reply->content_length);
     /* If we haven't seen the end of reply headers, we are not done */
     if (httpState->reply_hdr_state < 2)
@@ -744,7 +744,8 @@ httpReadReply(int fd, void *data)
 		    if ((len < 0 && !ignoreErrno(errno)) || len == 0) {
 			keep_alive = 0;
 		    } else if (len > 0) {
-			debug(11, 1) ("httpReadReply: Excess data from \"%s %s\"\n",
+			debug(11, Config.onoff.relaxed_header_parser <= 0 || keep_alive ? 1 : 2)
+			    ("httpReadReply: Excess data from \"%s %s\"\n",
 			    RequestMethodStr[httpState->orig_request->method],
 			    storeUrl(entry));
 			storeAppend(entry, buf, len);
@@ -782,7 +783,8 @@ httpReadReply(int fd, void *data)
 	    return;
 	case -1:
 	    /* Server is nasty on us. Shut down */
-	    debug(11, 1) ("httpReadReply: Excess data from \"%s %s\"\n",
+	    debug(11, Config.onoff.relaxed_header_parser <= 0 || entry->mem_obj->reply->keep_alive ? 1 : 2)
+		("httpReadReply: Excess data from \"%s %s\"\n",
 		RequestMethodStr[httpState->orig_request->method],
 		storeUrl(entry));
 	    fwdComplete(httpState->fwd);
@@ -1059,7 +1061,7 @@ httpBuildRequestHeader(request_t * request,
 
 /* build request prefix and append it to a given MemBuf; 
  * return the length of the prefix */
-mb_size_t
+int
 httpBuildRequestPrefix(request_t * request,
     request_t * orig_request,
     StoreEntry * entry,

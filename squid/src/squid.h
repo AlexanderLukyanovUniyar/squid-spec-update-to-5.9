@@ -1,6 +1,6 @@
 
 /*
- * $Id: squid.h,v 1.216.2.7 2004/08/09 13:54:23 hno Exp $
+ * $Id: squid.h,v 1.216.2.8 2005/03/26 02:50:53 hno Exp $
  *
  * AUTHOR: Duane Wessels
  *
@@ -480,5 +480,13 @@ struct rusage {
 
 #define FD_READ_METHOD(fd, buf, len) (*fd_table[fd].read_method)(fd, buf, len)
 #define FD_WRITE_METHOD(fd, buf, len) (*fd_table[fd].write_method)(fd, buf, len)
+
+/*
+ * Trap attempts to build large file cache support without support for
+ * large objects
+ */
+#if LARGE_CACHE_FILES && SIZEOF_SQUID_OFF_T <= 4
+#error Your platform does not support large integers. Can not build with --enable-large-cache-files
+#endif
 
 #endif /* SQUID_H */

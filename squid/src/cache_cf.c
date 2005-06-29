@@ -1,6 +1,6 @@
 
 /*
- * $Id: cache_cf.c,v 1.396.2.20 2005/02/21 02:55:04 hno Exp $
+ * $Id: cache_cf.c,v 1.396.2.26 2005/05/06 22:33:53 wessels Exp $
  *
  * DEBUG: section 3     Configuration File Parsing
  * AUTHOR: Harvest Derived
@@ -78,7 +78,7 @@ static void parse_string(char **);
 static void default_all(void);
 static void defaults_if_none(void);
 static int parse_line(char *);
-static void parseBytesLine(size_t * bptr, const char *units);
+static void parseBytesLine(squid_off_t * bptr, const char *units);
 static size_t parseBytesUnits(const char *unit);
 static void free_all(void);
 void requirePathnameExists(const char *name, const char *path);
@@ -110,6 +110,7 @@ static int check_null_https_port_list(const https_port_list *);
 void
 self_destruct(void)
 {
+    shutting_down = 1;
     fatalf("Bungled %s line %d: %s",
 	cfg_filename, config_lineno, config_input_line);
 }
@@ -210,10 +211,35 @@ int
 GetInteger(void)
 {
     char *token = strtok(NULL, w_space);
+    char *end;
     int i;
+    double d;
     if (token == NULL)
 	self_destruct();
-    if (sscanf(token, "%d", &i) != 1)
+    i = strtol(token, &end, 0);
+    d = strtod(token, NULL);
+    if (d > INT_MAX || end == token)
+	self_destruct();
+    return i;
+}
+
+static squid_off_t
+GetOffT(void)
+{
+    char *token = strtok(NULL, w_space);
+    char *end;
+    squid_off_t i;
+    if (token == NULL)
+	self_destruct();
+    i = strto_off_t(token, &end, 0);
+#if SIZEOF_SQUID_OFF_T <= 4
+    {
+	double d = strtod(token, NULL);
+	if (d > INT_MAX)
+	    end = token;
+    }
+#endif
+    if (end == token)
 	self_destruct();
     return i;
 }
@@ -222,7 +248,7 @@ static void
 update_maxobjsize(void)
 {
     int i;
-    ssize_t ms = -1;
+    squid_off_t ms = -1;
 
     for (i = 0; i < Config.cacheSwap.n_configured; i++) {
 	if (Config.cacheSwap.swapDirs[i].max_objsize > ms)
@@ -255,6 +281,8 @@ parseConfigFile(const char *file_name)
 	config_lineno++;
 	if ((token = strchr(config_input_line, '\n')))
 	    *token = '\0';
+	if ((token = strchr(config_input_line, '\r')))
+	    *token = '\0';
 	if (config_input_line[0] == '#')
 	    continue;
 	if (config_input_line[0] == '\0')
@@ -271,11 +299,13 @@ parseConfigFile(const char *file_name)
     }
     fclose(fp);
     defaults_if_none();
-    configDoConfigure();
-    cachemgrRegister("config",
-	"Current Squid Configuration",
-	dump_config,
-	1, 1);
+    if (opt_send_signal == -1) {
+	configDoConfigure();
+	cachemgrRegister("config",
+	    "Current Squid Configuration",
+	    dump_config,
+	    1, 1);
+    }
     return err_count;
 }
 
@@ -439,6 +469,26 @@ configDoConfigure(void)
 	debug(22, 0) ("NOTICE: positive_dns_ttl must be larger than negative_dns_ttl. Resetting negative_dns_ttl to match\n");
 	Config.positiveDnsTtl = Config.negativeDnsTtl;
     }
+#if SIZEOF_SQUID_FILE_SZ <= 4
+#if SIZEOF_SQUID_OFF_T <= 4
+    if (Config.Store.maxObjectSize > 0x7FFF0000) {
+	debug(22, 0) ("NOTICE: maximum_object_size limited to %d KB due to hardware limitations\n", 0x7FFF0000 / 1024);
+	Config.Store.maxObjectSize = 0x7FFF0000;
+    }
+#elif SIZEOF_OFF_T <= 4
+    if (Config.Store.maxObjectSize > 0xFFFF0000) {
+	debug(22, 0) ("NOTICE: maximum_object_size limited to %d KB due to OS limitations\n", 0xFFFF0000 / 1024);
+	Config.Store.maxObjectSize = 0xFFFF0000;
+    }
+#else
+    if (Config.Store.maxObjectSize > 0xFFFF0000) {
+	debug(22, 0) ("NOTICE: maximum_object_size limited to %d KB to keep compatibility with existing cache\n", 0xFFFF0000 / 1024);
+	Config.Store.maxObjectSize = 0xFFFF0000;
+    }
+#endif
+#endif
+    if (Config.Store.maxInMemObjSize > 8 * 1024 * 1024)
+	debug(22, 0) ("WARNING: Very large maximum_object_size_in_memory settings can have negative impact on performance\n");
 }
 
 /* Parse a time specification from the config file.  Store the
@@ -492,18 +542,18 @@ parseTimeUnits(const char *unit)
 }
 
 static void
-parseBytesLine(size_t * bptr, const char *units)
+parseBytesLine(squid_off_t * bptr, const char *units)
 {
     char *token;
     double d;
-    size_t m;
-    size_t u;
+    squid_off_t m;
+    squid_off_t u;
     if ((u = parseBytesUnits(units)) == 0)
 	self_destruct();
     if ((token = strtok(NULL, w_space)) == NULL)
 	self_destruct();
     if (strcmp(token, "none") == 0 || strcmp(token, "-1") == 0) {
-	*bptr = (size_t) - 1;
+	*bptr = (squid_off_t) - 1;
 	return;
     }
     d = atof(token);
@@ -516,7 +566,7 @@ parseBytesLine(size_t * bptr, const char *units)
     else if ((m = parseBytesUnits(token)) == 0)
 	self_destruct();
     *bptr = m * d / u;
-    if ((double) *bptr != m * d / u)
+    if ((double) *bptr * 2 != m * d / u * 2)
 	self_destruct();
 }
 
@@ -1323,12 +1373,12 @@ dump_cachedir_option_readonly(StoreEntry * e, const char *option, SwapDir * sd)
 static void
 parse_cachedir_option_maxsize(SwapDir * sd, const char *option, const char *value, int reconfiguring)
 {
-    ssize_t size;
+    squid_off_t size;
 
     if (!value)
 	self_destruct();
 
-    size = atoi(value);
+    size = strto_off_t(value, NULL, 10);
 
     if (reconfiguring && sd->max_objsize != size)
 	debug(3, 1) ("Cache dir '%s' max object size now %ld\n", sd->path, (long int) size);
@@ -2073,34 +2123,29 @@ free_time_t(time_t * var)
     *var = 0;
 }
 
+#if UNUSED_CODE
 static void
-dump_size_t(StoreEntry * entry, const char *name, size_t var)
+dump_size_t(StoreEntry * entry, const char *name, squid_off_t var)
 {
-    storeAppendPrintf(entry, "%s %d\n", name, (int) var);
+    storeAppendPrintf(entry, "%s %" PRINTF_OFF_T "\n", name, var);
+}
+
+#endif
+
+static void
+dump_b_size_t(StoreEntry * entry, const char *name, squid_off_t var)
+{
+    storeAppendPrintf(entry, "%s %" PRINTF_OFF_T " %s\n", name, var, B_BYTES_STR);
 }
 
 static void
-dump_b_size_t(StoreEntry * entry, const char *name, size_t var)
+dump_kb_size_t(StoreEntry * entry, const char *name, squid_off_t var)
 {
-    storeAppendPrintf(entry, "%s %d %s\n", name, (int) var, B_BYTES_STR);
+    storeAppendPrintf(entry, "%s %" PRINTF_OFF_T " %s\n", name, var, B_KBYTES_STR);
 }
 
 static void
-dump_kb_size_t(StoreEntry * entry, const char *name, size_t var)
-{
-    storeAppendPrintf(entry, "%s %d %s\n", name, (int) var, B_KBYTES_STR);
-}
-
-static void
-parse_size_t(size_t * var)
-{
-    int i;
-    i = GetInteger();
-    *var = (size_t) i;
-}
-
-static void
-parse_b_size_t(size_t * var)
+parse_b_size_t(squid_off_t * var)
 {
     parseBytesLine(var, B_BYTES_STR);
 }
@@ -2113,7 +2158,7 @@ parse_body_size_t(dlink_list * bodylist)
     body_size *bs;
     CBDATA_INIT_TYPE(body_size);
     bs = cbdataAlloc(body_size);
-    parse_size_t(&bs->maxsize);
+    bs->maxsize = GetOffT();
     aclParseAccessLine(&bs->access_list);
 
     dlinkAddTail(bs, &bs->node, bodylist);
@@ -2128,7 +2173,7 @@ dump_body_size_t(StoreEntry * entry, const char *name, dlink_list bodylist)
 	acl_list *l;
 	acl_access *head = bs->access_list;
 	while (head != NULL) {
-	    storeAppendPrintf(entry, "%s %ld %s", name, (long int) bs->maxsize,
+	    storeAppendPrintf(entry, "%s %" PRINTF_OFF_T " %s", name, bs->maxsize,
 		head->allow ? "Allow" : "Deny");
 	    for (l = head->acl_list; l != NULL; l = l->next) {
 		storeAppendPrintf(entry, " %s%s",
@@ -2165,13 +2210,13 @@ check_null_body_size_t(dlink_list bodylist)
 
 
 static void
-parse_kb_size_t(size_t * var)
+parse_kb_size_t(squid_off_t * var)
 {
     parseBytesLine(var, B_KBYTES_STR);
 }
 
 static void
-free_size_t(size_t * var)
+free_size_t(squid_off_t * var)
 {
     *var = 0;
 }
@@ -2445,6 +2490,8 @@ parse_https_port_list(https_port_list ** head)
 	    s->key = xstrdup(token + 4);
 	} else if (strncmp(token, "version=", 8) == 0) {
 	    s->version = atoi(token + 8);
+	    if (s->version < 1 || s->version > 4)
+		self_destruct();
 	} else if (strncmp(token, "options=", 8) == 0) {
 	    safe_free(s->options);
 	    s->options = xstrdup(token + 8);

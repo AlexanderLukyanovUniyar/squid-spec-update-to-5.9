@@ -1,6 +1,6 @@
 
 /*
- * $Id: authenticate.c,v 1.36.2.16 2005/01/10 15:35:38 hno Exp $
+ * $Id: authenticate.c,v 1.36.2.17 2005/03/26 02:50:51 hno Exp $
  *
  * DEBUG: section 29    Authenticator
  * AUTHOR: Duane Wessels
@@ -352,7 +352,7 @@ authenticateAuthUserRequestClearIp(auth_user_request_t * auth_user_request)
 	authenticateAuthUserClearIp(auth_user_request->auth_user);
 }
 
-size_t
+int
 authenticateAuthUserRequestIPCount(auth_user_request_t * auth_user_request)
 {
     assert(auth_user_request);

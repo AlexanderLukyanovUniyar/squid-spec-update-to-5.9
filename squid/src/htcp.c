@@ -1,6 +1,6 @@
 
 /*
- * $Id: htcp.c,v 1.38.2.5 2005/02/20 19:07:45 hno Exp $
+ * $Id: htcp.c,v 1.38.2.6 2005/03/26 02:50:53 hno Exp $
  *
  * DEBUG: section 31    Hypertext Caching Protocol
  * AUTHOR: Duane Wesssels
@@ -227,14 +227,14 @@ htcpBuildCountstr(char *buf, size_t buflen, const char *s)
 {
     u_short length;
     size_t len;
-    off_t off = 0;
+    int off = 0;
     if (buflen - off < 2)
 	return -1;
     if (s)
 	len = strlen(s);
     else
 	len = 0;
-    debug(31, 3) ("htcpBuildCountstr: LENGTH = %d\n", len);
+    debug(31, 3) ("htcpBuildCountstr: LENGTH = %d\n", (int) len);
     debug(31, 3) ("htcpBuildCountstr: TEXT = {%s}\n", s ? s : "<NULL>");
     length = htons((u_short) len);
     xmemcpy(buf + off, &length, 2);

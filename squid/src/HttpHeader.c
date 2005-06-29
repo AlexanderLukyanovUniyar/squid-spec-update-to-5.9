@@ -1,6 +1,6 @@
 
 /*
- * $Id: HttpHeader.c,v 1.74.2.25 2005/02/20 10:32:41 hno Exp $
+ * $Id: HttpHeader.c,v 1.74.2.28 2005/05/06 21:32:09 wessels Exp $
  *
  * DEBUG: section 55    HTTP Header
  * AUTHOR: Alex Rousskov
@@ -80,7 +80,7 @@ static const HttpHeaderFieldAttrs HeadersAttrs[] =
     {"Content-Disposition", HDR_CONTENT_DISPOSITION, ftStr},
     {"Content-Encoding", HDR_CONTENT_ENCODING, ftStr},
     {"Content-Language", HDR_CONTENT_LANGUAGE, ftStr},
-    {"Content-Length", HDR_CONTENT_LENGTH, ftInt},
+    {"Content-Length", HDR_CONTENT_LENGTH, ftSize},
     {"Content-Location", HDR_CONTENT_LOCATION, ftStr},
     {"Content-MD5", HDR_CONTENT_MD5, ftStr},	/* for now */
     {"Content-Range", HDR_CONTENT_RANGE, ftPContRange},
@@ -474,13 +474,20 @@ httpHeaderParse(HttpHeader * hdr, const char *header_start, const char *header_e
 		return httpHeaderReset(hdr);
 	}
 	if (e->id == HDR_CONTENT_LENGTH && (e2 = httpHeaderFindEntry(hdr, e->id)) != NULL) {
-	    if (!Config.onoff.relaxed_header_parser || strCmp(e->value, strBuf(e2->value)) != 0) {
+	    if (strCmp(e->value, strBuf(e2->value)) != 0) {
 		debug(55, 1) ("WARNING: found two conflicting content-length headers in {%s}\n", getStringPrefix(header_start, header_end));
 		httpHeaderEntryDestroy(e);
 		return httpHeaderReset(hdr);
 	    } else {
 		debug(55, Config.onoff.relaxed_header_parser <= 0 ? 1 : 2)
 		    ("NOTICE: found double content-length header\n");
+		if (Config.onoff.relaxed_header_parser) {
+		    httpHeaderEntryDestroy(e);
+		    continue;
+		} else {
+		    httpHeaderEntryDestroy(e);
+		    return httpHeaderReset(hdr);
+		}
 	    }
 	}
 	if (e->id == HDR_OTHER && stringHasWhitespace(strBuf(e->name))) {
@@ -807,6 +814,17 @@ httpHeaderPutInt(HttpHeader * hdr, http_hdr_type id, int number)
 }
 
 void
+httpHeaderPutSize(HttpHeader * hdr, http_hdr_type id, squid_off_t number)
+{
+    char size[64];
+    assert_eid(id);
+    assert(Headers[id].type == ftSize);		/* must be of an appropriate type */
+    assert(number >= 0);
+    snprintf(size, sizeof(size), "%" PRINTF_OFF_T, number);
+    httpHeaderAddEntry(hdr, httpHeaderEntryCreate(id, NULL, size));
+}
+
+void
 httpHeaderPutTime(HttpHeader * hdr, http_hdr_type id, time_t htime)
 {
     assert_eid(id);
@@ -907,6 +925,21 @@ httpHeaderGetInt(const HttpHeader * hdr, http_hdr_type id)
     assert(Headers[id].type == ftInt);	/* must be of an appropriate type */
     if ((e = httpHeaderFindEntry(hdr, id))) {
 	ok = httpHeaderParseInt(strBuf(e->value), &value);
+	httpHeaderNoteParsedEntry(e->id, e->value, !ok);
+    }
+    return value;
+}
+
+squid_off_t
+httpHeaderGetSize(const HttpHeader * hdr, http_hdr_type id)
+{
+    HttpHeaderEntry *e;
+    squid_off_t value = -1;
+    int ok;
+    assert_eid(id);
+    assert(Headers[id].type == ftSize);		/* must be of an appropriate type */
+    if ((e = httpHeaderFindEntry(hdr, id))) {
+	ok = httpHeaderParseSize(strBuf(e->value), &value);
 	httpHeaderNoteParsedEntry(e->id, e->value, !ok);
     }
     return value;
@@ -1112,8 +1145,8 @@ httpHeaderEntryParseCreate(const char *field_start, const char *field_end)
     /* do we have a valid field name within this field? */
     if (!name_len || name_end > field_end)
 	return NULL;
-    if (name_len > 65536) {
-	/* String has a 64K limit */
+    if (name_len > 65534) {
+	/* String must be LESS THAN 64K and it adds a terminating NULL */
 	debug(55, 1) ("WARNING: ignoring header name of %d bytes\n", name_len);
 	return NULL;
     }
@@ -1144,8 +1177,8 @@ httpHeaderEntryParseCreate(const char *field_start, const char *field_end)
 	value_start++;
     while (value_start < field_end && xisspace(field_end[-1]))
 	field_end--;
-    if (field_end - value_start > 65536) {
-	/* String has a 64K limit */
+    if (field_end - value_start > 65534) {
+	/* String must be LESS THAN 64K and it adds a terminating NULL */
 	debug(55, 1) ("WARNING: ignoring '%s' header of %d bytes\n",
 	    strBuf(e->name), (int) (field_end - value_start));
 	if (e->id == HDR_OTHER)

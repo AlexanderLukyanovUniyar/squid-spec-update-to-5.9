@@ -1,6 +1,6 @@
 
 #
-# $Id: cf.data.pre,v 1.245.2.85 2005/02/23 00:06:34 hno Exp $
+# $Id: cf.data.pre,v 1.245.2.94 2005/05/10 23:08:40 hno Exp $
 #
 #
 # SQUID Web Proxy Cache          http://www.squid-cache.org/
@@ -1046,7 +1046,7 @@ DOC_START
 DOC_END
 
 NAME: ftp_list_width
-TYPE: size_t
+TYPE: int
 DEFAULT: 32
 LOC: Config.Ftp.list_width
 DOC_START
@@ -1299,12 +1299,18 @@ DOC_START
 	login credentials if the request is being denied by a proxy_auth
 	type acl.
 
+	WARNING: authenitcation can't be used in a transparently intercepting
+	proxy as the client then thinks it is talking to an origin server and
+	not the proxy. This is a limitation of bending the TCP/IP protocol to
+	transparently intercepting port 80, not a limitation in Squid.
+
 	=== Parameters for the basic scheme follow. ===
 
 	"program" cmdline
 	Specify the command for the external authenticator.  Such a program
 	reads a line containing "username password" and replies "OK" or
-	"ERR" in an endless loop.
+	"ERR" in an endless loop. "ERR" responses may optionally be followed
+	by a error description available as %m in the returned error page.
 
 	By default, the basic authentication sheme is not used unless a
 	program is specified.
@@ -1357,6 +1363,8 @@ DOC_START
 	reads a line containing "username":"realm" and replies with the
 	appropriate H(A1) value base64 encoded or ERR if the user (or his H(A1)
 	hash) does not exists.  See rfc 2616 for the definition of H(A1).
+	"ERR" responses may optionally be followed by a error description
+	available as %m in the returned error page.
 
 	By default, the digest authentication scheme is not used unless a
 	program is specified.
@@ -2002,13 +2010,22 @@ DOC_START
 	acl aclname dst      ip-address/netmask ... (URL host's IP address)
 	acl aclname myip     ip-address/netmask ... (local socket IP address)
 
+	acl aclname arp      mac-address ... (xx:xx:xx:xx:xx:xx notation)
+	  # The arp ACL requires the special configure option --enable-arp-acl.
+	  # Furthermore, the arp ACL code is not portable to all operating systems.
+	  # It works on Linux, Solaris, FreeBSD and some other *BSD variants.
+	  #
+	  # NOTE: Squid can only determine the MAC address for clients that are on
+	  # the same subnet. If the client is on a different subnet, then Squid cannot
+	  # find out its MAC address.
+
 	acl aclname srcdomain   .foo.com ...    # reverse lookup, client IP
 	acl aclname dstdomain   .foo.com ...    # Destination server from URL
 	acl aclname srcdom_regex [-i] xxx ...   # regex matching client name
 	acl aclname dstdom_regex [-i] xxx ...   # regex matching server
 	  # For dstdomain and dstdom_regex  a reverse lookup is tried if a IP
-	  # based URL is used. The name "none" is used if the reverse lookup
-	  # fails.
+	  # based URL is used and no match is found. The name "none" is used
+	  # if the reverse lookup fails.
 
 	acl aclname time     [day-abbrevs]  [h1:m1-h2:m2]
 	    day-abbrevs:
@@ -2118,6 +2135,7 @@ DOC_START
 	  # external_acl_type directive.
 
 Examples:
+acl macaddress arp 09:00:2b:23:45:67
 acl myexample dst_as 1241
 acl password proxy_auth REQUIRED
 acl fileupload req_mime_type -i ^multipart/form-data$
@@ -2293,7 +2311,7 @@ DEFAULT_IF_NONE: deny all
 LOC: Config.accessList.identLookup
 DOC_START
 	A list of ACL elements which, if matched, cause an ident
-	(RFC 931) lookup to be performed for this request.  For
+	(RFC931) lookup to be performed for this request.  For
 	example, you might choose to always perform ident lookups
 	for your main multi-user Unix boxes, but not for your Macs
 	and PCs.  By default, ident lookups are not performed for
@@ -2331,10 +2349,13 @@ DOC_START
 	tcp_outgoing_tos 0x20 good_service_net
 
 	TOS/DSCP values really only have local significance - so you should
-	know what you're specifying. For more, see RFC 2474
+	know what you're specifying. For more information, see RFC2474 and 
+	RFC3260.
 
-	The TOS/DSCP byte must be exactly that - a byte, value  0 - 255, or
-	"default" to use whatever default your host has.
+	The TOS/DSCP byte must be exactly that - a octet value  0 - 255, or
+	"default" to use whatever default your host has. Note that in
+	practice often only values 0 - 63 is useable as the two highest bits
+	have been redefined for use by ECN (RFC3168).
 
 	Processing proceeds in the order specified, and stops at first fully
 	matching line.
@@ -3059,8 +3080,9 @@ DOC_START
 	Usage: always_direct allow|deny [!]aclname ...
 
 	Here you can use ACL elements to specify requests which should
-	ALWAYS be forwarded directly to origin servers.  For example,
-	to always directly forward requests for local servers use
+	ALWAYS be forwarded by Squid to the origin servers without using
+	any peers.  For example, to always directly forward requests for
+	local servers ignoring any parents or siblings you may have use
 	something like:
 
 		acl local-servers dstdomain my.domain.net
@@ -3081,6 +3103,15 @@ DOC_START
 		acl local-servers dstdomain  .foo.net
 		always_direct deny local-external
 		always_direct allow local-servers
+
+	NOTE: If your goal is to make the client forward the request
+	directly to the origin server bypassing Squid then this needs
+	to be done in the client configuration. Squid configuration
+	can only tell Squid how Squid should fetch the object.
+
+	NOTE: This directive is not related to caching. The replies
+	is cached as usual even if you use always_direct. To not cache
+	the replies see no_cache.
 
 	This option replaces some v1.1 options such as local_domain
 	and local_ip.
@@ -3446,10 +3477,13 @@ IFDEF: DELAY_POOLS
 LOC: Config.Delay
 DOC_START
 	This is used to determine which delay pool a request falls into.
-	The first matched delay pool is always used, i.e., if a request falls
-	into delay pool number one, no more delay are checked, otherwise the
-	rest are checked in order of their delay pool number until they have
-	all been checked.  For example, if you want some_big_clients in delay
+
+	delay_access is sorted per pool and the matching starts with pool 1,
+       	then pool 2, ..., and finally pool N. The first delay pool where the
+       	request is allowed is selected for the request. If it does not allow
+	the request to any pool then the request is not delayed (default).
+
+      	For example, if you want some_big_clients in delay
 	pool 1 and lotsa_little_clients in delay pool 2:
 
 Example:
@@ -3631,7 +3665,7 @@ DOC_START
 	Some HTTP servers has broken implementations of PUT/POST,
 	and rely on an extra CRLF pair sent by some WWW clients.
 
-	Quote from RFC 2068 section 4.1 on this matter:
+	Quote from RFC2068 section 4.1 on this matter:
 
 	  Note: certain buggy HTTP/1.0 client implementations generate an
 	  extra CRLF's after a POST request. To restate what is explicitly

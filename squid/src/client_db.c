@@ -1,6 +1,6 @@
 
 /*
- * $Id: client_db.c,v 1.53.2.4 2004/10/11 20:25:52 hno Exp $
+ * $Id: client_db.c,v 1.53.2.5 2005/03/26 02:50:52 hno Exp $
  *
  * DEBUG: section 0     Client Database
  * AUTHOR: Duane Wessels
@@ -77,7 +77,7 @@ clientdbInit(void)
 }
 
 void
-clientdbUpdate(struct in_addr addr, log_type ltype, protocol_t p, size_t size)
+clientdbUpdate(struct in_addr addr, log_type ltype, protocol_t p, squid_off_t size)
 {
     char *key;
     ClientInfo *c;

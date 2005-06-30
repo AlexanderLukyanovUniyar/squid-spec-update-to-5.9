@@ -58,9 +58,9 @@ diff -c squid/src/globals.h:1.108.2.6 squid/src/globals.h:1.108.2.7
   
   #endif /* SQUID_GLOBALS_H */
 Index: squid/src/main.c
-diff -c squid/src/main.c:1.345.2.25 squid/src/main.c:1.345.2.26
+diff -c squid/src/main.c:1.345.2.25 squid/src/main.c:1.345.2.27
 *** squid/src/main.c:1.345.2.25	Wed Apr 20 15:52:26 2005
---- squid/src/main.c	Mon Jun 13 16:26:22 2005
+--- squid/src/main.c	Mon Jun 27 15:24:28 2005
 ***************
 *** 38,44 ****
   /* for error reporting from xmalloc and friends */
@@ -72,15 +72,28 @@ diff -c squid/src/main.c:1.345.2.25 squid/src/main.c:1.345.2.26
   static int httpPortNumOverride = 1;
 --- 38,43 ----
 ***************
-*** 687,692 ****
---- 686,692 ----
-  	if (Config.chroot_dir && chroot(Config.chroot_dir)) {
-  	    fatal("failed to chroot");
+*** 684,691 ****
+      /* send signal to running copy and exit */
+      if (opt_send_signal != -1) {
+  	/* chroot if configured to run inside chroot */
+! 	if (Config.chroot_dir && chroot(Config.chroot_dir)) {
+! 	    fatal("failed to chroot");
   	}
-+ 	no_suid();
   	sendSignal();
   	/* NOTREACHED */
-      }
+--- 683,694 ----
+      /* send signal to running copy and exit */
+      if (opt_send_signal != -1) {
+  	/* chroot if configured to run inside chroot */
+! 	if (Config.chroot_dir) {
+! 	    if (chroot(Config.chroot_dir))
+! 		fatal("failed to chroot");
+! 	    no_suid();
+! 	} else {
+! 	    leave_suid();
+  	}
+  	sendSignal();
+  	/* NOTREACHED */
 Index: squid/src/tools.c
 diff -c squid/src/tools.c:1.213.2.15 squid/src/tools.c:1.213.2.16
 *** squid/src/tools.c:1.213.2.15	Fri Apr 22 14:45:12 2005

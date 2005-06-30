@@ -1,6 +1,6 @@
 Name: squid
 Version: 2.5.STABLE10
-Release: alt2
+Release: alt3
 
 Summary: The Squid proxy caching server
 Summary(ru_RU.KOI8-R): Кэширующий прокси-сервер Squid
@@ -34,13 +34,14 @@ Patch8: squid-2.5.STABLE10-alt-perlreq.patch
 Patch10: squid-2.5.STABLE10-content_length.patch
 Patch11: squid-2.5.STABLE10-spanish.patch
 Patch12: squid-2.5.STABLE10-internal_date.patch
-Patch13: squid-2.5.STABLE10-chroot.patch
-Patch14: squid-2.5.STABLE10-transparent.patch
+Patch13: squid-2.5.STABLE10-chroot-2.patch
+Patch14: squid-2.5.STABLE10-transparent-2.patch
 Patch15: squid-2.5.STABLE10-redirect_flags.patch
 Patch16: squid-2.5.STABLE10-cache_dir_change.patch
 Patch17: squid-2.5.STABLE10-snmp_getnext.patch
 Patch18: squid-2.5.STABLE10-ftp_title-2.patch
 Patch19: squid-2.5.STABLE10-ftp_basehref.patch
+Patch20: squid-2.5.STABLE10-wbinfo_groups.patch
 
 Obsoletes: %name-novm
 
@@ -78,11 +79,13 @@ Requires: %name-common
 Conflicts: %name <= 2.5.STABLE9-alt3
 
 %description server
-This package contains Squid main server and its necessary files.
+This package contains Squid main server and its necessary files
+as well as pinger, unlinkd and diskd.
 Install squid package to get all Squid parts.
 
 %description -l ru_RU.KOI8-R server
-Этот пакет содержит главный сервер Squid и необходимые для его работы файлы.
+Этот пакет содержит главный сервер Squid и необходимые для его работы файлы,
+а также pinger, unlinkd и diskd.
 Установите пакет squid, чтобы получить все компоненты Squid.
 
 
@@ -131,13 +134,12 @@ Conflicts: %name <= 2.5.STABLE9-alt3
 Obsoletes: %name-pinger
 
 %description helpers
-This package contains Squid helpers for different kinds of authentication
-as well as pinger and diskd.
+This package contains Squid helpers for different kinds of authentication.
 Install squid package to get all Squid parts.
 
 %description -l ru_RU.KOI8-R helpers
 Этот пакет содержит вспомогательные программы для squid-server, поддерживающие
-различные виды аутентификации, а также pinger и diskd.
+различные виды аутентификации.
 Установите пакет squid, чтобы получить все компоненты Squid.
 
 %package helpers-perl
@@ -177,6 +179,7 @@ Install squid package to get all Squid parts.
 %patch17 -p1
 %patch18 -p1
 %patch19 -p1
+%patch20 -p1
 
 
 %build
@@ -308,6 +311,9 @@ popd
 %_sbindir/RunAccel
 %_sbindir/RunCache
 %_man8dir/squid.8.gz
+%attr(4710,root,%name) %_libdir/%name/pinger
+%_libdir/%name/unlinkd
+%_libdir/%name/diskd
 %attr(3770,root,%name) %dir %_logdir/%name
 %attr(2770,root,%name) %dir %_spooldir/%name
 
@@ -315,8 +321,6 @@ popd
 %doc helpers/doc/*
 %config(noreplace) %_sysconfdir/%name/msntauth.conf
 %config(noreplace) %_sysconfdir/%name/msntauth.conf.default
-%attr(4710,root,%name) %_libdir/%name/pinger
-%_libdir/%name/diskd
 %_libdir/%name/digest_pw_auth
 %_libdir/%name/fakeauth_auth
 %_libdir/%name/getpwname_auth
@@ -332,7 +336,6 @@ popd
 %_libdir/%name/squid_ldap_auth
 %_libdir/%name/squid_ldap_group
 %_libdir/%name/squid_unix_group
-%_libdir/%name/unlinkd
 %_libdir/%name/wb_auth
 %_libdir/%name/wb_group
 %_libdir/%name/wb_ntlmauth
@@ -360,6 +363,14 @@ popd
 
 
 %changelog
+* Thu Jun 30 2005 Denis Ovsienko <pilot@altlinux.ru> 2.5.STABLE10-alt3
+- pinger, diskd and unlinkd move to squid-server
+- updated:
+ + 2005-06-27 21:24 (Minor) squid -k fails in combination with chroot after patch for bug 1157
+ + 2005-06-30 08:49 (Minor) Core dump with --enable-ipf-transparent if access to NAT device not granted
+- applied:
+ + 2005-06-29 20:36 (Minor) wbinfo_group.pl only looks into the first group specified
+
 * Wed Jun 29 2005 Denis Ovsienko <pilot@altlinux.ru> 2.5.STABLE10-alt2
 - impoving #6321 resolution
 

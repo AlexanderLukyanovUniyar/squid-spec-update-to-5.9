@@ -1,6 +1,6 @@
 Name: squid
 Version: 2.5.STABLE10
-Release: alt3
+Release: alt4
 
 Summary: The Squid proxy caching server
 Summary(ru_RU.KOI8-R): Кэширующий прокси-сервер Squid
@@ -29,6 +29,7 @@ Patch6: squid-errrors-belarusian.patch
 # DISABLED for now
 Patch7: patch-aa.patch
 Patch8: squid-2.5.STABLE10-alt-perlreq.patch
+Patch9:	squid-2.5.STABLE10-alt-sambaprefix.patch
 
 #Official patches to Squid
 Patch10: squid-2.5.STABLE10-content_length.patch
@@ -42,6 +43,9 @@ Patch17: squid-2.5.STABLE10-snmp_getnext.patch
 Patch18: squid-2.5.STABLE10-ftp_title-2.patch
 Patch19: squid-2.5.STABLE10-ftp_basehref.patch
 Patch20: squid-2.5.STABLE10-wbinfo_groups.patch
+Patch21: squid-2.5.STABLE10-64bit_cleanup.patch
+Patch22: squid-2.5.STABLE10-wb_ntlm_auth_silent.patch
+Patch23: squid-2.5.STABLE10-buildenv.patch
 
 Obsoletes: %name-novm
 
@@ -168,6 +172,7 @@ Install squid package to get all Squid parts.
 %patch6 -p1
 #patch7 -p1
 %patch8 -p1
+%patch9 -p1
 
 %patch10 -p1
 %patch11 -p1
@@ -180,6 +185,9 @@ Install squid package to get all Squid parts.
 %patch18 -p1
 %patch19 -p1
 %patch20 -p1
+%patch21 -p1
+%patch22 -p1
+%patch23 -p1
 
 
 %build
@@ -363,6 +371,13 @@ popd
 
 
 %changelog
+* Thu Aug 11 2005 Denis Ovsienko <pilot@altlinux.ru> 2.5.STABLE10-alt4
+- fixed #2713 (wrong SAMBAPREFIX)
+- applied:
+ + 2005-07-03 08:24 (Cosmetic) "make all" gives many warnings
+ + 2005-07-09 08:58 (Cosmetic) Allow wb_ntlm_auth to run more silent
+ + 2005-07-11 00:46 (Cosmetic) The new --with-build-environment=... option doesn't work
+
 * Thu Jun 30 2005 Denis Ovsienko <pilot@altlinux.ru> 2.5.STABLE10-alt3
 - pinger, diskd and unlinkd move to squid-server
 - updated:

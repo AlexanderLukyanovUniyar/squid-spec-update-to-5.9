@@ -1,6 +1,6 @@
 Name: squid
 Version: 2.5.STABLE10
-Release: alt4
+Release: alt5
 
 Summary: The Squid proxy caching server
 Summary(ru_RU.KOI8-R): Кэширующий прокси-сервер Squid
@@ -46,6 +46,18 @@ Patch20: squid-2.5.STABLE10-wbinfo_groups.patch
 Patch21: squid-2.5.STABLE10-64bit_cleanup.patch
 Patch22: squid-2.5.STABLE10-wb_ntlm_auth_silent.patch
 Patch23: squid-2.5.STABLE10-buildenv.patch
+Patch24: squid-2.5.STABLE10-mail_program.patch
+Patch25: squid-2.5.STABLE10-arp_ipfilter-2.patch
+Patch26: squid-2.5.STABLE10-sslConnectTimeout.patch
+Patch27: squid-2.5.STABLE10-statHistAssert.patch
+Patch28: squid-2.5.STABLE10-chroot_dir.patch
+Patch29: squid-2.5.STABLE10-errmsg.patch
+Patch30: squid-2.5.STABLE10-FORTIFY_SOURCE.patch
+Patch31: squid-2.5.STABLE10-ftp_250.patch
+Patch32: squid-2.5.STABLE10-Greek.patch
+Patch33: squid-2.5.STABLE10-STORE_PENDING.patch
+Patch34: squid-2.5.STABLE10-ldap_auth-U.patch
+Patch35: squid-2.5.STABLE10-cacheClientTable.patch
 
 Obsoletes: %name-novm
 
@@ -188,6 +200,18 @@ Install squid package to get all Squid parts.
 %patch21 -p1
 %patch22 -p1
 %patch23 -p1
+%patch24 -p1
+%patch25 -p1
+%patch26 -p1
+%patch27 -p1
+%patch28 -p1
+%patch29 -p1
+%patch30 -p1
+%patch31 -p1
+%patch32 -p1
+%patch33 -p1
+%patch34 -p1
+%patch35 -p1
 
 
 %build
@@ -371,6 +395,21 @@ popd
 
 
 %changelog
+* Sat Sep 03 2005 Denis Ovsienko <pilot@altlinux.ru> 2.5.STABLE10-alt5
+- applied:
+ + 2005-08-14 17:05 (Cosmetic) New 'mail_program' configuration option in squid.conf 
+ + 2005-08-19 09:31 (Minor) sync redeclarations when support for ARP acls
+ + 2005-09-01 20:27 (Major) Segmentation fault in sslConnectTimeout
+ + 2005-09-01 21:56 (Medium) assertion failed: StatHist.c:93: ((int) floor(0.99L + statHistVal(H, 0) - min)) == 0
+ + 2005-09-01 22:09 (Minor) More chroot_dir and squid -k reconfigure issues
+ + 2005-09-01 22:18 (Cosmetic) Odd URLs when failing to forward request via parent and several error messages inconsistent in reported request details
+ + 2005-09-01 22:26 (Cosmetic) Fails to compile with glibc -D_FORTIFY_SOURCE=2
+ + 2005-09-01 22:31 (Minor) Some odd FTP servers respond with 250 where 226 is expected
+ + 2005-09-01 22:39 (Cosmetic) Greek translation of error messages
+ + 2005-09-01 22:44 (Major) assertion failed: store.c:523: "e->store_status == STORE_PENDING"
+ + 2005-09-01 22:49 (Minor) squid_ldap_auth -U does not work
+ + 2005-09-01 22:57 (Minor) snmo cacheClientTable fails on "long" IP addresses
+
 * Thu Aug 11 2005 Denis Ovsienko <pilot@altlinux.ru> 2.5.STABLE10-alt4
 - fixed #2713 (wrong SAMBAPREFIX)
 - applied:
@@ -866,4 +905,3 @@ popd
 - first build against glibc
 - patched out the use of setresuid(), which is available only on kernels
   2.1.44 and later
-

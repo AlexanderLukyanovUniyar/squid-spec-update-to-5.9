@@ -1,6 +1,6 @@
 
 /*
- * $Id: comm.c,v 1.324.2.5 2005/02/13 05:53:56 hno Exp $
+ * $Id: comm.c,v 1.324.2.6 2005/09/10 10:17:55 serassio Exp $
  *
  * DEBUG: section 5     Socket Functions
  * AUTHOR: Harvest Derived
@@ -794,7 +794,7 @@ commSetNonBlocking(int fd)
     int nonblocking = TRUE;
     if (fd_table[fd].type != FD_PIPE) {
 	if (ioctl(fd, FIONBIO, &nonblocking) < 0) {
-	    debug(50, 0) ("commSetNonBlocking: FD %d: %s %D\n", fd, xstrerror(), fd_table[fd].type);
+	    debug(50, 0) ("commSetNonBlocking: FD %d: %s %u\n", fd, xstrerror(), fd_table[fd].type);
 	    return COMM_ERROR;
 	}
     } else {

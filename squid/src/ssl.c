@@ -1,6 +1,6 @@
 
 /*
- * $Id: ssl.c,v 1.118.2.11 2005/04/18 00:54:30 hno Exp $
+ * $Id: ssl.c,v 1.118.2.12 2005/09/01 20:24:27 hno Exp $
  *
  * DEBUG: section 26    Secure Sockets Layer Proxy
  * AUTHOR: Duane Wessels
@@ -106,6 +106,8 @@ sslClientClosed(int fd, void *data)
     sslState->client.fd = -1;
     if (sslState->server.fd == -1)
 	sslStateFree(sslState);
+    else if (!sslState->connected)
+	comm_close(sslState->server.fd);
 }
 
 static void

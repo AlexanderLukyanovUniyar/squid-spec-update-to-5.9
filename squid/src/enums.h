@@ -1,6 +1,6 @@
 
 /*
- * $Id: enums.h,v 1.203.2.15 2005/03/26 02:50:52 hno Exp $
+ * $Id: enums.h,v 1.203.2.17 2005/09/20 11:52:25 serassio Exp $
  *
  *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/
@@ -180,7 +180,8 @@ typedef enum {
 
 /* recognized or "known" header fields; @?@ add more! */
 typedef enum {
-    HDR_ACCEPT,
+    HDR_UNKNOWN = -1,
+    HDR_ACCEPT = 0,
     HDR_ACCEPT_CHARSET,
     HDR_ACCEPT_ENCODING,
     HDR_ACCEPT_LANGUAGE,
@@ -734,7 +735,8 @@ enum {
     _WIN_OS_WINNT,
     _WIN_OS_WIN2K,
     _WIN_OS_WINXP,
-    _WIN_OS_WINNET
+    _WIN_OS_WINNET,
+    _WIN_OS_WINLON
 };
 
 #endif

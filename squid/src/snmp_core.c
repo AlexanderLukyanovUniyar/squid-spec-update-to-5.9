@@ -1,6 +1,6 @@
 
 /*
- * $Id: snmp_core.c,v 1.51.2.5 2005/05/04 18:03:47 hno Exp $
+ * $Id: snmp_core.c,v 1.51.2.6 2005/06/19 21:01:21 hno Exp $
  *
  * DEBUG: section 49    SNMP support
  * AUTHOR: Glenn Chisholm
@@ -660,7 +660,11 @@ snmpTreeNext(oid * Current, snint CurrentLen, oid ** Next, snint * NextLen)
     if (Current[count] == mibTreeEntry->name[count]) {
 	count++;
 	while ((mibTreeEntry) && (count < CurrentLen) && (!mibTreeEntry->parsefunction)) {
-	    mibTreeEntry = snmpTreeEntry(Current[count], count, mibTreeEntry);
+	    mib_tree_entry *nextmibTreeEntry = snmpTreeEntry(Current[count], count, mibTreeEntry);
+	    if (!nextmibTreeEntry)
+		break;
+	    else
+		mibTreeEntry = nextmibTreeEntry;
 	    count++;
 	}
 	debug(49, 5) ("snmpTreeNext: Recursed down to requested object\n");

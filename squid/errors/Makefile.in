@@ -14,7 +14,7 @@
 @SET_MAKE@
 
 #
-# $Id: Makefile.in,v 1.15.2.17 2005/03/19 00:55:41 hno Exp $
+# $Id: Makefile.in,v 1.15.2.18 2005/09/01 22:37:29 hno Exp $
 #
 
 SHELL = @SHELL@
@@ -135,6 +135,7 @@ LANGUAGES = \
 		Finnish \
 		French \
 		German \
+		Greek \
 		Hebrew \
 		Hungarian \
 		Italian \

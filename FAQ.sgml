@@ -2081,8 +2081,8 @@ proxy-script. I created some extra redundancy by hosting the script on
 two web servers (actually Apache web servers on the proxy servers
 themselves) and adding the following records to my primary nameserver:
 <verb>
-	proxy   CNAME           proxy1
-        	CNAME           proxy2
+proxy    IN A    10.0.0.1 ; IP address of proxy1
+         IN A    10.0.0.2 ; IP address of proxy2
 </verb>
 The clients just refer to 'http://proxy/proxy.pac'.  This script looks like this:
 
@@ -5873,9 +5873,9 @@ http_access deny porn
 (additional http_access lines ...)
 </verb>
 
-<sect1>I want to use local time zone in error messages
+<sect1>I want to use local time zone in error messages.
 
-<P>Squid by defaults uses GMT as timestamp in all geenrated error messages.
+<P>Squid by defaults uses GMT as timestamp in all generated error messages.
 This to allow the cache to participate in a hierarchy of caches in different
 timezones without risking confusion about what the time is.
 
@@ -9263,8 +9263,8 @@ diff -p -u -r1.40 -r1.41
   * SUCH DAMAGE.
   *
   *	@(#)uipc_socket.c	8.3 (Berkeley) 4/15/94
-- *	$Id: FAQ.sgml,v 1.250 2005/04/22 19:29:50 hno Exp $
-+ *	$Id: FAQ.sgml,v 1.250 2005/04/22 19:29:50 hno Exp $
+- *	$Id: FAQ.sgml,v 1.253 2005/09/07 16:25:40 wessels Exp $
++ *	$Id: FAQ.sgml,v 1.253 2005/09/07 16:25:40 wessels Exp $
   */
 
  #include <sys/param.h>
@@ -13634,7 +13634,7 @@ determine if the patch is worthwhile.
 <enum>
 <item>
 Edit smb.conf for winbindd functionality.  The following entries in 
-the &lsqb;global&rsqb; section of smbd.conf may be used as a template.
+the &lsqb;global&rsqb; section of smb.conf may be used as a template.
 <verb>
 workgroup = mydomain
 password server = myPDC
@@ -14012,7 +14012,7 @@ want to make a cron job that regularly verifies that your proxy blocks
 access to port 25.
 
 <verb>
-$Id: FAQ.sgml,v 1.250 2005/04/22 19:29:50 hno Exp $
+$Id: FAQ.sgml,v 1.253 2005/09/07 16:25:40 wessels Exp $
 </verb>
 </article>
 <!--  LocalWords:  SSL MSIE Netmanage Chameleon WebSurfer unchecking remotehost

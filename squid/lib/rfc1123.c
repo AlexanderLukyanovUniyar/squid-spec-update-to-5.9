@@ -1,6 +1,6 @@
 
 /*
- * $Id: rfc1123.c,v 1.29.2.2 2005/03/09 14:51:39 hno Exp $
+ * $Id: rfc1123.c,v 1.29.2.3 2005/07/03 08:18:38 serassio Exp $
  *
  * DEBUG: 
  * AUTHOR: Harvest Derived
@@ -230,7 +230,7 @@ parse_rfc1123(const char *str)
 #elif defined(_SQUID_AIX_)
 #elif defined(_SQUID_CYGWIN_)
 #else
-	extern time_t timezone;
+	extern long timezone;
 #endif
 	/*
 	 * The following assumes a fixed DST offset of 1 hour,

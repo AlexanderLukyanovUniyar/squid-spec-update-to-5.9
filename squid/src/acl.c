@@ -1,6 +1,6 @@
 
 /*
- * $Id: acl.c,v 1.270.2.38 2005/05/09 01:48:09 hno Exp $
+ * $Id: acl.c,v 1.270.2.39 2005/09/16 21:53:57 hno Exp $
  *
  * DEBUG: section 28    Access Control
  * AUTHOR: Duane Wessels
@@ -1619,7 +1619,7 @@ aclMatchAcl(acl * ae, aclCheck_t * checklist)
 	    checklist->state[ACL_DST_IP] = ACL_LOOKUP_NEEDED;
 	    return 0;
 	} else {
-	    return aclMatchIp(&ae->data, no_addr);
+	    return 0;
 	}
 	/* NOTREACHED */
     case ACL_DST_DOMAIN:

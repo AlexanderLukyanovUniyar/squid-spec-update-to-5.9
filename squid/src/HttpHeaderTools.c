@@ -1,6 +1,6 @@
 
 /*
- * $Id: HttpHeaderTools.c,v 1.32.2.4 2005/03/26 02:50:51 hno Exp $
+ * $Id: HttpHeaderTools.c,v 1.32.2.5 2005/05/18 15:28:32 hno Exp $
  *
  * DEBUG: section 66    HTTP Header Tools
  * AUTHOR: Alex Rousskov
@@ -316,7 +316,7 @@ httpHeaderParseInt(const char *start, int *value)
     return 1;
 }
 
-squid_off_t
+int
 httpHeaderParseSize(const char *start, squid_off_t * value)
 {
     squid_off_t v;

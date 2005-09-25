@@ -1,6 +1,6 @@
 Name: squid
-Version: 2.5.STABLE10
-Release: alt5
+Version: 2.5.STABLE11
+Release: alt1
 
 Summary: The Squid proxy caching server
 Summary(ru_RU.KOI8-R): Кэширующий прокси-сервер Squid
@@ -32,32 +32,6 @@ Patch8: squid-2.5.STABLE10-alt-perlreq.patch
 Patch9:	squid-2.5.STABLE10-alt-sambaprefix.patch
 
 #Official patches to Squid
-Patch10: squid-2.5.STABLE10-content_length.patch
-Patch11: squid-2.5.STABLE10-spanish.patch
-Patch12: squid-2.5.STABLE10-internal_date.patch
-Patch13: squid-2.5.STABLE10-chroot-2.patch
-Patch14: squid-2.5.STABLE10-transparent-2.patch
-Patch15: squid-2.5.STABLE10-redirect_flags.patch
-Patch16: squid-2.5.STABLE10-cache_dir_change.patch
-Patch17: squid-2.5.STABLE10-snmp_getnext.patch
-Patch18: squid-2.5.STABLE10-ftp_title-2.patch
-Patch19: squid-2.5.STABLE10-ftp_basehref.patch
-Patch20: squid-2.5.STABLE10-wbinfo_groups.patch
-Patch21: squid-2.5.STABLE10-64bit_cleanup.patch
-Patch22: squid-2.5.STABLE10-wb_ntlm_auth_silent.patch
-Patch23: squid-2.5.STABLE10-buildenv.patch
-Patch24: squid-2.5.STABLE10-mail_program.patch
-Patch25: squid-2.5.STABLE10-arp_ipfilter-2.patch
-Patch26: squid-2.5.STABLE10-sslConnectTimeout.patch
-Patch27: squid-2.5.STABLE10-statHistAssert.patch
-Patch28: squid-2.5.STABLE10-chroot_dir.patch
-Patch29: squid-2.5.STABLE10-errmsg.patch
-Patch30: squid-2.5.STABLE10-FORTIFY_SOURCE.patch
-Patch31: squid-2.5.STABLE10-ftp_250.patch
-Patch32: squid-2.5.STABLE10-Greek.patch
-Patch33: squid-2.5.STABLE10-STORE_PENDING.patch
-Patch34: squid-2.5.STABLE10-ldap_auth-U.patch
-Patch35: squid-2.5.STABLE10-cacheClientTable.patch
 
 Obsoletes: %name-novm
 
@@ -186,34 +160,6 @@ Install squid package to get all Squid parts.
 %patch8 -p1
 %patch9 -p1
 
-%patch10 -p1
-%patch11 -p1
-%patch12 -p1
-%patch13 -p1
-%patch14 -p1
-%patch15 -p1
-%patch16 -p1
-%patch17 -p1
-%patch18 -p1
-%patch19 -p1
-%patch20 -p1
-%patch21 -p1
-%patch22 -p1
-%patch23 -p1
-%patch24 -p1
-%patch25 -p1
-%patch26 -p1
-%patch27 -p1
-%patch28 -p1
-%patch29 -p1
-%patch30 -p1
-%patch31 -p1
-%patch32 -p1
-%patch33 -p1
-%patch34 -p1
-%patch35 -p1
-
-
 %build
 %set_autoconf_version 2.5
 
@@ -248,9 +194,9 @@ Install squid package to get all Squid parts.
 	--enable-storeio="aufs coss diskd null ufs" \
 	--enable-default-err-language="English" \
 	--with-large-files \
-	--enable-large-cache-files
+	--enable-large-cache-files \
+	--with-maxfd=16384
 
-%__subst 's/^#define SQUID_MAXFD 1024/#define SQUID_MAXFD 16384/' include/autoconf.h
 %make_build
 
 %__mkdir faq
@@ -395,6 +341,24 @@ popd
 
 
 %changelog
+* Sun Sep 25 2005 Denis Ovsienko <pilot@altlinux.ru> 2.5.STABLE11-alt1
+- STABLE11 includes all patches issued for STABLE10
+- replaced max filedescriptors override trick with configure option
+- updated FAQ to v 1.253 2005/09/07
+
+* Fri Sep 16 2005 Denis Ovsienko <pilot@altlinux.ru> 2.5.STABLE10-alt6
+- applied:
+ + 2005-09-13 02:59 (Minor) Solaris 10 SPARC transparent proxy build problem with ipfilter
+ + 2005-09-03 09:41 (Minor) E-mail sent when cache dies is blocked from many antispam rules
+ + 2005-09-11 00:57 (Minor) LDAP helpers does not work with TLS (-Z option)
+ + 2005-09-11 01:21 (Cosmetic) Incorrect store dir selection debug message on objects >2G
+ + 2005-09-11 01:21 (Cosmetic) enums can not be assumed to be signed ints
+ + 2005-09-11 01:42 (Cosmetic) Allow leaving core dumps on Linux
+ + 2005-09-11 01:53 (Medium) Clients bypassing delay pools by faking a cache hit
+ + 2005-09-13 23:59 (Minor) Transparent proxy problem with IP Filter
+ + 2005-09-15 09:56 (Medium) Odd results on pipelined CONNECT requests
+ + 2005-09-16 11:10 (Major) FATAL: Incorrect scheme in auth header
+
 * Sat Sep 03 2005 Denis Ovsienko <pilot@altlinux.ru> 2.5.STABLE10-alt5
 - applied:
  + 2005-08-14 17:05 (Cosmetic) New 'mail_program' configuration option in squid.conf 

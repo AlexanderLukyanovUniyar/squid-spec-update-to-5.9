@@ -1,6 +1,6 @@
 Name: squid
 Version: 2.5.STABLE11
-Release: alt1
+Release: alt2
 
 Summary: The Squid proxy caching server
 Summary(ru_RU.KOI8-R): Кэширующий прокси-сервер Squid
@@ -32,6 +32,7 @@ Patch8: squid-2.5.STABLE10-alt-perlreq.patch
 Patch9:	squid-2.5.STABLE10-alt-sambaprefix.patch
 
 #Official patches to Squid
+Patch10: squid-2.5.STABLE11-delaypools_truncated.patch
 
 Obsoletes: %name-novm
 
@@ -159,6 +160,8 @@ Install squid package to get all Squid parts.
 #patch7 -p1
 %patch8 -p1
 %patch9 -p1
+
+%patch10 -p1
 
 %build
 %set_autoconf_version 2.5
@@ -341,6 +344,10 @@ popd
 
 
 %changelog
+* Wed Sep 28 2005 Denis Ovsienko <pilot@altlinux.ru> 2.5.STABLE11-alt2
+- applied:
+ + 2005-09-27 22:29 (Major) Truncated responses when using delay pools
+
 * Sun Sep 25 2005 Denis Ovsienko <pilot@altlinux.ru> 2.5.STABLE11-alt1
 - STABLE11 includes all patches issued for STABLE10
 - replaced max filedescriptors override trick with configure option

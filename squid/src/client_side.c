@@ -1,6 +1,6 @@
 
 /*
- * $Id: client_side.c,v 1.561.2.86 2005/09/15 09:53:28 hno Exp $
+ * $Id: client_side.c,v 1.561.2.89 2005/10/18 15:22:26 hno Exp $
  *
  * DEBUG: section 33    Client-side Routines
  * AUTHOR: Duane Wessels
@@ -364,8 +364,7 @@ clientRedirectDone(void *data, char *result)
 	    } else {
 		debug(33, 1) ("clientRedirectDone: bad input: %s\n", result);
 	    }
-	}
-	if (strcmp(result, http->uri))
+	} else if (strcmp(result, http->uri))
 	    new_request = urlParse(old_request->method, result);
     }
     if (new_request) {
@@ -2450,7 +2449,7 @@ clientProcessRequest(clientHttpRequest * http)
     debug(33, 4) ("clientProcessRequest: %s '%s'\n",
 	RequestMethodStr[r->method],
 	url);
-    if (r->method == METHOD_CONNECT) {
+    if (r->method == METHOD_CONNECT && !http->redirect.status) {
 	http->log_type = LOG_TCP_MISS;
 	sslStart(http, &http->out.size, &http->al.http.code);
 	return;
@@ -2514,6 +2513,7 @@ clientProcessMiss(clientHttpRequest * http)
     ErrorState *err = NULL;
     debug(33, 4) ("clientProcessMiss: '%s %s'\n",
 	RequestMethodStr[r->method], url);
+    http->flags.hit = 0;
     /*
      * We might have a left-over StoreEntry from a failed cache hit
      * or IMS request.
@@ -2749,7 +2749,7 @@ parseHttpRequest(ConnStateData * conn, method_t * method_p, int *status,
 #endif
 
     /* handle direct internal objects */
-    if (!Config2.Accel.on && internalCheck(url)) {
+    if ((!Config2.Accel.on || Config.onoff.global_internal_static) && internalCheck(url)) {
 	/* prepend our name & port */
 	http->uri = xstrdup(internalLocalUri(NULL, url));
 	http->flags.accel = 1;
@@ -3145,8 +3145,8 @@ clientReadRequest(int fd, void *data)
 	    request->flags.accelerated = http->flags.accel;
 	    if (!http->flags.internal) {
 		if (internalCheck(strBuf(request->urlpath))) {
-		    if (internalHostnameIs(request->host) &&
-			request->port == ntohs(Config.Sockaddr.http->s.sin_port)) {
+		    if (internalHostnameIs(request->host)) {
+			request->port = ntohs(Config.Sockaddr.http->s.sin_port);
 			http->flags.internal = 1;
 		    } else if (Config.onoff.global_internal_static && internalStaticCheck(strBuf(request->urlpath))) {
 			xstrncpy(request->host, internalHostname(), SQUIDHOSTNAMELEN);

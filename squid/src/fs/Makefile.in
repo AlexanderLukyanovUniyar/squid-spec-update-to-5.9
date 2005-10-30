@@ -15,7 +15,7 @@
 
 #  Makefile for storage modules in the Squid Object Cache server
 #
-#  $Id: Makefile.in,v 1.8.2.12 2005/03/19 00:55:55 hno Exp $
+#  $Id: Makefile.in,v 1.8.2.13 2005/09/28 20:57:26 hno Exp $
 #
 
 SHELL = @SHELL@
@@ -70,6 +70,8 @@ AUTH_MODULES = @AUTH_MODULES@
 AUTH_OBJS = @AUTH_OBJS@
 AWK = @AWK@
 BASIC_AUTH_HELPERS = @BASIC_AUTH_HELPERS@
+CACHE_HTTP_PORT = @CACHE_HTTP_PORT@
+CACHE_ICP_PORT = @CACHE_ICP_PORT@
 CC = @CC@
 CGIEXT = @CGIEXT@
 CPP = @CPP@

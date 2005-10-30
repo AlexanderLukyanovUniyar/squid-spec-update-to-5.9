@@ -1,6 +1,6 @@
 
 /*
- * $Id: http.c,v 1.384.2.32 2005/09/11 01:49:54 hno Exp $
+ * $Id: http.c,v 1.384.2.34 2005/10/18 15:09:56 hno Exp $
  *
  * DEBUG: section 11    Hypertext Transfer Protocol (HTTP)
  * AUTHOR: Harvest Derived
@@ -738,7 +738,10 @@ httpReadReply(int fd, void *data)
 #endif
 		    comm_remove_close_handler(fd, httpStateFree, httpState);
 		    fwdUnregister(fd, httpState->fwd);
-		    pconnPush(fd, request->host, request->port);
+		    if (request->flags.accelerated && Config.Accel.single_host && Config.Accel.host)
+			pconnPush(fd, Config.Accel.host, Config.Accel.port);
+		    else
+			pconnPush(fd, request->host, request->port);
 		    fwdComplete(httpState->fwd);
 		    httpState->fd = -1;
 		    httpStateFree(fd, httpState);
@@ -838,7 +841,7 @@ httpBuildRequestHeader(request_t * request,
     HttpHeaderPos pos = HttpHeaderInitPos;
     httpHeaderInit(hdr_out, hoRequest);
     /* append our IMS header */
-    if (request->lastmod > -1 && request->method == METHOD_GET)
+    if (request->lastmod > -1)
 	httpHeaderPutTime(hdr_out, HDR_IF_MODIFIED_SINCE, request->lastmod);
 
     /* decide if we want to do Ranges ourselves 

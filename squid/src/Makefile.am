@@ -1,7 +1,7 @@
 #
 #  Makefile for the Squid Object Cache server
 #
-#  $Id: Makefile.am,v 1.16.2.11 2005/04/23 01:32:27 hno Exp $
+#  $Id: Makefile.am,v 1.16.2.12 2005/09/28 20:50:25 hno Exp $
 #
 #  Uncomment and customize the following to suit your needs:
 #
@@ -272,6 +272,8 @@ EXTRA_DIST = \
 	cachemgr.conf \
 	mime.conf.default
 
+DEFAULT_HTTP_PORT	= @CACHE_HTTP_PORT@
+DEFAULT_ICP_PORT	= @CACHE_ICP_PORT@
 DEFAULT_PREFIX		= $(prefix)
 DEFAULT_CONFIG_FILE     = $(sysconfdir)/squid.conf
 DEFAULT_CACHEMGR_CONFIG = $(sysconfdir)/cachemgr.conf
@@ -325,6 +327,8 @@ cf_gen_defines.h: $(srcdir)/cf_gen_defines $(srcdir)/cf.data.pre
 ## depend on the Makefile. 
 cf.data: cf.data.pre Makefile
 	sed "\
+	s%@DEFAULT_HTTP_PORT@%$(DEFAULT_HTTP_PORT)%g;\
+	s%@DEFAULT_ICP_PORT@%$(DEFAULT_ICP_PORT)%g;\
 	s%@DEFAULT_MIME_TABLE@%$(DEFAULT_MIME_TABLE)%g;\
 	s%@DEFAULT_DNSSERVER@%$(DEFAULT_DNSSERVER)%g;\
 	s%@DEFAULT_UNLINKD@%$(DEFAULT_UNLINKD)%g;\

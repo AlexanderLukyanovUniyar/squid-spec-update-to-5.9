@@ -1,6 +1,6 @@
 
 #
-# $Id: cf.data.pre,v 1.245.2.99 2005/09/13 13:44:35 serassio Exp $
+# $Id: cf.data.pre,v 1.245.2.102 2005/10/20 17:28:08 hno Exp $
 #
 #
 # SQUID Web Proxy Cache          http://www.squid-cache.org/
@@ -56,7 +56,7 @@ COMMENT_END
 NAME: http_port ascii_port
 TYPE: sockaddr_in_list
 DEFAULT: none
-DEFAULT_IF_NONE: 3128
+DEFAULT_IF_NONE: @DEFAULT_HTTP_PORT@
 LOC: Config.Sockaddr.http
 DOC_START
 	Usage:	port
@@ -145,7 +145,7 @@ DOC_END
 
 NAME: icp_port udp_port
 TYPE: ushort
-DEFAULT: 3130
+DEFAULT: @DEFAULT_ICP_PORT@
 LOC: Config.Port.icp
 DOC_START
 	The port number where Squid sends and receives ICP queries to
@@ -505,7 +505,8 @@ DOC_START
 	A list of words which, if found in a URL, cause the object to
 	be handled directly by this cache.  In other words, use this
 	to not query neighbor caches for certain objects.  You may
-	list this option multiple times.
+	list this option multiple times. Note: never_direct overrides
+	this option.
 NOCOMMENT_START
 #We recommend you to use at least the following line.
 hierarchy_stoplist cgi-bin ?
@@ -2359,6 +2360,11 @@ DOC_START
 
 	Processing proceeds in the order specified, and stops at first fully
 	matching line.
+
+	Note: The use of this directive using client dependent ACLs is
+	incompatible with the use of server side persistent connetions. To
+	ensure correct results it is best to set server_persisten_connections
+	to off when using this directive in such configurations.
 DOC_END
 
 NAME: tcp_outgoing_address
@@ -2385,6 +2391,11 @@ DOC_START
 
 	Processing proceeds in the order specified, and stops at first fully
 	matching line.
+
+	Note: The use of this directive using client dependent ACLs is
+	incompatible with the use of server side persistent connetions. To
+	ensure correct results it is best to set server_persisten_connections
+	to off when using this directive in such configurations.
 DOC_END
 
 NAME: reply_header_max_size

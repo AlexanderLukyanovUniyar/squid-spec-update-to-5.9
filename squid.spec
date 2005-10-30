@@ -1,6 +1,6 @@
 Name: squid
-Version: 2.5.STABLE11
-Release: alt2
+Version: 2.5.STABLE12
+Release: alt1
 
 Summary: The Squid proxy caching server
 Summary(ru_RU.KOI8-R): Кэширующий прокси-сервер Squid
@@ -32,7 +32,7 @@ Patch8: squid-2.5.STABLE10-alt-perlreq.patch
 Patch9:	squid-2.5.STABLE10-alt-sambaprefix.patch
 
 #Official patches to Squid
-Patch10: squid-2.5.STABLE11-delaypools_truncated.patch
+Patch10: squid-2.5.STABLE12-setenv.patch
 
 Obsoletes: %name-novm
 
@@ -344,6 +344,11 @@ popd
 
 
 %changelog
+* Sun Oct 30 2005 Denis Ovsienko <pilot@altlinux.ru> 2.5.STABLE12-alt1
+- STABLE12
+- applied:
+ + 2005-10-26 20:31 (Minor) fails to compile with undefined reference to setenv
+
 * Wed Sep 28 2005 Denis Ovsienko <pilot@altlinux.ru> 2.5.STABLE11-alt2
 - applied:
  + 2005-09-27 22:29 (Major) Truncated responses when using delay pools

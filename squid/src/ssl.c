@@ -1,6 +1,6 @@
 
 /*
- * $Id: ssl.c,v 1.118.2.12 2005/09/01 20:24:27 hno Exp $
+ * $Id: ssl.c,v 1.118.2.13 2006/03/10 22:54:38 hno Exp $
  *
  * DEBUG: section 26    Secure Sockets Layer Proxy
  * AUTHOR: Duane Wessels
@@ -428,7 +428,6 @@ sslConnectDone(int fd, int status, void *data)
 	err = errorCon(ERR_CONNECT_FAIL, HTTP_SERVICE_UNAVAILABLE);
 	*sslState->status_ptr = HTTP_SERVICE_UNAVAILABLE;
 	err->xerrno = errno;
-	err->host = xstrdup(sslState->host);
 	err->port = sslState->port;
 	err->request = requestLink(request);
 	err->callback = sslErrorComplete;
@@ -469,7 +468,6 @@ sslConnectTimeout(int fd, void *data)
     err = errorCon(ERR_CONNECT_FAIL, HTTP_SERVICE_UNAVAILABLE);
     *sslState->status_ptr = HTTP_SERVICE_UNAVAILABLE;
     err->xerrno = ETIMEDOUT;
-    err->host = xstrdup(sslState->host);
     err->port = sslState->port;
     err->request = requestLink(request);
     err->callback = sslErrorComplete;

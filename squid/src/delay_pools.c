@@ -1,6 +1,6 @@
 
 /*
- * $Id: delay_pools.c,v 1.19.2.11 2005/10/20 17:30:31 hno Exp $
+ * $Id: delay_pools.c,v 1.19.2.12 2006/02/25 22:56:52 hno Exp $
  *
  * DEBUG: section 77    Delay Pools
  * AUTHOR: David Luyer <david@luyer.net>
@@ -162,10 +162,11 @@ delayIdZero(void *hlink)
 void
 delayFreeDelayData(unsigned short pools)
 {
-    safe_free(delay_data);
-    memory_used -= pools * sizeof(*delay_data);
     if (!delay_id_ptr_hash)
 	return;
+    eventDelete(delayPoolsUpdate, NULL);
+    safe_free(delay_data);
+    memory_used -= pools * sizeof(*delay_data);
     hashFreeItems(delay_id_ptr_hash, delayIdZero);
     hashFreeMemory(delay_id_ptr_hash);
     delay_id_ptr_hash = NULL;

@@ -1,6 +1,6 @@
 
 /*
- * $Id: HttpRequest.c,v 1.30.2.3 2005/09/15 09:53:28 hno Exp $
+ * $Id: HttpRequest.c,v 1.30.2.4 2006/03/10 22:58:35 hno Exp $
  *
  * DEBUG: section 73    HTTP Request
  * AUTHOR: Duane Wessels
@@ -206,13 +206,13 @@ requestAbortBody(request_t * request)
     if (!request)
 	return;
     if (request->body_reader) {
-	if (cbdataValid(request->body_reader_data)) {
-	    request->body_reader(request, NULL, -1, NULL, NULL);
-	} else {
-	    debug(73, 2) ("requestAbortBody: Aborted\n");
-	    request->body_reader = NULL;
-	    cbdataUnlock(request->body_reader_data);
-	    request->body_reader_data = NULL;
-	}
+	void *cbdata = request->body_reader_data;
+	BODY_HANDLER *handler = request->body_reader;
+	debug(73, 2) ("requestAbortBody: Aborted\n");
+	request->body_reader = NULL;
+	request->body_reader_data = NULL;
+	if (cbdataValid(cbdata))
+	    handler(request, NULL, -1, NULL, cbdata);
+	cbdataUnlock(cbdata);
     }
 }

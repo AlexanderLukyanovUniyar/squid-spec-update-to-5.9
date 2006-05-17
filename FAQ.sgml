@@ -126,6 +126,7 @@ is known to work on at least the following platforms:
 <item> AIX
 <item> HP-UX
 <item> <ref id="building-os2" name="OS/2">
+<item> <ref id="building-Cygwin" name="Cygwin">
 </itemize>
 
 <P>
@@ -136,24 +137,21 @@ let us know by registering a entry in our
 <url	url="http://www.squid-cache.org/bugs/"
 	name="bug database">.
 
-<sect1>Does Squid run on Windows NT?
+<sect1>Does Squid run on Windows?
 <label id="squid-NT">
 <P>
-Recent versions of Squid will <em/compile and run/ on Windows/NT
-with the
-<url url="http://www.cygwin.com/" name="Cygwin"> /
-<url url="http://www.mingw.org/" name="Mingw"> packages.
+Starting from 2.5, official Squid sources will <em/compile and run/ fine on Windows
+using the
+<url url="http://www.cygwin.com/" name="Cygwin"> development environment.
 
 <p>
-<url url="http://www.acmeconsulting.it/SquidNT/" name="Guido Serassio">
-maintains the native NT port of Squid and is actively working on having the needed changes integrated into the standard Squid distribution. Partially based on earlier NT port by <url url="http://www.phys-iasi.ro/users/romeo/squidnt.htm" name="Romeo Anghelache">.
-
+A more complete native Windows port is provided 
+by <url url="http://www.acmeconsulting.it/SquidNT/" name="Acme Consulting">.
+Guido Serassio maintains the native NT port of Squid and is actively working on having the needed changes integrated
+ into the standard Squid distribution. Partially based on earlier NT port 
+by Romeo Anghelache.
+The Cygwin ports reportedly also appears to run on Window 9x/ME but it is not recommended for as a server operating system.
 <p>
-<url url="http://www.logisense.com/" name="LogiSense">
-has ported Squid to Windows NT and sells a supported
-version.  You can also download the source from
-<url url="ftp://ftp.logisense.com/pub/cachexpress/" name="their FTP site">.
-Thanks to LogiSense for making the code available as required by the GPL terms.
 
 <sect1>What Squid mailing lists are available?
 <P>
@@ -248,7 +246,7 @@ gives information on our operational mesh of caches.
 Squid documentation in
 <url url="http://www.squid-handbuch.de/" name="German">,
 <url url="http://istanbul.linux.org.tr/~ilkerg/squid/elkitabi.html" name="Turkish">,
-<url url="http://merlino.merlinobbs.net/Squid-Book/" name="Italian">,
+<url url="http://www.merlinobbs.net/Squid-Book/" name="Italian">,
 <url url="http://www.linuxman.pro.br/squid/" name="Brazilian Portugese">, and another in
 <url url="http://www.geocities.com/glasswalk3r/linux/squidnomicon.html" name="Brazilian Portugese">.
 
@@ -617,6 +615,11 @@ Gurkan Sengun has some
 <url url="http://www.linuks.mine.nu/solaris/" name="Sparc/Solaris packages">
 available.
 
+<p> 
+Squid binaries for
+<url url="http://www.acmeconsulting.it/SquidNT/download.html"
+name="Windows">.
+
 <sect1>How do I apply a patch or a diff?
 <P>
 You need the <tt/patch/ program.  You should probably duplicate the
@@ -962,6 +965,49 @@ to install somewhere else, see the <em/--prefix/ option for configure.
 <P>
 Now, don't forget to set EMXOPT before running squid each time. I
 recommend using the -Y and -N options.
+
+<sect1>Building Squid on Cygwin
+<label id="building-Cygwin">
+
+<P>
+In order to compile squid, you need to have Cygwin fully installed.
+
+<P>
+Unpack the source archive as usual and run configure:
+<verb>
+	./configure
+</verb>
+<P>
+Compile everything:
+<verb>
+	make
+</verb>
+<P>
+and finally, install:
+<verb>
+	make install
+</verb>
+<P>
+This will by default, install into <em>/usr/local/squid</em>. If you wish
+to install somewhere else, see the <em/--prefix/ option for configure.
+
+<P>
+Now, add a new Cygwin user - see the Cygwin user guide - and map it to
+SYSTEM, or create a new NT user, and a matching Cygwin user and they
+become the squid runas users.
+
+<P>
+Read the squid FAQ on permissions if you are using CYGWIN=ntsec.
+
+<P>
+After run squid -z.
+If that succeeds, try squid -N -D -d1, squid should start. Check that there are no errors. If
+everything looks good, try browsing through squid.
+
+<P>
+Now, configure cygrunsrv to run squid as a service as the chosen
+usercode. You may need to check permissions here.
+
 
 
 <!-- %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% -->
@@ -1500,8 +1546,10 @@ This entry has been moved to <ref id="what-is-httpd-accelerator" name="a differe
 <P>
 If you are behind a firewall then you can't make direct connections
 to the outside world, so you <bf/must/ use a
-parent cache.  Squid doesn't use ICP queries for a request if it's
-behind a firewall or if there is only one parent.
+parent cache. Normally Squid tries to be smart and only uses cache peers
+when it makes sense from a perspective of global hit ratio, and thus you
+need to tell Squid when it can not go direct and <bf/must/ use a parent
+proxy even if it knows the request will be a cache miss.
 
 <P>
 You can use the <tt/never_direct/ access list in
@@ -3027,7 +3075,7 @@ Squid recognizes several request methods as defined in
 <url	url="ftp://ftp.isi.edu/in-notes/rfc2616.txt"
 	name="RFC 2616">. Newer versions of Squid (2.2.STABLE5 and above)
 also recognize 
-<url	url="ftp://ftp.isi.edu/in-notes/rfc2616.txt"
+<url	url="ftp://ftp.isi.edu/in-notes/rfc2518.txt"
 	name="RFC 2518"> ``HTTP Extensions for Distributed Authoring --
 WEBDAV'' extensions.
 
@@ -9064,10 +9112,9 @@ made so often and the entries are frequently non-existent anyway).
 
 <sect2>Tuning
 <P>
-<url url="http://www.rvs.uni-hannover.de/people/voeckler/tune/EN/tune.html"
-name="Solaris 2.x - tuning your TCP/IP stack and more"> by <url
-url="http://www.rvs.uni-hannover.de/people/voeckler/" name="Jens-S.
-Vckler">
+<url url="http://www.sean.de/Solaris/soltune.html"
+name="Solaris 2.x - tuning your TCP/IP stack and more"> by
+Jens-S. V&ouml;ckler
 
 <sect2>disk write error: (28) No space left on device
 <P>
@@ -9263,8 +9310,8 @@ diff -p -u -r1.40 -r1.41
   * SUCH DAMAGE.
   *
   *	@(#)uipc_socket.c	8.3 (Berkeley) 4/15/94
-- *	$Id: FAQ.sgml,v 1.253 2005/09/07 16:25:40 wessels Exp $
-+ *	$Id: FAQ.sgml,v 1.253 2005/09/07 16:25:40 wessels Exp $
+- *	$Id: FAQ.sgml,v 1.263 2006/03/16 10:03:08 hno Exp $
++ *	$Id: FAQ.sgml,v 1.263 2006/03/16 10:03:08 hno Exp $
   */
 
  #include <sys/param.h>
@@ -12079,7 +12126,7 @@ to query Squid through its SNMP interface.
 To get instruction on using MRTG with Squid please visit these pages:
 <enum>
 <item><url url="http://www.cache.dfn.de/DFN-Cache/Development/Monitoring/" name="Cache Monitoring - How to set up your own monitoring"> by DFN-Cache
-<item><url url="http://www.serassio.it/SquidNT/mrtg.htm" name="Using MRTG to monitor Squid"> by Guido Serassio
+<item><url url="http://www.acmeconsulting.it/SquidNT.html" name="Using MRTG to monitor Squid"> by ACME Consulting S.r.l.
 <item><url url="http://squid.visolve.com/related/snmp/monitoringsquid.htm" name="Squid Configuration Manual - Monitoring Squid"> by Visolve
 <item><url url="http://www.arnes.si/~matija/utrecht/lecture.html" name="Using MRTG for Squid monitoring"> Desire II caching workshop session by Matija Grabnar
 <item><url url="http://hermes.wwwcache.ja.net/FAQ/FAQ-2.html#mrtg" name="How do I monitor my Squid 2 cache using MRT"> by The National Janet Web Cache Service 
@@ -13370,7 +13417,7 @@ To fix it you can ``manually'' clear the resources with the <em/ipcs/ command.
 Add this command into your <em/RunCache/ or <em/squid_start/
 script:
 <verb>
-ipcs | grep '^[mq]' | awk '{printf "ipcrm -%s %s\n", $1, $2}' | /bin/sh
+ipcs | awk '/squid/ {printf "ipcrm -%s %s\n", $1, $2}' | /bin/sh
 </verb>
 
 <sect1>What are the Q1 and Q2 parameters?
@@ -13543,9 +13590,9 @@ Squid stores cleartext passwords in itsmemory cache.
 <p>
 Squid writes cleartext usernames and passwords when talking to
 the external authentication processes.  Note, however, that this 
-interprocess communication occors over TCP connections bound to
-the loopback interface or private UNIX pipes.  Thus, its not possile
-for processes on other comuters or local users without root privileges
+interprocess communication occurs over TCP connections bound to
+the loopback interface or private UNIX pipes.  Thus, its not possible
+for processes on other computers or local users without root privileges
 to "snoop" on the authentication traffic.
 
 <p>
@@ -13566,18 +13613,23 @@ capabilities for NT based user accounts.  From Squid's perspective winbind provi
 robust and efficient engine for both basic and NTLM challenge/response authentication
 against an NT domain controller.
 <p>
-The winbind authenticators have been used successfully under Linux, FreeBSD and Solaris.
+The winbind authenticators have been used successfully under Linux, FreeBSD, Solaris and Tru64.
 <p>
 
 <sect2>Supported Samba Releases
 
 <P>Samba-3.X is supported natively using the ntlm_auth helper shipped as part of Samba.
 No Squid specific winbind helpers need to be compiled (and even if compiled they won't
-work with Samba-3.X)
+work with Samba-3.X). Starting from Squid-2.5.STABLE5, NTLM NEGOTIATE packets are supported.
+This feature, in conjunction with a NTLM NEGOTIATE capable helper like ntlm_auth, allow the
+usage of NTLMv2 client autentication. At least Samba version 3.0.2 is needed for a working 
+NTLM NEGOTIATE packet support, but Samba 3.0.21b or later is needed for full NTLMv2 support.
 
 <P>Samba-2.2.X is supported using the winbind helpers shipped with Squid, and uses an
-internal Samba interface to communicate with the winbindd daemon.  It is therefore sensitive
+internal Samba interface to communicate with the winbindd daemon. It is therefore sensitive
 to any changes the Samba team may make to the interface.
+<P>
+NOTE: Samba 2.2.X reached its End-Of-Life on October 1, 2004.
 
 <P>
 The winbind helpers shipped with Squid-2.5.STABLE2 supports Samba-2.2.6 to Samba-2.2.7a
@@ -13823,6 +13875,8 @@ authenticators. IE will use ntlm and everything else basic:
 	auth_param ntlm children 30
 	auth_param ntlm max_challenge_reuses 0
 	auth_param ntlm max_challenge_lifetime 2 minutes
+	# ntlm_auth from Samba 3 supports NTLM NEGOTIATE packet
+	auth_param ntlm use_ntlm_negotiate on
 
 	auth_param basic program /usr/local/bin/ntlm_auth --helper-protocol=squid-2.5-basic
 	auth_param basic children 5
@@ -13843,6 +13897,8 @@ authenticators. IE will use ntlm and everything else basic:
 	auth_param ntlm children 5
 	auth_param ntlm max_challenge_reuses 0
 	auth_param ntlm max_challenge_lifetime 2 minutes
+	# Samba 2 helpers doesn't support NTLM NEGOTIATE packet
+	auth_param ntlm use_ntlm_negotiate off
 
 	auth_param basic program /usr/local/squid/libexec/wb_auth
 	auth_param basic children 5
@@ -13872,9 +13928,9 @@ Add acl entries to require authentication:
 <itemize>
 
 <item>
-Internet Explorer:
+Internet Explorer, Mozilla, FireFox:
 <p>
-Test browsing through squid with IE. If logged into the domain,
+Test browsing through squid with a NTLM capable browser. If logged into the domain,
 a password prompt should NOT pop up. 
 <p>
 Confirm the traffic really is being authorized by tailing access.log.
@@ -13882,9 +13938,9 @@ The domain\username should be present.
 </item>
 
 <item>
-Netscape, mozilla, opera...:
+Netscape, Mozilla ( < 1.4), Opera...:
 <p>
-Test with a non-IE browser.  A standard password dialog should appear.
+Test with a NTLM non-capable browser. A standard password dialog should appear.
 <p>
 Entering the domain should not be required if the user is in the 
 default domain and "winbind use default domain = yes" is set in 
@@ -13900,23 +13956,23 @@ not correct.
 is due to the challenge-response process of NTLM.
 <p><bf>References</bf>
 <p>
-<url url="http://www.samba.org/samba/docs/man/Samba-HOWTO-Collection.html#WINBIND" name="Samba Winbind Overview">
+<url url="http://samba.org/samba/docs/man/Samba3-HOWTO/winbind.html" name="Winbind: Use of Domain Accounts">
 <p>
-<url url="http://www.samba.org/samba/docs/man/Samba-HOWTO-Collection.html#AEN1134" name="Joining a Domain in Samba 2.2.x">
+<url url="http://samba.org/samba/docs/man/Samba-HOWTO-Collection/domain-member.html" name="Domain Membership">
 <p>
-<url url="http://www.samba.org/samba/docs/man/winbindd.8.html" name="winbindd man page">
+<url url="http://samba.org/samba/docs/man/manpages-3/winbindd.8.html" name="winbindd man page">
 <p>
-<url url="http://www.samba.org/samba/docs/man/wbinfo.1.html" name="wbinfo man page">
+<url url="http://samba.org/samba/docs/man/manpages-3/wbinfo.1.html" name="wbinfo man page">
 <p>
-<url url="http://www.samba.org/samba/docs/man/nmbd.8.html" name="nmbd man page">
+<url url="http://samba.org/samba/docs/man/manpages-3/nmbd.8.html" name="nmbd man page">
 <p>
-<url url="http://www.samba.org/samba/docs/man/smbd.8.html" name="smbd man page">
+<url url="http://samba.org/samba/docs/man/manpages-3/smbd.8.html" name="smbd man page">
 <p>
-<url url="http://www.samba.org/samba/docs/man/smb.conf.5.html" name="smb.conf man page">
+<url url="http://samba.org/samba/docs/man/manpages-3/smb.conf.5.html" name="smb.conf man page">
 <p>
-<url url="http://www.samba.org/samba/docs/man/smbclient.1.html" name="smbclient man page">
+<url url="http://samba.org/samba/docs/man/manpages-3/smbclient.1.html" name="smbclient man page">
 <p>
-<url url="http://www.samba.org/samba/docs/man/ntlm_auth.1.html" name="ntlm_auth man page">
+<url url="http://samba.org/samba/docs/man/manpages-3/ntlm_auth.1.html" name="ntlm_auth man page">
 
 <sect1>Authentication in accelerator mode
 
@@ -14012,7 +14068,7 @@ want to make a cron job that regularly verifies that your proxy blocks
 access to port 25.
 
 <verb>
-$Id: FAQ.sgml,v 1.253 2005/09/07 16:25:40 wessels Exp $
+$Id: FAQ.sgml,v 1.263 2006/03/16 10:03:08 hno Exp $
 </verb>
 </article>
 <!--  LocalWords:  SSL MSIE Netmanage Chameleon WebSurfer unchecking remotehost

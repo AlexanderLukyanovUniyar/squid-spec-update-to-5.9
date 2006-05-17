@@ -1,0 +1,28 @@
+---------------------
+PatchSet 10321 
+Date: 2006/05/12 16:17:35
+Author: hno
+Branch: SQUID_2_5
+Tag: (none) 
+Log:
+Bug #1564: Memory leak in header processing related to external_acl or custom log formats
+
+Members: 
+	src/HttpHeader.c:1.74.2.31->1.74.2.32 
+
+Index: squid/src/HttpHeader.c
+===================================================================
+RCS file: /cvsroot/squid/squid/src/HttpHeader.c,v
+retrieving revision 1.74.2.31
+retrieving revision 1.74.2.32
+diff -u -r1.74.2.31 -r1.74.2.32
+--- squid/src/HttpHeader.c	25 Feb 2006 23:07:49 -0000	1.74.2.31
++++ squid/src/HttpHeader.c	12 May 2006 16:17:35 -0000	1.74.2.32
+@@ -798,6 +798,7 @@
+ 	    break;
+ 	}
+     }
++    stringClean(&header);
+     return result;
+ }
+ 

@@ -1,5 +1,5 @@
 /*
- * $Id: aiops.c,v 1.12.2.11 2005/04/25 16:27:02 serassio Exp $
+ * $Id: aiops.c,v 1.12.2.12 2005/12/26 16:32:28 serassio Exp $
  *
  * DEBUG: section 43    AIOPS
  * AUTHOR: Stewart Forster <slf@connect.com.au>
@@ -940,6 +940,9 @@ squidaio_stats(StoreEntry * sentry)
 {
     squidaio_thread_t *threadp;
     int i;
+
+    if (!squidaio_initialised)
+	return;
 
     storeAppendPrintf(sentry, "\n\nThreads Status:\n");
     storeAppendPrintf(sentry, "#\tID\t# Requests\n");

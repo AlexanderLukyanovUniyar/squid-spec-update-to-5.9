@@ -1,6 +1,6 @@
 
 /*
- * $Id: tools.c,v 1.213.2.20 2005/09/16 21:13:18 hno Exp $
+ * $Id: tools.c,v 1.213.2.22 2006/01/15 01:17:47 hno Exp $
  *
  * DEBUG: section 21    Misc Functions
  * AUTHOR: Harvest Derived
@@ -563,7 +563,7 @@ leave_suid(void)
 #endif
 #if HAVE_PRCTL && defined(PR_SET_DUMPABLE)
     /* Set Linux DUMPABLE flag */
-    if (Config.coredump_dir && prctl(PR_SET_DUMPABLE, 1) != 0)
+    if (Config.coredump_dir && prctl(PR_SET_DUMPABLE, 1, 0, 0, 0) != 0)
 	debug(50, 2) ("prctl: %s\n", xstrerror());
 #endif
 }
@@ -580,7 +580,7 @@ enter_suid(void)
 #endif
 #if HAVE_PRCTL && defined(PR_SET_DUMPABLE)
     /* Set Linux DUMPABLE flag */
-    if (Config.coredump_dir && prctl(PR_SET_DUMPABLE, 1) != 0)
+    if (Config.coredump_dir && prctl(PR_SET_DUMPABLE, 1, 0, 0, 0) != 0)
 	debug(50, 2) ("prctl: %s\n", xstrerror());
 #endif
 }
@@ -605,7 +605,7 @@ no_suid(void)
 #endif
 #if HAVE_PRCTL && defined(PR_SET_DUMPABLE)
     /* Set Linux DUMPABLE flag */
-    if (Config.coredump_dir && prctl(PR_SET_DUMPABLE, 1) != 0)
+    if (Config.coredump_dir && prctl(PR_SET_DUMPABLE, 1, 0, 0, 0) != 0)
 	debug(50, 2) ("prctl: %s\n", xstrerror());
 #endif
 }

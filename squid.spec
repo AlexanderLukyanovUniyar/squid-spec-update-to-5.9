@@ -1,5 +1,5 @@
 Name: squid
-Version: 2.5.STABLE12
+Version: 2.5.STABLE13
 Release: alt1
 
 Summary: The Squid proxy caching server
@@ -32,7 +32,13 @@ Patch8: squid-2.5.STABLE10-alt-perlreq.patch
 Patch9:	squid-2.5.STABLE10-alt-sambaprefix.patch
 
 #Official patches to Squid
-Patch10: squid-2.5.STABLE12-setenv.patch
+Patch10: squid-2.5.STABLE13-libaio-2.patch
+Patch11: squid-2.5.STABLE13-header_leak.patch
+Patch12: squid-2.5.STABLE13-ident_leak.patch
+Patch13: squid-2.5.STABLE13-htcp_leak.patch
+Patch14: squid-2.5.STABLE13-icons.patch
+Patch15: squid-2.5.STABLE13-hostnamelen.patch
+Patch16: squid-2.5.STABLE13-stable13.patch
 
 Obsoletes: %name-novm
 
@@ -162,6 +168,12 @@ Install squid package to get all Squid parts.
 %patch9 -p1
 
 %patch10 -p1
+%patch11 -p1
+%patch12 -p1
+%patch13 -p1
+%patch14 -p1
+%patch15 -p1
+%patch16 -p1
 
 %build
 %set_autoconf_version 2.5
@@ -344,6 +356,18 @@ popd
 
 
 %changelog
+* Wed May 17 2006 Denis Ovsienko <pilot@altlinux.ru> 2.5.STABLE13-alt1
+- STABLE13
+- applied:
+ + 2006-05-13 13:16 (Minor) On some systems POSIX AIO functions are in libaio
+ + 2006-05-14 15:41 (Medium) Memory leak in header processing related to external_acl or custom log formats
+ + 2006-05-14 15:41 (Major) memory leak in ident processing
+ + 2006-05-14 15:41 (Medium) Memleak in HTCP client code
+ + 2006-05-14 15:41 (Minor) Mime icons are not displayed when viewing ftp sites when
+ + 2006-05-14 15:41 (Cosmetic) SQUIDHOSTNAMELEN issues
+ + 2006-05-14 15:41 (Cosmetic) Current release is STABLE13, not 12..
+- updated FAQ to v 1.263 2006/03/16
+
 * Sun Oct 30 2005 Denis Ovsienko <pilot@altlinux.ru> 2.5.STABLE12-alt1
 - STABLE12
 - applied:

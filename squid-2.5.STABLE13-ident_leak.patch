@@ -1,0 +1,28 @@
+---------------------
+PatchSet 10320 
+Date: 2006/05/12 16:00:31
+Author: hno
+Branch: SQUID_2_5
+Tag: (none) 
+Log:
+Bug #1557: memory leak in ident processing
+
+Members: 
+	src/ident.c:1.58->1.58.2.1 
+
+Index: squid/src/ident.c
+===================================================================
+RCS file: /cvsroot/squid/squid/src/ident.c,v
+retrieving revision 1.58
+retrieving revision 1.58.2.1
+diff -u -r1.58 -r1.58.2.1
+--- squid/src/ident.c	14 Apr 2001 00:03:23 -0000	1.58
++++ squid/src/ident.c	12 May 2006 16:00:31 -0000	1.58.2.1
+@@ -85,6 +85,7 @@
+     identCallback(state, NULL);
+     comm_close(state->fd);
+     hash_remove_link(ident_hash, (hash_link *) state);
++    safe_free(state->hash.key);
+     cbdataFree(state);
+ }
+ 

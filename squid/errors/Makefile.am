@@ -1,6 +1,6 @@
 ## Process this file with automake to produce Makefile.in
 #
-# $Id: Makefile.am,v 1.5.2.8 2005/09/01 22:37:29 hno Exp $
+# $Id: Makefile.am,v 1.5.2.9 2006/03/10 22:51:47 hno Exp $
 #
 
 errordir = $(datadir)/errors
@@ -12,6 +12,7 @@ DEFAULT_ERROR_DIR	= $(errordir)
 
 INSTALL_LANGUAGES	= @ERR_LANGUAGES@
 LANGUAGES	= \
+		Azerbaijani \
 		Bulgarian \
 		Catalan \
 		Czech \

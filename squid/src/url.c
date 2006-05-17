@@ -1,6 +1,6 @@
 
 /*
- * $Id: url.c,v 1.133.2.5 2003/01/18 14:16:49 hno Exp $
+ * $Id: url.c,v 1.133.2.7 2006/03/10 22:43:37 hno Exp $
  *
  * DEBUG: section 23    URL Parsing
  * AUTHOR: Duane Wessels
@@ -63,6 +63,7 @@ const char *RequestMethodStr[] =
     "SUBSCRIBE",
     "UNSUBSCRIBE",
     "POLL",
+    "REPORT",
     "%EXT00",
     "%EXT01",
     "%EXT02",
@@ -313,7 +314,7 @@ urlParse(method_t method, char *url)
     }
 #endif
     if (Config.appendDomain && !strchr(host, '.'))
-	strncat(host, Config.appendDomain, SQUIDHOSTNAMELEN);
+	strncat(host, Config.appendDomain, SQUIDHOSTNAMELEN - strlen(host) - 1);
     /* remove trailing dots from hostnames */
     while ((l = strlen(host)) > 0 && host[--l] == '.')
 	host[l] = '\0';

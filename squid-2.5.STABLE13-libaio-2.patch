@@ -1,0 +1,113 @@
+---------------------
+PatchSet 10322 
+Date: 2006/05/12 19:35:27
+Author: serassio
+Branch: SQUID_2_5
+Tag: (none) 
+Log:
+On some systems POSIX AIO functions are in libaio
+
+Members: 
+	configure.in:1.251.2.107->1.251.2.108 
+
+Index: squid/configure.in
+===================================================================
+RCS file: /cvsroot/squid/squid/configure.in,v
+retrieving revision 1.251.2.107
+retrieving revision 1.251.2.108
+diff -u -r1.251.2.107 -r1.251.2.108
+--- squid/configure.in	12 Mar 2006 11:19:07 -0000	1.251.2.107
++++ squid/configure.in	12 May 2006 19:35:27 -0000	1.251.2.108
+@@ -1669,7 +1669,8 @@
+ dnl Check for librt
+ dnl We use AIO in the coss store
+ if test "$with_aio" = "yes"; then
+-    AC_CHECK_LIB(rt, aio_read)
++    dnl On some systems POSIX AIO functions are in libaio
++    AC_CHECK_LIB(rt, aio_read,,AC_CHECK_LIB(aio, aio_read))
+ fi
+ 
+ dnl -lintl is needed on SCO version 3.2v4.2 for strftime()
+---------------------
+PatchSet 10338 
+Date: 2006/05/13 00:13:40
+Author: hno
+Branch: SQUID_2_5
+Tag: (none) 
+Log:
+Bootstrapped
+
+Members: 
+	configure:1.248.2.110->1.248.2.111 
+
+Index: squid/configure
+===================================================================
+RCS file: /cvsroot/squid/squid/configure,v
+retrieving revision 1.248.2.110
+retrieving revision 1.248.2.111
+diff -u -r1.248.2.110 -r1.248.2.111
+--- squid/configure	12 Mar 2006 11:19:28 -0000	1.248.2.110
++++ squid/configure	13 May 2006 00:13:40 -0000	1.248.2.111
+@@ -7474,7 +7474,7 @@
+ fi
+ 
+ if test "$with_aio" = "yes"; then
+-    echo $ac_n "checking for aio_read in -lrt""... $ac_c" 1>&6
++        echo $ac_n "checking for aio_read in -lrt""... $ac_c" 1>&6
+ echo "configure:7479: checking for aio_read in -lrt" >&5
+ ac_lib_var=`echo rt'_'aio_read | sed 'y%./+-%__p_%'`
+ if eval "test \"`echo '$''{'ac_cv_lib_$ac_lib_var'+set}'`\" = set"; then
+@@ -7519,6 +7519,53 @@
+ 
+ else
+   echo "$ac_t""no" 1>&6
++echo $ac_n "checking for aio_read in -laio""... $ac_c" 1>&6
++echo "configure:7524: checking for aio_read in -laio" >&5
++ac_lib_var=`echo aio'_'aio_read | sed 'y%./+-%__p_%'`
++if eval "test \"`echo '$''{'ac_cv_lib_$ac_lib_var'+set}'`\" = set"; then
++  echo $ac_n "(cached) $ac_c" 1>&6
++else
++  ac_save_LIBS="$LIBS"
++LIBS="-laio  $LIBS"
++cat > conftest.$ac_ext <<EOF
++#line 7532 "configure"
++#include "confdefs.h"
++/* Override any gcc2 internal prototype to avoid an error.  */
++/* We use char because int might match the return type of a gcc2
++    builtin and then its argument prototype would still apply.  */
++char aio_read();
++
++int main() {
++aio_read()
++; return 0; }
++EOF
++if { (eval echo configure:7543: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
++  rm -rf conftest*
++  eval "ac_cv_lib_$ac_lib_var=yes"
++else
++  echo "configure: failed program was:" >&5
++  cat conftest.$ac_ext >&5
++  rm -rf conftest*
++  eval "ac_cv_lib_$ac_lib_var=no"
++fi
++rm -f conftest*
++LIBS="$ac_save_LIBS"
++
++fi
++if eval "test \"`echo '$ac_cv_lib_'$ac_lib_var`\" = yes"; then
++  echo "$ac_t""yes" 1>&6
++    ac_tr_lib=HAVE_LIB`echo aio | sed -e 's/^a-zA-Z0-9_/_/g' \
++    -e 'y/abcdefghijklmnopqrstuvwxyz/ABCDEFGHIJKLMNOPQRSTUVWXYZ/'`
++  cat >> confdefs.h <<EOF
++#define $ac_tr_lib 1
++EOF
++
++  LIBS="-laio $LIBS"
++
++else
++  echo "$ac_t""no" 1>&6
++fi
++
+ fi
+ 
+ fi

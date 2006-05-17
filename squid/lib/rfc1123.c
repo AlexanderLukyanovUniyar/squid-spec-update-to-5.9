@@ -1,6 +1,6 @@
 
 /*
- * $Id: rfc1123.c,v 1.29.2.3 2005/07/03 08:18:38 serassio Exp $
+ * $Id: rfc1123.c,v 1.29.2.4 2006/01/22 17:18:23 serassio Exp $
  *
  * DEBUG: 
  * AUTHOR: Harvest Derived
@@ -229,6 +229,7 @@ parse_rfc1123(const char *str)
 #elif defined (_timezone)
 #elif defined(_SQUID_AIX_)
 #elif defined(_SQUID_CYGWIN_)
+#elif defined(_SQUID_SGI_)
 #else
 	extern long timezone;
 #endif

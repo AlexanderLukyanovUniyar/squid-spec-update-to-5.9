@@ -1,6 +1,6 @@
 
 #
-# $Id: cf.data.pre,v 1.245.2.102 2005/10/20 17:28:08 hno Exp $
+# $Id: cf.data.pre,v 1.245.2.104 2006/02/25 23:01:45 hno Exp $
 #
 #
 # SQUID Web Proxy Cache          http://www.squid-cache.org/
@@ -3224,6 +3224,8 @@ DOC_START
 		header_access Allow allow all
 		header_access Authorization allow all
 		header_access WWW-Authenticate allow all
+		header_access Proxy-Authorization allow all
+		header_access Proxy-Authenticate allow all
 		header_access Cache-Control allow all
 		header_access Content-Encoding allow all
 		header_access Content-Length allow all
@@ -3956,6 +3958,16 @@ DOC_START
 	default, Squid uses persistent connections (when allowed)
 	with its clients and servers.  You can use these options to
 	disable persistent connections with clients and/or servers.
+DOC_END
+
+NAME: persistent_connection_after_error
+TYPE: onoff
+LOC: Config.onoff.error_pconns
+DEFAULT: off
+DOC_START
+	With this directive the use of persistent connections after
+	HTTP errors can be disabled. Useful if you have clients
+	who fail to handle errors on persistent connections proper.
 DOC_END
 
 NAME: detect_broken_pconn

@@ -1,6 +1,6 @@
 
 /*
- * $Id: squid.h,v 1.216.2.8 2005/03/26 02:50:53 hno Exp $
+ * $Id: squid.h,v 1.216.2.9 2006/03/10 22:43:37 hno Exp $
  *
  * AUTHOR: Duane Wessels
  *
@@ -285,11 +285,7 @@
 #include <math.h>
 #endif
 
-#if !defined(MAXHOSTNAMELEN) || (MAXHOSTNAMELEN < 128)
-#define SQUIDHOSTNAMELEN 128
-#else
-#define SQUIDHOSTNAMELEN MAXHOSTNAMELEN
-#endif
+#define SQUIDHOSTNAMELEN 256
 
 #define SQUID_MAXPATHLEN 256
 #ifndef MAXPATHLEN

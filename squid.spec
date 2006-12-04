@@ -1,5 +1,5 @@
 Name: squid
-Version: 2.5.STABLE13
+Version: 2.6.STABLE5
 Release: alt1
 
 Summary: The Squid proxy caching server
@@ -17,28 +17,33 @@ Source3: %name.logrotate
 Source4: wbinfo_group.sh
 
 # Other patches
-# rediffed for 2.5.S7
-Patch1: squid-2.5.STABLE7-make.patch
-# rediffed for 2.5.S7
-Patch2: squid-2.5.STABLE7-config.patch
-Patch3: squid-2.4.STABLE6-alt-without-bind.patch
-Patch4: squid-2.5-perlpath.patch
-Patch5: squid-2.5-automake.patch
+# rediffed for 2.6.S5
+Patch1: squid-2.6.STABLE5-make.patch
+# rediffed for 2.6.S5
+Patch2: squid-2.6.STABLE5-config.patch
+# bga (2006-12-14): obsoleted
+#Patch3: squid-2.4.STABLE6-alt-without-bind.patch
+# bga (2006-12-14): perl scripts have been disappeared
+#Patch4: squid-2.5-perlpath.patch
+# bga (2006-12-14): obsoleted
+#Patch5: squid-2.5-automake.patch
 Patch6: squid-errrors-belarusian.patch
 # See http://stc.nixdev.org/getstat.php
 # DISABLED for now
 Patch7: patch-aa.patch
-Patch8: squid-2.5.STABLE10-alt-perlreq.patch
+# bga (2006-12-14): perl script was reworked
+#Patch8: squid-2.5.STABLE10-alt-perlreq.patch
 Patch9:	squid-2.5.STABLE10-alt-sambaprefix.patch
 
 #Official patches to Squid
-Patch10: squid-2.5.STABLE13-libaio-2.patch
-Patch11: squid-2.5.STABLE13-header_leak.patch
-Patch12: squid-2.5.STABLE13-ident_leak.patch
-Patch13: squid-2.5.STABLE13-htcp_leak.patch
-Patch14: squid-2.5.STABLE13-icons.patch
-Patch15: squid-2.5.STABLE13-hostnamelen.patch
-Patch16: squid-2.5.STABLE13-stable13.patch
+# bga (2006-12-14): applied in upstream
+#Patch10: squid-2.5.STABLE13-libaio-2.patch
+#Patch11: squid-2.5.STABLE13-header_leak.patch
+#Patch12: squid-2.5.STABLE13-ident_leak.patch
+#Patch13: squid-2.5.STABLE13-htcp_leak.patch
+#Patch14: squid-2.5.STABLE13-icons.patch
+#Patch15: squid-2.5.STABLE13-hostnamelen.patch
+#Patch16: squid-2.5.STABLE13-stable13.patch
 
 Obsoletes: %name-novm
 
@@ -159,21 +164,21 @@ Install squid package to get all Squid parts.
 %setup -q
 %patch1 -p1
 %patch2 -p1
-%patch3 -p1
-%patch4 -p1
-%patch5 -p1
+#%patch3 -p1
+#%patch4 -p1
+#%patch5 -p1
 %patch6 -p1
 #patch7 -p1
-%patch8 -p1
+#%patch8 -p1
 %patch9 -p1
 
-%patch10 -p1
-%patch11 -p1
-%patch12 -p1
-%patch13 -p1
-%patch14 -p1
-%patch15 -p1
-%patch16 -p1
+#%patch10 -p1
+#%patch11 -p1
+#%patch12 -p1
+#%patch13 -p1
+#%patch14 -p1
+#%patch15 -p1
+#%patch16 -p1
 
 %build
 %set_autoconf_version 2.5
@@ -356,6 +361,9 @@ popd
 
 
 %changelog
+* Mon Dec 04 2006 Grigory Batalov <bga@altlinux.ru> 2.6.STABLE5-alt1
+- 2.6.STABLE5
+
 * Wed May 17 2006 Denis Ovsienko <pilot@altlinux.ru> 2.5.STABLE13-alt1
 - STABLE13
 - applied:

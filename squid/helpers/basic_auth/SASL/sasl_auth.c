@@ -1,5 +1,5 @@
 /*
- * $Id: sasl_auth.c,v 1.1.2.5 2004/06/08 11:35:22 hno Exp $
+ * $Id: sasl_auth.c,v 1.5 2005/05/17 16:56:25 hno Exp $
  *
  * SASL authenticator module for Squid.
  * Copyright (C) 2002 Ian Castle <ian.castle@coldcomfortfarm.net>

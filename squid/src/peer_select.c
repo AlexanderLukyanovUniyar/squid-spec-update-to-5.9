@@ -1,6 +1,6 @@
 
 /*
- * $Id: peer_select.c,v 1.119 2001/11/17 11:08:55 hno Exp $
+ * $Id: peer_select.c,v 1.130 2006/06/27 09:27:48 hno Exp $
  *
  * DEBUG: section 44    Peer Selection Algorithm
  * AUTHOR: Duane Wessels
@@ -59,6 +59,9 @@ const char *hier_strings[] =
     "CARP",
 #endif
     "ANY_PARENT",
+    "USERHASH_PARENT",
+    "SOURCEHASH_PARENT",
+    "PINNED",
     "INVALID CODE"
 };
 
@@ -85,12 +88,12 @@ static void peerHtcpParentMiss(peer *, htcpReplyData *, ps_state *);
 static void peerHandleHtcpReply(peer *, peer_t, htcpReplyData *, void *);
 #endif
 static int peerCheckNetdbDirect(ps_state * psstate);
+static void peerGetPinned(ps_state * ps);
 static void peerGetSomeNeighbor(ps_state *);
 static void peerGetSomeNeighborReplies(ps_state *);
 static void peerGetSomeDirect(ps_state *);
 static void peerGetSomeParent(ps_state *);
 static void peerGetAllParents(ps_state *);
-static void peerAddFwdServer(FwdServer **, peer *, hier_code);
 
 static void
 peerSelectStateFree(ps_state * psstate)
@@ -263,6 +266,8 @@ peerSelectFoo(ps_state * ps)
 	    return;
 	} else if (ps->never_direct > 0) {
 	    ps->direct = DIRECT_NO;
+	} else if (request->flags.accelerated) {
+	    ps->direct = DIRECT_NO;
 	} else if (request->flags.loopdetect) {
 	    ps->direct = DIRECT_YES;
 	} else if (peerCheckNetdbDirect(ps)) {
@@ -273,6 +278,8 @@ peerSelectFoo(ps_state * ps)
 	debug(44, 3) ("peerSelectFoo: direct = %s\n",
 	    DirectStr[ps->direct]);
     }
+    if (!entry || entry->ping_status == PING_NONE)
+	peerGetPinned(ps);
     if (entry == NULL) {
 	(void) 0;
     } else if (entry->ping_status == PING_NONE) {
@@ -304,6 +311,31 @@ peerSelectFoo(ps_state * ps)
 }
 
 /*
+ * peerGetPinned
+ *
+ * Selects a pinned connection
+ */
+static void
+peerGetPinned(ps_state * ps)
+{
+    request_t *request = ps->request;
+    peer *peer;
+    if (!request->pinned_connection)
+	return;
+    if (clientGetPinnedInfo(request->pinned_connection, request, &peer) != -1) {
+	if (peer && peerAllowedToUse(peer, request)) {
+	    peerAddFwdServer(&ps->servers, peer, PINNED);
+	    if (ps->entry)
+		ps->entry->ping_status = PING_DONE;	/* Skip ICP */
+	} else if (!peer && ps->direct != DIRECT_NO) {
+	    peerAddFwdServer(&ps->servers, NULL, PINNED);
+	    if (ps->entry)
+		ps->entry->ping_status = PING_DONE;	/* Skip ICP */
+	}
+    }
+}
+
+/*
  * peerGetSomeNeighbor
  * 
  * Selects a neighbor (parent or sibling) based on one of the
@@ -331,11 +363,6 @@ peerGetSomeNeighbor(ps_state * ps)
 	    code = CD_PARENT_HIT;
 	else
 	    code = CD_SIBLING_HIT;
-    } else
-#endif
-#if USE_CARP
-    if ((p = carpSelectParent(request))) {
-	code = CARP;
     } else
 #endif
     if ((p = netdbClosestParent(request))) {
@@ -425,9 +452,9 @@ peerGetSomeDirect(ps_state * ps)
 	return;
     if (ps->request->protocol == PROTO_WAIS)
 	/* Its not really DIRECT, now is it? */
-	peerAddFwdServer(&ps->servers, Config.Wais.peer, DIRECT);
+	peerAddFwdServer(&ps->servers, Config.Wais.peer, HIER_DIRECT);
     else
-	peerAddFwdServer(&ps->servers, NULL, DIRECT);
+	peerAddFwdServer(&ps->servers, NULL, HIER_DIRECT);
 }
 
 static void
@@ -443,6 +470,14 @@ peerGetSomeParent(ps_state * ps)
 	return;
     if ((p = getDefaultParent(request))) {
 	code = DEFAULT_PARENT;
+    } else if ((p = peerUserHashSelectParent(request))) {
+	code = USERHASH_PARENT;
+    } else if ((p = peerSourceHashSelectParent(request))) {
+	code = SOURCEHASH_PARENT;
+#if USE_CARP
+    } else if ((p = carpSelectParent(request))) {
+	code = CARP;
+#endif
     } else if ((p = getRoundRobinParent(request))) {
 	code = ROUNDROBIN_PARENT;
     } else if ((p = getFirstUpParent(request))) {
@@ -644,7 +679,7 @@ peerHandlePingReply(peer * p, peer_t type, protocol_t proto, void *pingdata, voi
 	debug(44, 1) ("peerHandlePingReply: unknown protocol_t %d\n", (int) proto);
 }
 
-static void
+void
 peerAddFwdServer(FwdServer ** FS, peer * p, hier_code code)
 {
     FwdServer *fs = memAllocate(MEM_FWD_SERVER);

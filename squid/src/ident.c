@@ -1,6 +1,6 @@
 
 /*
- * $Id: ident.c,v 1.58 2001/04/14 00:03:23 hno Exp $
+ * $Id: ident.c,v 1.63 2006/05/12 22:08:37 hno Exp $
  *
  * DEBUG: section 30    Ident (RFC 931)
  * AUTHOR: Duane Wessels
@@ -85,6 +85,7 @@ identClose(int fdnotused, void *data)
     identCallback(state, NULL);
     comm_close(state->fd);
     hash_remove_link(ident_hash, (hash_link *) state);
+    safe_free(state->hash.key);
     cbdataFree(state);
 }
 
@@ -205,7 +206,7 @@ identStart(struct sockaddr_in *me, struct sockaddr_in *my_peer, IDCB * callback,
 	return;
     }
     fd = comm_open(SOCK_STREAM,
-	0,
+	IPPROTO_TCP,
 	me->sin_addr,
 	0,
 	COMM_NONBLOCKING,

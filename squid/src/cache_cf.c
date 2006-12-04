@@ -1,6 +1,6 @@
 
 /*
- * $Id: cache_cf.c,v 1.396.2.32 2005/10/26 20:25:42 hno Exp $
+ * $Id: cache_cf.c,v 1.458 2006/09/30 21:01:08 hno Exp $
  *
  * DEBUG: section 3     Configuration File Parsing
  * AUTHOR: Harvest Derived
@@ -60,6 +60,14 @@ static void parse_cachedir_option_readonly(SwapDir * sd, const char *option, con
 static void dump_cachedir_option_readonly(StoreEntry * e, const char *option, SwapDir * sd);
 static void parse_cachedir_option_maxsize(SwapDir * sd, const char *option, const char *value, int reconfiguring);
 static void dump_cachedir_option_maxsize(StoreEntry * e, const char *option, SwapDir * sd);
+static void parse_logformat(logformat ** logformat_definitions);
+static void parse_access_log(customlog ** customlog_definitions);
+static void dump_logformat(StoreEntry * entry, const char *name, logformat * definitions);
+static void dump_access_log(StoreEntry * entry, const char *name, customlog * definitions);
+static void free_logformat(logformat ** definitions);
+static void free_access_log(customlog ** definitions);
+
+
 static struct cache_dir_option common_cachedir_options[] =
 {
     {"read-only", parse_cachedir_option_readonly, dump_cachedir_option_readonly},
@@ -94,10 +102,20 @@ static void free_http_header_replace(header_mangler * header);
 static void parse_denyinfo(acl_deny_info_list ** var);
 static void dump_denyinfo(StoreEntry * entry, const char *name, acl_deny_info_list * var);
 static void free_denyinfo(acl_deny_info_list ** var);
+#if USE_WCCPv2
 static void parse_sockaddr_in_list(sockaddr_in_list **);
 static void dump_sockaddr_in_list(StoreEntry *, const char *, const sockaddr_in_list *);
 static void free_sockaddr_in_list(sockaddr_in_list **);
+#if UNUSED_CODE
 static int check_null_sockaddr_in_list(const sockaddr_in_list *);
+#endif
+#endif
+static void parse_http_port_list(http_port_list **);
+static void dump_http_port_list(StoreEntry *, const char *, const http_port_list *);
+static void free_http_port_list(http_port_list **);
+#if 0
+static int check_null_http_port_list(const http_port_list *);
+#endif
 #if USE_SSL
 static void parse_https_port_list(https_port_list **);
 static void dump_https_port_list(StoreEntry *, const char *, const https_port_list *);
@@ -106,6 +124,9 @@ static void free_https_port_list(https_port_list **);
 static int check_null_https_port_list(const https_port_list *);
 #endif
 #endif /* USE_SSL */
+static void parse_programline(wordlist **);
+static void free_programline(wordlist **);
+static void dump_programline(StoreEntry *, const char *, const wordlist *);
 
 void
 self_destruct(void)
@@ -201,11 +222,44 @@ intlistFind(intlist * list, int i)
     return 0;
 }
 
-
 /*
- * Use this #define in all the parse*() functions.  Assumes char *token is
- * defined
+ * These functions is the same as atoi/l/f, except that they check for errors
  */
+
+static long
+xatol(const char *token)
+{
+    char *end;
+    long ret = strtol(token, &end, 10);
+    if (end == token || *end)
+	self_destruct();
+    return ret;
+}
+
+int
+xatoi(const char *token)
+{
+    return xatol(token);
+}
+
+unsigned short
+xatos(const char *token)
+{
+    long port = xatol(token);
+    if (port & ~0xFFFF)
+	self_destruct();
+    return port;
+}
+
+static double
+xatof(const char *token)
+{
+    char *end;
+    double ret = strtod(token, &end);
+    if (ret == 0 && end == token)
+	self_destruct();
+    return ret;
+}
 
 int
 GetInteger(void)
@@ -221,6 +275,15 @@ GetInteger(void)
     if (d > INT_MAX || end == token)
 	self_destruct();
     return i;
+}
+
+static u_short
+GetShort(void)
+{
+    char *token = strtok(NULL, w_space);
+    if (token == NULL)
+	self_destruct();
+    return xatos(token);
 }
 
 static squid_off_t
@@ -262,14 +325,16 @@ parseConfigFile(const char *file_name)
 {
     FILE *fp = NULL;
     char *token = NULL;
-    char *tmp_line;
+    char *tmp_line = NULL;
+    int tmp_line_len = 0;
+    size_t config_input_line_len;
     int err_count = 0;
     configFreeMemory();
     default_all();
     if ((fp = fopen(file_name, "r")) == NULL)
 	fatalf("Unable to open configuration file: %s: %s",
 	    file_name, xstrerror());
-#if defined(_SQUID_CYGWIN_)
+#ifdef _SQUID_WIN32_
     setmode(fileno(fp), O_TEXT);
 #endif
     cfg_filename = file_name;
@@ -287,8 +352,18 @@ parseConfigFile(const char *file_name)
 	    continue;
 	if (config_input_line[0] == '\0')
 	    continue;
-	debug(3, 5) ("Processing: '%s'\n", config_input_line);
-	tmp_line = xstrdup(config_input_line);
+
+	config_input_line_len = strlen(config_input_line);
+	tmp_line = (char *) xrealloc(tmp_line, tmp_line_len + config_input_line_len + 1);
+	strcpy(tmp_line + tmp_line_len, config_input_line);
+	tmp_line_len += config_input_line_len;
+
+	if (tmp_line[tmp_line_len - 1] == '\\') {
+	    debug(3, 5) ("parseConfigFile: tmp_line='%s'\n", tmp_line);
+	    tmp_line[--tmp_line_len] = '\0';
+	    continue;
+	}
+	debug(3, 5) ("Processing: '%s'\n", tmp_line);
 	if (!parse_line(tmp_line)) {
 	    debug(3, 0) ("parseConfigFile: line %d unrecognized: '%s'\n",
 		config_lineno,
@@ -296,6 +371,7 @@ parseConfigFile(const char *file_name)
 	    err_count++;
 	}
 	safe_free(tmp_line);
+	tmp_line_len = 0;
     }
     fclose(fp);
     defaults_if_none();
@@ -312,7 +388,6 @@ parseConfigFile(const char *file_name)
 static void
 configDoConfigure(void)
 {
-    LOCAL_ARRAY(char, buf, BUFSIZ);
     memset(&Config2, '\0', sizeof(SquidConfig2));
     /* init memory as early as possible */
     memConfigure();
@@ -332,20 +407,25 @@ configDoConfigure(void)
 	Config.Announce.period = 86400 * 365;	/* one year */
 	Config.onoff.announce = 0;
     }
+    if (Config.onoff.httpd_suppress_version_string)
+	visible_appname_string = (char *) appname_string;
+    else
+	visible_appname_string = (char *) full_appname_string;
 #if USE_DNSSERVERS
     if (Config.dnsChildren < 1)
 	fatal("No dnsservers allocated");
 #endif
-    if (Config.Program.redirect) {
-	if (Config.redirectChildren < 1) {
-	    Config.redirectChildren = 0;
-	    wordlistDestroy(&Config.Program.redirect);
+    if (Config.Program.url_rewrite.command) {
+	if (Config.Program.url_rewrite.children < 1) {
+	    Config.Program.url_rewrite.children = 0;
+	    wordlistDestroy(&Config.Program.url_rewrite.command);
 	}
     }
-    if (Config.Accel.host) {
-	snprintf(buf, BUFSIZ, "http://%s:%d", Config.Accel.host, Config.Accel.port);
-	Config2.Accel.prefix = xstrdup(buf);
-	Config2.Accel.on = 1;
+    if (Config.Program.location_rewrite.command) {
+	if (Config.Program.location_rewrite.children < 1) {
+	    Config.Program.location_rewrite.children = 0;
+	    wordlistDestroy(&Config.Program.location_rewrite.command);
+	}
     }
     if (Config.appendDomain)
 	if (*Config.appendDomain != '.')
@@ -353,25 +433,18 @@ configDoConfigure(void)
     if (Config.errHtmlText == NULL)
 	Config.errHtmlText = xstrdup(null_string);
     storeConfigure();
-    if (Config2.Accel.on && !strcmp(Config.Accel.host, "virtual")) {
-	vhost_mode = 1;
-	if (Config.Accel.port == 0)
-	    vport_mode = 1;
-    }
-    if (Config.Sockaddr.http == NULL)
-	fatal("No http_port specified!");
     snprintf(ThisCache, sizeof(ThisCache), "%s:%d (%s)",
 	uniqueHostname(),
-	(int) ntohs(Config.Sockaddr.http->s.sin_port),
-	full_appname_string);
+	getMyPort(),
+	visible_appname_string);
     /*
      * the extra space is for loop detection in client_side.c -- we search
      * for substrings in the Via header.
      */
     snprintf(ThisCache2, sizeof(ThisCache), " %s:%d (%s)",
 	uniqueHostname(),
-	(int) ntohs(Config.Sockaddr.http->s.sin_port),
-	full_appname_string);
+	getMyPort(),
+	visible_appname_string);
     if (!Config.udpMaxHitObjsz || Config.udpMaxHitObjsz > SQUID_UDP_SO_SNDBUF)
 	Config.udpMaxHitObjsz = SQUID_UDP_SO_SNDBUF;
     if (Config.appendDomain)
@@ -393,10 +466,14 @@ configDoConfigure(void)
 #if USE_UNLINKD
     requirePathnameExists("unlinkd_program", Config.Program.unlinkd);
 #endif
-    if (Config.Program.redirect)
-	requirePathnameExists("redirect_program", Config.Program.redirect->key);
+    if (Config.Program.url_rewrite.command)
+	requirePathnameExists("url_rewrite_program", Config.Program.url_rewrite.command->key);
+    if (Config.Program.location_rewrite.command)
+	requirePathnameExists("location_rewrite_program", Config.Program.location_rewrite.command->key);
     requirePathnameExists("Icon Directory", Config.icons.directory);
     requirePathnameExists("Error Directory", Config.errorDirectory);
+    authenticateConfigure(&Config.authConfig);
+    externalAclConfigure();
 #if HTTP_VIOLATIONS
     {
 	const refresh_t *R;
@@ -413,6 +490,12 @@ configDoConfigure(void)
 	    break;
 	}
     }
+#endif
+#if !HTTP_VIOLATIONS
+    Config.onoff.via = 1;
+#else
+    if (!Config.onoff.via)
+	debug(22, 1) ("WARNING: HTTP requires the use of Via\n");
 #endif
     if (Config.Wais.relayHost) {
 	if (Config.Wais.peer)
@@ -460,7 +543,6 @@ configDoConfigure(void)
 		Config.effectiveGroup);
 	Config2.effectiveGroupID = grp->gr_gid;
     }
-    urlExtMethodConfigure();
     if (0 == Config.onoff.client_db) {
 	acl *a;
 	for (a = Config.aclList; a; a = a->next) {
@@ -497,6 +579,9 @@ configDoConfigure(void)
 #endif
     if (Config.Store.maxInMemObjSize > 8 * 1024 * 1024)
 	debug(22, 0) ("WARNING: Very large maximum_object_size_in_memory settings can have negative impact on performance\n");
+#if USE_SSL
+    Config.ssl_client.sslContext = sslCreateClientContext(Config.ssl_client.cert, Config.ssl_client.key, Config.ssl_client.version, Config.ssl_client.cipher, Config.ssl_client.options, Config.ssl_client.flags, Config.ssl_client.cafile, Config.ssl_client.capath, Config.ssl_client.crlfile);
+#endif
 }
 
 /* Parse a time specification from the config file.  Store the
@@ -512,7 +597,7 @@ parseTimeLine(time_t * tptr, const char *units)
 	self_destruct();
     if ((token = strtok(NULL, w_space)) == NULL)
 	self_destruct();
-    d = atof(token);
+    d = xatof(token);
     m = u;			/* default to 'units' if none specified */
     if (0 == d)
 	(void) 0;
@@ -564,7 +649,7 @@ parseBytesLine(squid_off_t * bptr, const char *units)
 	*bptr = (squid_off_t) - 1;
 	return;
     }
-    d = atof(token);
+    d = xatof(token);
     m = u;			/* default to 'units' if none specified */
     if (0.0 == d)
 	(void) 0;
@@ -600,21 +685,25 @@ parseBytesUnits(const char *unit)
 static void
 dump_acl(StoreEntry * entry, const char *name, acl * ae)
 {
-    wordlist *w;
-    wordlist *v;
     while (ae != NULL) {
 	debug(3, 3) ("dump_acl: %s %s\n", name, ae->name);
-	v = w = aclDumpGeneric(ae);
-	while (v != NULL) {
-	    debug(3, 3) ("dump_acl: %s %s %s\n", name, ae->name, v->key);
-	    storeAppendPrintf(entry, "%s %s %s %s\n",
-		name,
-		ae->name,
-		aclTypeToStr(ae->type),
-		v->key);
-	    v = v->next;
+	if (strstr(ae->cfgline, " \""))
+	    storeAppendPrintf(entry, "%s\n", ae->cfgline);
+	else {
+	    wordlist *w;
+	    wordlist *v;
+	    v = w = aclDumpGeneric(ae);
+	    while (v != NULL) {
+		debug(3, 3) ("dump_acl: %s %s %s\n", name, ae->name, v->key);
+		storeAppendPrintf(entry, "%s %s %s %s\n",
+		    name,
+		    ae->name,
+		    aclTypeToStr(ae->type),
+		    v->key);
+		v = v->next;
+	    }
+	    wordlistDestroy(&w);
 	}
-	wordlistDestroy(&w);
 	ae = ae->next;
     }
 }
@@ -1347,7 +1436,7 @@ parse_cachedir_option_readonly(SwapDir * sd, const char *option, const char *val
 {
     int read_only = 0;
     if (value)
-	read_only = atoi(value);
+	read_only = xatoi(value);
     else
 	read_only = 1;
     sd->flags.read_only = read_only;
@@ -1485,7 +1574,7 @@ dump_peer(StoreEntry * entry, const char *name, peer * p)
 		d->domain);
 	}
 	if (p->access) {
-	    snprintf(xname, 128, "cache_peer_access %s", p->host);
+	    snprintf(xname, 128, "cache_peer_access %s", p->name);
 	    dump_acl_access(entry, xname, p->access);
 	}
 	for (t = p->typelist; t; t = t->next) {
@@ -1503,22 +1592,24 @@ parse_peer(peer ** head)
 {
     char *token = NULL;
     peer *p;
-    int i;
     p = cbdataAlloc(peer);
     p->http_port = CACHE_HTTP_PORT;
     p->icp.port = CACHE_ICP_PORT;
     p->weight = 1;
     p->stats.logged_state = PEER_ALIVE;
+    p->monitor.state = PEER_ALIVE;
     if ((token = strtok(NULL, w_space)) == NULL)
 	self_destruct();
     p->host = xstrdup(token);
+    p->name = xstrdup(token);
     if ((token = strtok(NULL, w_space)) == NULL)
 	self_destruct();
     p->type = parseNeighborType(token);
-    i = GetInteger();
-    p->http_port = (u_short) i;
-    i = GetInteger();
-    p->icp.port = (u_short) i;
+    p->http_port = GetShort();
+    if (!p->http_port)
+	self_destruct();
+    p->icp.port = GetShort();
+    p->connection_auth = -1;	/* auto */
     while ((token = strtok(NULL, w_space))) {
 	if (!strcasecmp(token, "proxy-only")) {
 	    p->options.proxy_only = 1;
@@ -1529,11 +1620,11 @@ parse_peer(peer ** head)
 	} else if (!strcasecmp(token, "multicast-responder")) {
 	    p->options.mcast_responder = 1;
 	} else if (!strncasecmp(token, "weight=", 7)) {
-	    p->weight = atoi(token + 7);
+	    p->weight = xatoi(token + 7);
 	} else if (!strcasecmp(token, "closest-only")) {
 	    p->options.closest_only = 1;
 	} else if (!strncasecmp(token, "ttl=", 4)) {
-	    p->mcast.ttl = atoi(token + 4);
+	    p->mcast.ttl = xatoi(token + 4);
 	    if (p->mcast.ttl < 0)
 		p->mcast.ttl = 0;
 	    if (p->mcast.ttl > 128)
@@ -1542,18 +1633,24 @@ parse_peer(peer ** head)
 	    p->options.default_parent = 1;
 	} else if (!strcasecmp(token, "round-robin")) {
 	    p->options.roundrobin = 1;
+	} else if (!strcasecmp(token, "userhash")) {
+	    p->options.userhash = 1;
+	} else if (!strcasecmp(token, "sourcehash")) {
+	    p->options.sourcehash = 1;
 #if USE_HTCP
 	} else if (!strcasecmp(token, "htcp")) {
 	    p->options.htcp = 1;
+	} else if (!strcasecmp(token, "htcp-oldsquid")) {
+	    p->options.htcp = 1;
+	    p->options.htcp_oldsquid = 1;
 #endif
 	} else if (!strcasecmp(token, "no-netdb-exchange")) {
 	    p->options.no_netdb_exchange = 1;
 #if USE_CARP
-	} else if (!strncasecmp(token, "carp-load-factor=", 17)) {
+	} else if (!strcasecmp(token, "carp")) {
 	    if (p->type != PEER_PARENT)
-		debug(3, 0) ("parse_peer: Ignoring carp-load-factor for non-parent %s/%d\n", p->host, p->http_port);
-	    else
-		p->carp.load_factor = atof(token + 17);
+		fatalf("parse_peer: non-parent carp peer %s/%d\n", p->host, p->http_port);
+	    p->options.carp = 1;
 #endif
 #if DELAY_POOLS
 	} else if (!strcasecmp(token, "no-delay")) {
@@ -1563,7 +1660,7 @@ parse_peer(peer ** head)
 	    p->login = xstrdup(token + 6);
 	    rfc1738_unescape(p->login);
 	} else if (!strncasecmp(token, "connect-timeout=", 16)) {
-	    p->connect_timeout = atoi(token + 16);
+	    p->connect_timeout = xatoi(token + 16);
 #if USE_CACHE_DIGESTS
 	} else if (!strncasecmp(token, "digest-url=", 11)) {
 	    p->digest_url = xstrdup(token + 11);
@@ -1571,32 +1668,104 @@ parse_peer(peer ** head)
 	} else if (!strcasecmp(token, "allow-miss")) {
 	    p->options.allow_miss = 1;
 	} else if (!strncasecmp(token, "max-conn=", 9)) {
-	    p->max_conn = atoi(token + 9);
+	    p->max_conn = xatoi(token + 9);
+	} else if (!strcasecmp(token, "originserver")) {
+	    p->options.originserver = 1;
+	} else if (!strncasecmp(token, "name=", 5)) {
+	    safe_free(p->name);
+	    if (token[5])
+		p->name = xstrdup(token + 5);
+	} else if (!strncasecmp(token, "monitorurl=", 11)) {
+	    safe_free(p->monitor.url);
+	    if (token[11])
+		p->monitor.url = xstrdup(token + 11);
+	} else if (!strncasecmp(token, "monitorsize=", 12)) {
+	    p->monitor.min = xatoi(token + 12);
+	    p->monitor.max = -1;
+	    if (strchr(token + 12, ','))
+		token = strchr(token + 12, ',');
+	    else
+		token = strchr(token + 12, '-');
+	    if (token)
+		p->monitor.max = xatoi(token + 1);
+	} else if (!strncasecmp(token, "monitorinterval=", 16)) {
+	    p->monitor.interval = xatoi(token + 16);
+	} else if (!strncasecmp(token, "monitortimeout=", 15)) {
+	    p->monitor.timeout = xatoi(token + 15);
+	} else if (!strncasecmp(token, "forceddomain=", 13)) {
+	    safe_free(p->domain);
+	    if (token[13])
+		p->domain = xstrdup(token + 13);
+#if USE_SSL
+	} else if (strcmp(token, "ssl") == 0) {
+	    p->use_ssl = 1;
+	} else if (strncmp(token, "sslcert=", 8) == 0) {
+	    safe_free(p->sslcert);
+	    p->sslcert = xstrdup(token + 8);
+	} else if (strncmp(token, "sslkey=", 7) == 0) {
+	    safe_free(p->sslkey);
+	    p->sslkey = xstrdup(token + 7);
+	} else if (strncmp(token, "sslversion=", 11) == 0) {
+	    p->sslversion = xatoi(token + 11);
+	} else if (strncmp(token, "ssloptions=", 11) == 0) {
+	    safe_free(p->ssloptions);
+	    p->ssloptions = xstrdup(token + 11);
+	} else if (strncmp(token, "sslcipher=", 10) == 0) {
+	    safe_free(p->sslcipher);
+	    p->sslcipher = xstrdup(token + 10);
+	} else if (strncmp(token, "sslcafile=", 10) == 0) {
+	    safe_free(p->sslcafile);
+	    p->sslcafile = xstrdup(token + 10);
+	} else if (strncmp(token, "sslcapath=", 10) == 0) {
+	    safe_free(p->sslcapath);
+	    p->sslcapath = xstrdup(token + 10);
+	} else if (strncmp(token, "sslcrlfile=", 11) == 0) {
+	    safe_free(p->sslcrlfile);
+	    p->sslcrlfile = xstrdup(token + 11);
+	} else if (strncmp(token, "sslflags=", 9) == 0) {
+	    safe_free(p->sslflags);
+	    p->sslflags = xstrdup(token + 9);
+	} else if (strncmp(token, "ssldomain=", 10) == 0) {
+	    safe_free(p->ssldomain);
+	    p->ssldomain = xstrdup(token + 10);
+#endif
+	} else if (strcmp(token, "front-end-https=off") == 0) {
+	    p->front_end_https = 0;
+	} else if (strcmp(token, "front-end-https") == 0) {
+	    p->front_end_https = 1;
+	} else if (strcmp(token, "front-end-https=on") == 0) {
+	    p->front_end_https = 1;
+	} else if (strcmp(token, "front-end-https=auto") == 0) {
+	    p->front_end_https = -1;
+	} else if (strcmp(token, "connection-auth=off") == 0) {
+	    p->connection_auth = 0;
+	} else if (strcmp(token, "connection-auth") == 0) {
+	    p->connection_auth = 1;
+	} else if (strcmp(token, "connection-auth=on") == 0) {
+	    p->connection_auth = 1;
+	} else if (strcmp(token, "connection-auth=auto") == 0) {
+	    p->connection_auth = -1;
 	} else {
 	    debug(3, 0) ("parse_peer: token='%s'\n", token);
 	    self_destruct();
 	}
     }
+    if (peerFindByName(p->name))
+	fatalf("ERROR: cache_peer %s specified twice\n", p->name);
     if (p->weight < 1)
 	p->weight = 1;
     p->icp.version = ICP_VERSION_CURRENT;
     p->tcp_up = PEER_TCP_MAGIC_COUNT;
     p->test_fd = -1;
-#if USE_CARP
-#define ROTATE_LEFT(x, n) (((x) << (n)) | ((x) >> (32-(n))))
-    if (p->carp.load_factor) {
-	/* calculate this peers hash for use in CARP */
-	p->carp.hash = 0;
-	for (token = p->host; *token != 0; token++)
-	    p->carp.hash += ROTATE_LEFT(p->carp.hash, 19) + (unsigned int) *token;
-	p->carp.hash += p->carp.hash * 0x62531965;
-	p->carp.hash = ROTATE_LEFT(p->carp.hash, 21);
-    }
-#endif
 #if USE_CACHE_DIGESTS
     if (!p->options.no_digest) {
 	p->digest = peerDigestCreate(p);
 	cbdataLock(p->digest);	/* so we know when/if digest disappears */
+    }
+#endif
+#if USE_SSL
+    if (p->use_ssl) {
+	p->sslContext = sslCreateClientContext(p->sslcert, p->sslkey, p->sslversion, p->sslcipher, p->ssloptions, p->sslflags, p->sslcafile, p->sslcapath, p->sslcrlfile);
     }
 #endif
     while (*head != NULL)
@@ -1818,16 +1987,13 @@ static void
 parse_ushortlist(ushortlist ** P)
 {
     char *token;
-    int i;
+    u_short i;
     ushortlist *u;
     ushortlist **U;
     while ((token = strtok(NULL, w_space))) {
-	if (sscanf(token, "%d", &i) != 1)
-	    self_destruct();
-	if (i < 0)
-	    i = 0;
+	i = GetShort();
 	u = xcalloc(1, sizeof(ushortlist));
-	u->i = (u_short) i;
+	u->i = i;
 	for (U = P; *U; U = &(*U)->next);
 	*U = u;
     }
@@ -1935,6 +2101,12 @@ dump_refreshpattern(StoreEntry * entry, const char *name, refresh_t * head)
 	    storeAppendPrintf(entry, " reload-into-ims");
 	if (head->flags.ignore_reload)
 	    storeAppendPrintf(entry, " ignore-reload");
+	if (head->flags.ignore_no_cache)
+	    storeAppendPrintf(entry, " ignore-no-cache");
+	if (head->flags.ignore_private)
+	    storeAppendPrintf(entry, " ignore-private");
+	if (head->flags.ignore_auth)
+	    storeAppendPrintf(entry, " ignore-auth");
 #endif
 	storeAppendPrintf(entry, "\n");
 	head = head->next;
@@ -1954,6 +2126,9 @@ parse_refreshpattern(refresh_t ** head)
     int override_lastmod = 0;
     int reload_into_ims = 0;
     int ignore_reload = 0;
+    int ignore_no_cache = 0;
+    int ignore_private = 0;
+    int ignore_auth = 0;
 #endif
     int i;
     refresh_t *t;
@@ -1985,6 +2160,12 @@ parse_refreshpattern(refresh_t ** head)
 	    override_expire = 1;
 	else if (!strcmp(token, "override-lastmod"))
 	    override_lastmod = 1;
+	else if (!strcmp(token, "ignore-no-cache"))
+	    ignore_no_cache = 1;
+	else if (!strcmp(token, "ignore-private"))
+	    ignore_private = 1;
+	else if (!strcmp(token, "ignore-auth"))
+	    ignore_auth = 1;
 	else if (!strcmp(token, "reload-into-ims")) {
 	    reload_into_ims = 1;
 	    refresh_nocache_hack = 1;
@@ -2026,6 +2207,12 @@ parse_refreshpattern(refresh_t ** head)
 	t->flags.reload_into_ims = 1;
     if (ignore_reload)
 	t->flags.ignore_reload = 1;
+    if (ignore_no_cache)
+	t->flags.ignore_no_cache = 1;
+    if (ignore_private)
+	t->flags.ignore_private = 1;
+    if (ignore_auth)
+	t->flags.ignore_auth = 1;
 #endif
     t->next = NULL;
     while (*head)
@@ -2231,16 +2418,11 @@ free_ushort(u_short * u)
 static void
 parse_ushort(u_short * var)
 {
-    int i;
-
-    i = GetInteger();
-    if (i < 0)
-	i = 0;
-    *var = (u_short) i;
+    *var = GetShort();
 }
 
 static void
-dump_wordlist(StoreEntry * entry, const char *name, wordlist * list)
+dump_wordlist(StoreEntry * entry, const char *name, const wordlist * list)
 {
     while (list != NULL) {
 	storeAppendPrintf(entry, "%s %s\n", name, list->key);
@@ -2318,8 +2500,7 @@ free_removalpolicy(RemovalPolicySettings ** settings)
 	return;
     free_string(&(*settings)->type);
     free_wordlist(&(*settings)->args);
-    xfree(*settings);
-    *settings = NULL;
+    safe_free(*settings);
 }
 
 static void
@@ -2345,6 +2526,62 @@ dump_removalpolicy(StoreEntry * entry, const char *name, RemovalPolicySettings *
     storeAppendPrintf(entry, "\n");
 }
 
+static void
+parse_errormap(errormap ** head)
+{
+    errormap *m = xcalloc(1, sizeof(*m));
+    char *url = strtok(NULL, w_space);
+    char *token;
+    struct error_map_entry **tail = &m->map;
+    if (!url)
+	self_destruct();
+    m->url = xstrdup(url);
+    while ((token = strtok(NULL, w_space))) {
+	struct error_map_entry *e = xcalloc(1, sizeof(*e));
+	e->value = xstrdup(token);
+	e->status = xatoi(token);
+	if (!e->status)
+	    e->status = -errorPageId(token);
+	if (!e->status)
+	    debug(15, 0) ("WARNING: Unknown errormap code: %s\n", token);
+	*tail = e;
+	tail = &e->next;
+    }
+    while (*head)
+	head = &(*head)->next;
+    *head = m;
+}
+
+static void
+dump_errormap(StoreEntry * entry, const char *name, errormap * map)
+{
+    while (map) {
+	struct error_map_entry *me;
+	storeAppendPrintf(entry, "%s %s",
+	    name, map->url);
+	for (me = map->map; me; me = me->next)
+	    storeAppendPrintf(entry, " %s", me->value);
+	storeAppendPrintf(entry, "\n");
+	map = map->next;
+    }
+}
+
+static void
+free_errormap(errormap ** head)
+{
+    while (*head) {
+	errormap *map = *head;
+	*head = map->next;
+	while (map->map) {
+	    struct error_map_entry *me = map->map;
+	    map->map = me->next;
+	    safe_free(me->value);
+	    safe_free(me);
+	}
+	safe_free(map->url);
+	safe_free(map);
+    }
+}
 
 #include "cf_parser.h"
 
@@ -2365,14 +2602,16 @@ parseNeighborType(const char *s)
     return PEER_SIBLING;
 }
 
+#if USE_WCCPv2
 static void
 parse_sockaddr_in_list(sockaddr_in_list ** head)
 {
     char *token;
     char *t;
     char *host;
+    char *tmp;
     const struct hostent *hp;
-    unsigned short port;
+    unsigned short port = 0;
     sockaddr_in_list *s;
     while ((token = strtok(NULL, w_space))) {
 	host = NULL;
@@ -2381,13 +2620,14 @@ parse_sockaddr_in_list(sockaddr_in_list ** head)
 	    /* host:port */
 	    host = token;
 	    *t = '\0';
-	    port = (unsigned short) atoi(t + 1);
+	    port = xatos(t + 1);
 	    if (0 == port)
 		self_destruct();
-	} else if ((port = atoi(token)) > 0) {
+	} else if ((port = strtol(token, &tmp, 10)), !*tmp) {
 	    /* port */
 	} else {
-	    self_destruct();
+	    host = token;
+	    port = 0;
 	}
 	s = xcalloc(1, sizeof(*s));
 	s->s.sin_port = htons(port);
@@ -2427,49 +2667,196 @@ free_sockaddr_in_list(sockaddr_in_list ** head)
     }
 }
 
+#if UNUSED_CODE
 static int
 check_null_sockaddr_in_list(const sockaddr_in_list * s)
 {
     return NULL == s;
 }
+#endif
+#endif /* USE_WCCPv2 */
 
-#if USE_SSL
 static void
-parse_https_port_list(https_port_list ** head)
+parse_http_port_specification(http_port_list * s, char *token)
 {
-    char *token;
-    char *t;
-    char *host;
+    char *host = NULL;
     const struct hostent *hp;
-    unsigned short port;
-    https_port_list *s;
-    token = strtok(NULL, w_space);
-    if (!token)
-	self_destruct();
-    host = NULL;
-    port = 0;
+    unsigned short port = 0;
+    char *t;
     if ((t = strchr(token, ':'))) {
 	/* host:port */
 	host = token;
 	*t = '\0';
-	port = (unsigned short) atoi(t + 1);
-	if (0 == port)
-	    self_destruct();
-    } else if ((port = atoi(token)) > 0) {
-	/* port */
+	port = xatos(t + 1);
     } else {
-	self_destruct();
+	/* port */
+	port = xatos(token);
     }
-    s = xcalloc(1, sizeof(*s));
+    if (port == 0)
+	self_destruct();
     s->s.sin_port = htons(port);
     if (NULL == host)
 	s->s.sin_addr = any_addr;
     else if (1 == safe_inet_addr(host, &s->s.sin_addr))
 	(void) 0;
-    else if ((hp = gethostbyname(host)))	/* dont use ipcache */
+    else if ((hp = gethostbyname(host))) {
+	/* dont use ipcache */
 	s->s.sin_addr = inaddrFromHostent(hp);
-    else
+	s->defaultsite = xstrdup(host);
+    } else
 	self_destruct();
+}
+
+static void
+parse_http_port_option(http_port_list * s, char *token)
+{
+    if (strncmp(token, "defaultsite=", 12) == 0) {
+	safe_free(s->defaultsite);
+	s->defaultsite = xstrdup(token + 12);
+	s->accel = 1;
+    } else if (strncmp(token, "name=", 5) == 0) {
+	safe_free(s->name);
+	s->name = xstrdup(token + 5);
+    } else if (strcmp(token, "transparent") == 0) {
+	s->transparent = 1;
+    } else if (strcmp(token, "vhost") == 0) {
+	s->vhost = 1;
+	s->accel = 1;
+    } else if (strcmp(token, "vport") == 0) {
+	s->vport = ntohs(s->s.sin_port);
+	s->accel = 1;
+    } else if (strncmp(token, "vport=", 6) == 0) {
+	s->vport = xatos(token + 6);
+	s->accel = 1;
+    } else if (strcmp(token, "no-connection-auth") == 0) {
+	s->no_connection_auth = 1;
+    } else if (strncmp(token, "urlgroup=", 9) == 0) {
+	s->urlgroup = xstrdup(token + 9);
+    } else if (strncmp(token, "protocol=", 9) == 0) {
+	s->protocol = xstrdup(token + 9);
+#if LINUX_TPROXY
+    } else if (strcmp(token, "tproxy") == 0) {
+	s->tproxy = 1;
+	need_linux_tproxy = 1;
+#endif
+    } else {
+	self_destruct();
+    }
+    if (s->accel && s->transparent) {
+	debug(28, 0) ("Can't be both a transparent proxy and web server accelerator on the same port\n");
+	self_destruct();
+    }
+}
+
+static void
+free_generic_http_port_data(http_port_list * s)
+{
+    safe_free(s->name);
+    safe_free(s->protocol);
+    safe_free(s->defaultsite);
+}
+
+static void
+cbdataFree_http_port(void *data)
+{
+    free_generic_http_port_data(data);
+}
+
+
+static void
+parse_http_port_list(http_port_list ** head)
+{
+    CBDATA_TYPE(http_port_list);
+    char *token;
+    http_port_list *s;
+    CBDATA_INIT_TYPE_FREECB(http_port_list, cbdataFree_http_port);
+    token = strtok(NULL, w_space);
+    if (!token)
+	self_destruct();
+    s = cbdataAlloc(http_port_list);
+    s->protocol = xstrdup("http");
+    parse_http_port_specification(s, token);
+    /* parse options ... */
+    while ((token = strtok(NULL, w_space))) {
+	parse_http_port_option(s, token);
+    }
+    while (*head)
+	head = &(*head)->next;
+    *head = s;
+}
+
+static void
+dump_generic_http_port(StoreEntry * e, const char *n, const http_port_list * s)
+{
+    storeAppendPrintf(e, "%s %s:%d",
+	n,
+	inet_ntoa(s->s.sin_addr),
+	ntohs(s->s.sin_port));
+    if (s->defaultsite)
+	storeAppendPrintf(e, " defaultsite=%s", s->defaultsite);
+    if (s->transparent)
+	storeAppendPrintf(e, " transparent");
+    if (s->vhost)
+	storeAppendPrintf(e, " vhost");
+    if (s->vport)
+	storeAppendPrintf(e, " vport");
+    if (s->no_connection_auth)
+	storeAppendPrintf(e, " no-connection-auth");
+}
+static void
+dump_http_port_list(StoreEntry * e, const char *n, const http_port_list * s)
+{
+    while (s) {
+	dump_generic_http_port(e, n, s);
+	storeAppendPrintf(e, "\n");
+	s = s->next;
+    }
+}
+
+static void
+free_http_port_list(http_port_list ** head)
+{
+    http_port_list *s;
+    while ((s = *head) != NULL) {
+	*head = s->next;
+	cbdataFree(s);
+    }
+}
+
+#if UNUSED_CODE
+static int
+check_null_http_port_list(const http_port_list * s)
+{
+    return NULL == s;
+}
+#endif
+
+#if USE_SSL
+static void
+cbdataFree_https_port(void *data)
+{
+    https_port_list *s = data;
+    free_generic_http_port_data(&s->http);
+    safe_free(s->cert);
+    safe_free(s->key);
+    if (s->sslContext)
+	SSL_CTX_free(s->sslContext);
+    s->sslContext = NULL;
+}
+
+static void
+parse_https_port_list(https_port_list ** head)
+{
+    CBDATA_TYPE(https_port_list);
+    char *token;
+    https_port_list *s;
+    CBDATA_INIT_TYPE_FREECB(https_port_list, cbdataFree_https_port);
+    token = strtok(NULL, w_space);
+    if (!token)
+	self_destruct();
+    s = cbdataAlloc(https_port_list);
+    s->http.protocol = xstrdup("https");
+    parse_http_port_specification(&s->http, token);
     /* parse options ... */
     while ((token = strtok(NULL, w_space))) {
 	if (strncmp(token, "cert=", 5) == 0) {
@@ -2479,7 +2866,7 @@ parse_https_port_list(https_port_list ** head)
 	    safe_free(s->key);
 	    s->key = xstrdup(token + 4);
 	} else if (strncmp(token, "version=", 8) == 0) {
-	    s->version = atoi(token + 8);
+	    s->version = xatoi(token + 8);
 	    if (s->version < 1 || s->version > 4)
 		self_destruct();
 	} else if (strncmp(token, "options=", 8) == 0) {
@@ -2488,12 +2875,38 @@ parse_https_port_list(https_port_list ** head)
 	} else if (strncmp(token, "cipher=", 7) == 0) {
 	    safe_free(s->cipher);
 	    s->cipher = xstrdup(token + 7);
+	} else if (strncmp(token, "clientca=", 9) == 0) {
+	    safe_free(s->clientca);
+	    s->clientca = xstrdup(token + 9);
+	} else if (strncmp(token, "cafile=", 7) == 0) {
+	    safe_free(s->cafile);
+	    s->cafile = xstrdup(token + 7);
+	} else if (strncmp(token, "capath=", 7) == 0) {
+	    safe_free(s->capath);
+	    s->capath = xstrdup(token + 7);
+	} else if (strncmp(token, "crlfile=", 8) == 0) {
+	    safe_free(s->crlfile);
+	    s->crlfile = xstrdup(token + 8);
+	} else if (strncmp(token, "dhparams=", 9) == 0) {
+	    safe_free(s->dhfile);
+	    s->dhfile = xstrdup(token + 9);
+	} else if (strncmp(token, "sslflags=", 9) == 0) {
+	    safe_free(s->sslflags);
+	    s->sslflags = xstrdup(token + 9);
+	} else if (strncmp(token, "sslcontext=", 11) == 0) {
+	    safe_free(s->sslcontext);
+	    s->sslcontext = xstrdup(token + 11);
 	} else {
-	    self_destruct();
+	    parse_http_port_option(&s->http, token);
 	}
     }
     while (*head)
-	head = &(*head)->next;
+	head = (https_port_list **) (void *) (&(*head)->http.next);
+    s->sslContext = sslCreateServerContext(s->cert, s->key, s->version, s->cipher, s->options, s->sslflags, s->clientca, s->cafile, s->capath, s->crlfile, s->dhfile, s->sslcontext);
+#if WE_DONT_CARE_ABOUT_THIS_ERROR
+    if (!s->sslContext)
+	self_destruct();
+#endif
     *head = s;
 }
 
@@ -2501,20 +2914,29 @@ static void
 dump_https_port_list(StoreEntry * e, const char *n, const https_port_list * s)
 {
     while (s) {
-	storeAppendPrintf(e, "%s %s:%d cert=\"%s\" key=\"%s\"",
-	    n,
-	    inet_ntoa(s->s.sin_addr),
-	    ntohs(s->s.sin_port),
-	    s->cert,
-	    s->key);
+	dump_generic_http_port(e, n, &s->http);
+	if (s->cert)
+	    storeAppendPrintf(e, " cert=%s", s->cert);
+	if (s->key)
+	    storeAppendPrintf(e, " key=%s", s->key);
 	if (s->version)
 	    storeAppendPrintf(e, " version=%d", s->version);
 	if (s->options)
 	    storeAppendPrintf(e, " options=%s", s->options);
 	if (s->cipher)
 	    storeAppendPrintf(e, " cipher=%s", s->cipher);
+	if (s->cafile)
+	    storeAppendPrintf(e, " cafile=%s", s->cafile);
+	if (s->capath)
+	    storeAppendPrintf(e, " capath=%s", s->capath);
+	if (s->crlfile)
+	    storeAppendPrintf(e, " crlfile=%s", s->crlfile);
+	if (s->dhfile)
+	    storeAppendPrintf(e, " dhparams=%s", s->dhfile);
+	if (s->sslflags)
+	    storeAppendPrintf(e, " sslflags=%s", s->sslflags);
 	storeAppendPrintf(e, "\n");
-	s = s->next;
+	s = (https_port_list *) s->http.next;
     }
 }
 
@@ -2523,10 +2945,8 @@ free_https_port_list(https_port_list ** head)
 {
     https_port_list *s;
     while ((s = *head) != NULL) {
-	*head = s->next;
-	safe_free(s->cert);
-	safe_free(s->key);
-	safe_free(s);
+	*head = (https_port_list *) s->http.next;
+	cbdataFree(s);
     }
 }
 
@@ -2543,8 +2963,12 @@ check_null_https_port_list(const https_port_list * s)
 void
 configFreeMemory(void)
 {
-    safe_free(Config2.Accel.prefix);
     free_all();
+#if USE_SSL
+    if (Config.ssl_client.sslContext)
+	SSL_CTX_free(Config.ssl_client.sslContext);
+    Config.ssl_client.sslContext = NULL;
+#endif
 }
 
 void
@@ -2558,7 +2982,7 @@ requirePathnameExists(const char *name, const char *path)
 	path = pathbuf;
     }
     if (stat(path, &sb) < 0) {
-	if (opt_send_signal == -1 || opt_send_signal == SIGHUP)
+	if ((opt_send_signal == -1 || opt_send_signal == SIGHUP) && !opt_parse_cfg_only)
 	    fatalf("%s %s: %s", name, path, xstrerror());
 	else
 	    fprintf(stderr, "WARNING: %s %s: %s\n", name, path, xstrerror());
@@ -2589,7 +3013,7 @@ strtokFile(void)
 		debug(28, 0) ("strtokFile: %s not found\n", fn);
 		return (NULL);
 	    }
-#if defined(_SQUID_MSWIN_) || defined(_SQUID_CYGWIN_)
+#ifdef _SQUID_WIN32_
 	    setmode(fileno(wordFile), O_TEXT);
 #endif
 	    fromFile = 1;
@@ -2624,4 +3048,165 @@ strtokFile(void)
 	    goto strtok_again;
 	return t;
     }
+}
+
+static void
+parse_logformat(logformat ** logformat_definitions)
+{
+    logformat *nlf;
+    char *name, *def;
+
+    if ((name = strtok(NULL, w_space)) == NULL)
+	self_destruct();
+    if ((def = strtok(NULL, "\r\n")) == NULL)
+	self_destruct();
+
+    debug(3, 1) ("Logformat for '%s' is '%s'\n", name, def);
+
+    nlf = xcalloc(1, sizeof(logformat));
+    nlf->name = xstrdup(name);
+    if (!accessLogParseLogFormat(&nlf->format, def))
+	self_destruct();
+    nlf->next = *logformat_definitions;
+    *logformat_definitions = nlf;
+}
+
+static void
+parse_access_log(customlog ** logs)
+{
+    const char *filename, *logdef_name;
+    customlog *cl;
+    logformat *lf;
+
+    cl = xcalloc(1, sizeof(*cl));
+
+    if ((filename = strtok(NULL, w_space)) == NULL)
+	self_destruct();
+
+    if (strcmp(filename, "none") == 0) {
+	cl->type = CLF_NONE;
+	goto done;
+    }
+    if ((logdef_name = strtok(NULL, w_space)) == NULL)
+	logdef_name = "auto";
+
+    debug(3, 9) ("Log definition name '%s' file '%s'\n", logdef_name, filename);
+
+    cl->filename = xstrdup(filename);
+
+    /* look for the definition pointer corresponding to this name */
+    lf = Config.Log.logformats;
+    while (lf != NULL) {
+	debug(3, 9) ("Comparing against '%s'\n", lf->name);
+	if (strcmp(lf->name, logdef_name) == 0)
+	    break;
+	lf = lf->next;
+    }
+    if (lf != NULL) {
+	cl->type = CLF_CUSTOM;
+	cl->logFormat = lf;
+    } else if (strcmp(logdef_name, "auto") == 0) {
+	cl->type = CLF_AUTO;
+    } else if (strcmp(logdef_name, "squid") == 0) {
+	cl->type = CLF_SQUID;
+    } else if (strcmp(logdef_name, "common") == 0) {
+	cl->type = CLF_COMMON;
+    } else {
+	debug(3, 0) ("Log format '%s' is not defined\n", logdef_name);
+	self_destruct();
+    }
+
+  done:
+    aclParseAclList(&cl->aclList);
+
+    while (*logs)
+	logs = &(*logs)->next;
+    *logs = cl;
+}
+
+static void
+dump_logformat(StoreEntry * entry, const char *name, logformat * definitions)
+{
+    accessLogDumpLogFormat(entry, name, definitions);
+}
+
+static void
+dump_access_log(StoreEntry * entry, const char *name, customlog * logs)
+{
+    customlog *log;
+    for (log = logs; log; log = log->next) {
+	storeAppendPrintf(entry, "%s ", name);
+	switch (log->type) {
+	case CLF_CUSTOM:
+	    storeAppendPrintf(entry, "%s %s", log->filename, log->logFormat->name);
+	    break;
+	case CLF_NONE:
+	    storeAppendPrintf(entry, "none");
+	    break;
+	case CLF_SQUID:
+	    storeAppendPrintf(entry, "%s squid", log->filename);
+	    break;
+	case CLF_COMMON:
+	    storeAppendPrintf(entry, "%s squid", log->filename);
+	    break;
+	case CLF_AUTO:
+	    if (log->aclList)
+		storeAppendPrintf(entry, "%s auto", log->filename);
+	    else
+		storeAppendPrintf(entry, "%s", log->filename);
+	    break;
+	case CLF_UNKNOWN:
+	    break;
+	}
+	if (log->aclList)
+	    dump_acl_list(entry, log->aclList);
+	storeAppendPrintf(entry, "\n");
+    }
+}
+
+static void
+free_logformat(logformat ** definitions)
+{
+    while (*definitions) {
+	logformat *format = *definitions;
+	*definitions = format->next;
+	accessLogFreeLogFormat(&format->format);
+	xfree(format);
+    }
+}
+
+static void
+free_access_log(customlog ** definitions)
+{
+    while (*definitions) {
+	customlog *log = *definitions;
+	*definitions = log->next;
+
+	log->logFormat = NULL;
+	log->type = CLF_UNKNOWN;
+	if (log->aclList)
+	    aclDestroyAclList(&log->aclList);
+	safe_free(log->filename);
+	xfree(log);
+    }
+}
+
+static void
+parse_programline(wordlist ** line)
+{
+    if (*line)
+	self_destruct();
+    parse_wordlist(line);
+}
+
+static void
+free_programline(wordlist ** line)
+{
+    free_wordlist(line);
+}
+
+static void
+dump_programline(StoreEntry * entry, const char *name, const wordlist * line)
+{
+    dump_wordlist(entry, name, line);
 }

@@ -1,6 +1,6 @@
 
 /*
- * $Id: tools.c,v 1.213.2.22 2006/01/15 01:17:47 hno Exp $
+ * $Id: tools.c,v 1.249 2006/11/01 20:58:52 wessels Exp $
  *
  * DEBUG: section 21    Misc Functions
  * AUTHOR: Harvest Derived
@@ -33,7 +33,21 @@
  *
  */
 
+/* On native Windows, squid_mswin.h needs to know when we are compiling
+ * tools.c for the correct handling of FD<=>socket magic
+ */
+#define TOOLS_C
+
 #include "squid.h"
+
+#if LINUX_TPROXY
+#undef _POSIX_SOURCE
+/* Ugly glue to get around linux header madness colliding with glibc */
+#define _LINUX_TYPES_H
+#define _LINUX_FS_H
+typedef uint32_t __u32;
+#include <sys/capability.h>
+#endif
 
 #if HAVE_SYS_PRCTL_H
 #include <sys/prctl.h>
@@ -140,23 +154,23 @@ dumpMallocStats(void)
     mp = mallinfo();
     fprintf(debug_log, "Memory usage for %s via mallinfo():\n", appname);
     fprintf(debug_log, "\ttotal space in arena:  %6ld KB\n",
-	(long int) mp.arena >> 10);
+	(long int) (mp.arena >> 10));
     fprintf(debug_log, "\tOrdinary blocks:       %6ld KB %6ld blks\n",
-	(long int) mp.uordblks >> 10, (long int) mp.ordblks);
+	(long int) (mp.uordblks >> 10), (long int) mp.ordblks);
     fprintf(debug_log, "\tSmall blocks:          %6ld KB %6ld blks\n",
-	(long int) mp.usmblks >> 10, (long int) mp.smblks);
+	(long int) (mp.usmblks >> 10), (long int) mp.smblks);
     fprintf(debug_log, "\tHolding blocks:        %6ld KB %6ld blks\n",
-	(long int) mp.hblkhd >> 10, (long int) mp.hblks);
+	(long int) (mp.hblkhd >> 10), (long int) mp.hblks);
     fprintf(debug_log, "\tFree Small blocks:     %6ld KB\n",
-	(long int) mp.fsmblks >> 10);
+	(long int) (mp.fsmblks >> 10));
     fprintf(debug_log, "\tFree Ordinary blocks:  %6ld KB\n",
-	(long int) mp.fordblks >> 10);
-    t = mp.uordblks + mp.usmblks + mp.hblkhd;
+	(long int) (mp.fordblks >> 10));
+    t = (mp.uordblks + mp.usmblks + mp.hblkhd) >> 10;
     fprintf(debug_log, "\tTotal in use:          %6d KB %d%%\n",
-	t >> 10, percent(t, mp.arena));
-    t = mp.fsmblks + mp.fordblks;
+	t, percent(t, (mp.arena + mp.hblkhd) >> 10));
+    t = (mp.fsmblks + mp.fordblks) >> 10;
     fprintf(debug_log, "\tTotal free:            %6d KB %d%%\n",
-	t >> 10, percent(t, mp.arena));
+	t, percent(t, (mp.arena + mp.hblkhd) >> 10));
 #if HAVE_EXT_MALLINFO
     fprintf(debug_log, "\tmax size of small blocks:\t%d\n",
 	mp.mxfast);
@@ -291,7 +305,7 @@ death(int sig)
 #endif
 #endif /* PRINT_STACK_TRACE */
 
-#if SA_RESETHAND == 0
+#if SA_RESETHAND == 0 && !defined(_SQUID_MSWIN_)
     signal(SIGSEGV, SIG_DFL);
     signal(SIGBUS, SIG_DFL);
     signal(sig, SIG_DFL);
@@ -351,6 +365,27 @@ fatal_common(const char *message)
     if (!shutting_down) {
 	PrintRusage();
 	dumpMallocStats();
+#ifdef PRINT_STACK_TRACE
+#ifdef _SQUID_HPUX_
+	extern void U_STACK_TRACE(void);	/* link with -lcl */
+	fflush(debug_log);
+	dup2(fileno(debug_log), 2);
+	U_STACK_TRACE();
+#endif /* _SQUID_HPUX_ */
+#ifdef _SQUID_SOLARIS_
+	extern void opcom_stack_trace(void);	/* link with -lopcom_stack */
+	fflush(debug_log);
+	dup2(fileno(debug_log), fileno(stdout));
+	opcom_stack_trace();
+	fflush(stdout);
+#endif /* _SQUID_SOLARIS_ */
+#if HAVE_BACKTRACE_SYMBOLS_FD
+	static void *(callarray[8192]);
+	int n;
+	n = backtrace(callarray, 8192);
+	backtrace_symbols_fd(callarray, n, fileno(debug_log));
+#endif
+#endif /* PRINT_STACK_TRACE */
     }
 }
 
@@ -426,6 +461,7 @@ debug_trap(const char *message)
 void
 sig_child(int sig)
 {
+#ifndef _SQUID_MSWIN_
 #ifdef _SQUID_NEXT_
     union wait status;
 #else
@@ -446,6 +482,7 @@ sig_child(int sig)
     } while (pid > 0 || (pid < 0 && errno == EINTR));
     signal(sig, sig_child);
 #endif
+#endif /* _SQUID_MSWIN_ */
 }
 
 const char *
@@ -454,24 +491,32 @@ getMyHostname(void)
     LOCAL_ARRAY(char, host, SQUIDHOSTNAMELEN + 1);
     static int present = 0;
     const struct hostent *h = NULL;
+    struct in_addr sa;
     if (Config.visibleHostname != NULL)
 	return Config.visibleHostname;
     if (present)
 	return host;
     host[0] = '\0';
-    if (Config.Sockaddr.http->s.sin_addr.s_addr != any_addr.s_addr) {
-	/*
-	 * If the first http_port address has a specific address, try a
-	 * reverse DNS lookup on it.
-	 */
-	h = gethostbyaddr((char *) &Config.Sockaddr.http->s.sin_addr,
-	    sizeof(Config.Sockaddr.http->s.sin_addr), AF_INET);
+    memcpy(&sa, &any_addr, sizeof(sa));
+    if (Config.Sockaddr.http && sa.s_addr == any_addr.s_addr)
+	memcpy(&sa, &Config.Sockaddr.http->s.sin_addr, sizeof(sa));
+#if USE_SSL
+    if (Config.Sockaddr.https && sa.s_addr == any_addr.s_addr)
+	memcpy(&sa, &Config.Sockaddr.https->http.s.sin_addr, sizeof(sa));
+#endif
+    /*
+     * If the first http_port address has a specific address, try a
+     * reverse DNS lookup on it.
+     */
+    if (sa.s_addr != any_addr.s_addr) {
+	h = gethostbyaddr((char *) &sa,
+	    sizeof(sa), AF_INET);
 	if (h != NULL) {
 	    /* DNS lookup successful */
 	    /* use the official name from DNS lookup */
 	    xstrncpy(host, h->h_name, SQUIDHOSTNAMELEN);
 	    debug(50, 4) ("getMyHostname: resolved %s to '%s'\n",
-		inet_ntoa(Config.Sockaddr.http->s.sin_addr),
+		inet_ntoa(sa),
 		host);
 	    present = 1;
 	    if (strchr(host, '.'))
@@ -479,7 +524,7 @@ getMyHostname(void)
 
 	}
 	debug(50, 1) ("WARNING: failed to resolve %s to a fully qualified hostname\n",
-	    inet_ntoa(Config.Sockaddr.http->s.sin_addr));
+	    inet_ntoa(sa));
     }
     /*
      * Get the host name and store it in host to return
@@ -517,6 +562,33 @@ safeunlink(const char *s, int quiet)
     statCounter.syscalls.disk.unlinks++;
     if (unlink(s) < 0 && !quiet)
 	debug(50, 1) ("safeunlink: Couldn't delete %s: %s\n", s, xstrerror());
+}
+
+/* Should get called after any operation which may make the OS disable core dumps */
+void
+enableCoredumps(void)
+{
+    if (!Config.coredump_dir)
+	return;
+    if (strcmp(Config.coredump_dir, "none") == 0)
+	return;
+
+#if HAVE_PRCTL && defined(PR_SET_DUMPABLE)
+    /* Set Linux DUMPABLE flag */
+    if (prctl(PR_SET_DUMPABLE, 1, 0, 0, 0) != 0)
+	debug(50, 2) ("prctl: %s\n", xstrerror());
+#endif
+#if HAVE_SETRLIMIT && defined(RLIMIT_CORE)
+    /* Make sure coredumps are not limited */
+    {
+	struct rlimit rlim;
+
+	if (getrlimit(RLIMIT_CORE, &rlim) == 0) {
+	    rlim.rlim_cur = rlim.rlim_max;
+	    setrlimit(RLIMIT_CORE, &rlim);
+	}
+    }
+#endif
 }
 
 /* leave a privilegied section. (Give up any privilegies)
@@ -561,11 +633,25 @@ leave_suid(void)
     if (setuid(Config2.effectiveUserID) < 0)
 	debug(50, 0) ("ALERT: setuid: %s\n", xstrerror());
 #endif
-#if HAVE_PRCTL && defined(PR_SET_DUMPABLE)
-    /* Set Linux DUMPABLE flag */
-    if (Config.coredump_dir && prctl(PR_SET_DUMPABLE, 1, 0, 0, 0) != 0)
-	debug(50, 2) ("prctl: %s\n", xstrerror());
+#if LINUX_TPROXY
+    if (need_linux_tproxy) {
+	cap_user_header_t head = (cap_user_header_t) xcalloc(1, sizeof(cap_user_header_t));
+	cap_user_data_t cap = (cap_user_data_t) xcalloc(1, sizeof(cap_user_data_t));
+
+	head->version = _LINUX_CAPABILITY_VERSION;
+	head->pid = 0;
+	cap->inheritable = cap->permitted = cap->effective = (1 << CAP_NET_ADMIN) + (1 << CAP_NET_BIND_SERVICE) + (1 << CAP_NET_BROADCAST);
+	if (capset(head, cap) != 0) {
+	    xfree(head);
+	    xfree(cap);
+	    fatal("Error giving up capabilities");
+	}
+	xfree(head);
+	xfree(cap);
+    }
 #endif
+    /* Changing user ID usually blocks core dumps. Get them back! */
+    enableCoredumps();
 }
 
 /* Enter a privilegied section */
@@ -578,11 +664,7 @@ enter_suid(void)
 #else
     setuid(0);
 #endif
-#if HAVE_PRCTL && defined(PR_SET_DUMPABLE)
-    /* Set Linux DUMPABLE flag */
-    if (Config.coredump_dir && prctl(PR_SET_DUMPABLE, 1, 0, 0, 0) != 0)
-	debug(50, 2) ("prctl: %s\n", xstrerror());
-#endif
+    enableCoredumps();
 }
 
 /* Give up the posibility to gain privilegies.
@@ -594,7 +676,7 @@ no_suid(void)
     uid_t uid;
     leave_suid();
     uid = geteuid();
-    debug(21, 3) ("leave_suid: PID %d giving up root priveleges forever\n", (int) getpid());
+    debug(21, 3) ("no_suid: PID %d giving up root priveleges forever\n", (int) getpid());
 #if HAVE_SETRESUID
     if (setresuid(uid, uid, uid) < 0)
 	debug(50, 1) ("no_suid: setresuid: %s\n", xstrerror());
@@ -603,11 +685,7 @@ no_suid(void)
     if (setuid(uid) < 0)
 	debug(50, 1) ("no_suid: setuid: %s\n", xstrerror());
 #endif
-#if HAVE_PRCTL && defined(PR_SET_DUMPABLE)
-    /* Set Linux DUMPABLE flag */
-    if (Config.coredump_dir && prctl(PR_SET_DUMPABLE, 1, 0, 0, 0) != 0)
-	debug(50, 2) ("prctl: %s\n", xstrerror());
-#endif
+    enableCoredumps();
 }
 
 void
@@ -681,6 +759,7 @@ setMaxFD(void)
     /* try to use as many file descriptors as possible */
     /* System V uses RLIMIT_NOFILE and BSD uses RLIMIT_OFILE */
     struct rlimit rl;
+#if !defined(_SQUID_CYGWIN_)
 #if defined(RLIMIT_NOFILE)
     if (getrlimit(RLIMIT_NOFILE, &rl) < 0) {
 	debug(50, 0) ("setrlimit: RLIMIT_NOFILE: %s\n", xstrerror());
@@ -707,6 +786,7 @@ setMaxFD(void)
 	    fatal_dump(tmp_error_buf);
 	}
     }
+#endif
 #endif
 #else /* HAVE_SETRLIMIT */
     debug(21, 1) ("setMaxFD: Cannot increase: setrlimit() not supported on this system\n");
@@ -774,6 +854,34 @@ squid_signal(int sig, SIGHDLR * func, int flags)
     if (sigaction(sig, &sa, NULL) < 0)
 	debug(50, 0) ("sigaction: sig=%d func=%p: %s\n", sig, func, xstrerror());
 #else
+#ifdef _SQUID_MSWIN_
+/*
+ * On Windows, only SIGINT, SIGILL, SIGFPE, SIGTERM, SIGBREAK, SIGABRT and SIGSEGV
+ * signals are supported, so we must care of don't call signal() for other value.
+ * The SIGILL, SIGSEGV, and SIGTERM signals are not generated under Windows. They
+ * are defined only for ANSI compatibility, so both SIGSEGV and SIGBUS are emulated
+ * with an Exception Handler.
+ */
+    switch (sig) {
+    case SIGINT:
+    case SIGILL:
+    case SIGFPE:
+    case SIGTERM:
+    case SIGBREAK:
+    case SIGABRT:
+	break;
+    case SIGSEGV:
+	WIN32_ExceptionHandlerInit();
+	break;
+    case SIGBUS:
+	WIN32_ExceptionHandlerInit();
+	return;
+	break;			/* Not reached */
+    default:
+	return;
+	break;			/* Not reached */
+    }
+#endif /* _SQUID_MSWIN_ */
     signal(sig, func);
 #endif
 }
@@ -879,6 +987,18 @@ kb_incr(kb_t * k, squid_off_t v)
     k->bytes += v;
     k->kb += (k->bytes >> 10);
     k->bytes &= 0x3FF;
+    if (k->kb < 0) {
+	/*
+	 * If kb overflows and becomes negative then add powers of
+	 * 2 until it becomes positive again.
+	 */
+	kb_t x;
+	x.kb = 1 << 31;
+	while (x.kb && ((k->kb + x.kb) < 0)) {
+	    x.kb <<= 1;
+	}
+	k->kb += x.kb;
+    }
 }
 
 void
@@ -972,7 +1092,7 @@ int
 xrename(const char *from, const char *to)
 {
     debug(21, 2) ("xrename: renaming %s to %s\n", from, to);
-#if defined(_SQUID_OS2_) || defined(_SQUID_CYGWIN_) || defined(_SQUID_MSWIN_)
+#if defined(_SQUID_OS2_) || defined(_SQUID_WIN32_)
     remove(to);
 #endif
     if (0 == rename(from, to))
@@ -1028,7 +1148,7 @@ parseEtcHosts(void)
 	    Config.etcHostsPath, xstrerror());
 	return;
     }
-#if defined(_SQUID_MSWIN_) || defined(_SQUID_CYGWIN_)
+#ifdef _SQUID_WIN32_
     setmode(fileno(fp), O_TEXT);
 #endif
     while (fgets(buf, 1024, fp)) {	/* for each line */
@@ -1170,4 +1290,59 @@ strwordquote(MemBuf * mb, const char *str)
     }
     if (quoted)
 	memBufAppend(mb, "\"", 1);
+}
+
+int
+getMyPort(void)
+{
+    if (Config.Sockaddr.http)
+	return ntohs(Config.Sockaddr.http->s.sin_port);
+#if USE_SSL
+    if (Config.Sockaddr.https)
+	return ntohs(Config.Sockaddr.https->http.s.sin_port);
+#endif
+    fatal("No port defined");
+    return 0;			/* NOT REACHED */
+}
+
+/*
+ * Set the umask to at least the given mask. This is in addition
+ * to the umask set at startup
+ */
+void
+setUmask(mode_t mask)
+{
+    static mode_t orig_umask = ~0;
+    if (orig_umask == (mode_t) ~ 0) {
+	/* Unfortunately, there is no way to get the current
+	 * umask value without setting it.
+	 */
+	orig_umask = umask(mask);
+    }
+    umask(mask | orig_umask);
+}
+
+/*
+ * xusleep, as usleep but accepts longer pauses
+ */
+int
+xusleep(unsigned int usec)
+{
+    /* XXX emulation of usleep() */
+    struct timeval sl;
+    sl.tv_sec = usec / 1000000;
+    sl.tv_usec = usec % 1000000;
+    return select(0, NULL, NULL, NULL, &sl);
+}
+
+void
+keepCapabilities(void)
+{
+#if LINUX_TPROXY
+    if (need_linux_tproxy) {
+	if (prctl(PR_SET_KEEPCAPS, 1, 0, 0, 0)) {
+	    debug(1, 1) ("Error - tproxy support requires capability setting which has failed.  Continuing without tproxy support\n");
+	}
+    }
+#endif
 }

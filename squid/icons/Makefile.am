@@ -1,4 +1,4 @@
-# $Id: Makefile.am,v 1.5.2.3 2003/05/21 08:40:47 hno Exp $
+# $Id: Makefile.am,v 1.6 2005/05/17 16:56:35 hno Exp $
 #
 
 ICON1	=	anthony-binhex.gif

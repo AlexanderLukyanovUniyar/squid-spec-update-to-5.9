@@ -1,6 +1,6 @@
 
 /*
- * $Id: forward.c,v 1.82.2.17 2006/03/10 22:54:38 hno Exp $
+ * $Id: forward.c,v 1.117 2006/09/30 21:10:48 hno Exp $
  *
  * DEBUG: section 17    Request Forwarding
  * AUTHOR: Duane Wessels
@@ -35,6 +35,13 @@
 
 
 #include "squid.h"
+
+#if LINUX_NETFILTER
+#include <linux/netfilter_ipv4.h>
+#endif
+#if LINUX_TPROXY
+#include <linux/netfilter_ipv4/ip_tproxy.h>
+#endif
 
 static PSC fwdStartComplete;
 static void fwdDispatch(FwdState *);
@@ -103,6 +110,8 @@ fwdStateFree(FwdState * fwdState)
 	    storeReleaseRequest(e);
 	}
     }
+    if (EBIT_TEST(e->flags, ENTRY_DEFER_READ))
+	storeResetDefer(e);
     if (storePendingNClients(e) > 0)
 	assert(!EBIT_TEST(e->flags, ENTRY_FWD_HDR_WAIT));
     p = fwdStateServerPeer(fwdState);
@@ -111,7 +120,7 @@ fwdStateFree(FwdState * fwdState)
     fwdState->request = NULL;
     if (fwdState->err)
 	errorStateFree(fwdState->err);
-    storeUnregisterAbort(e);
+    storeClientUnregisterAbort(e);
     storeUnlockObject(e);
     fwdState->entry = NULL;
     sfd = fwdState->server_fd;
@@ -180,6 +189,8 @@ fwdServerClosed(int fd, void *data)
     debug(17, 2) ("fwdServerClosed: FD %d %s\n", fd, storeUrl(fwdState->entry));
     assert(fwdState->server_fd == fd);
     fwdState->server_fd = -1;
+    if (EBIT_TEST(fwdState->entry->flags, ENTRY_DEFER_READ))
+	storeResetDefer(fwdState->entry);
     if (fwdCheckRetry(fwdState)) {
 	int originserver = (fwdState->servers->peer == NULL);
 	debug(17, 3) ("fwdServerClosed: re-forwarding (%d tries, %d secs)\n",
@@ -206,25 +217,121 @@ fwdServerClosed(int fd, void *data)
 	eventAdd("fwdConnectStart", fwdConnectStart, fwdState, originserver ? 0.05 : 0.005, 0);
 	return;
     }
-    if (!fwdState->err && shutting_down) {
-	fwdState->err = errorCon(ERR_SHUTTING_DOWN, HTTP_SERVICE_UNAVAILABLE);
-	fwdState->err->request = requestLink(fwdState->request);
-    }
+    if (!fwdState->err && shutting_down)
+	fwdState->err = errorCon(ERR_SHUTTING_DOWN, HTTP_SERVICE_UNAVAILABLE, fwdState->request);
     fwdStateFree(fwdState);
 }
+
+#if USE_SSL
+static void
+fwdNegotiateSSL(int fd, void *data)
+{
+    FwdState *fwdState = data;
+    FwdServer *fs = fwdState->servers;
+    SSL *ssl = fd_table[fd].ssl;
+    int ret;
+    ErrorState *err;
+    request_t *request = fwdState->request;
+
+    errno = 0;
+    ERR_clear_error();
+    if ((ret = SSL_connect(ssl)) <= 0) {
+	int ssl_error = SSL_get_error(ssl, ret);
+	switch (ssl_error) {
+	case SSL_ERROR_WANT_READ:
+	    commSetSelect(fd, COMM_SELECT_READ, fwdNegotiateSSL, fwdState, 0);
+	    return;
+	case SSL_ERROR_WANT_WRITE:
+	    commSetSelect(fd, COMM_SELECT_WRITE, fwdNegotiateSSL, fwdState, 0);
+	    return;
+	default:
+	    debug(81, 1) ("fwdNegotiateSSL: Error negotiating SSL connection on FD %d: %s (%d/%d/%d)\n", fd, ERR_error_string(ERR_get_error(), NULL), ssl_error, ret, errno);
+	    err = errorCon(ERR_CONNECT_FAIL, HTTP_SERVICE_UNAVAILABLE, request);
+#ifdef EPROTO
+	    err->xerrno = EPROTO;
+#else
+	    err->xerrno = EACCES;
+#endif
+	    fwdFail(fwdState, err);
+	    if (fs->peer) {
+		peerConnectFailed(fs->peer);
+		fs->peer->stats.conn_open--;
+	    }
+	    comm_close(fd);
+	    return;
+	}
+    }
+    if (fs->peer && !SSL_session_reused(ssl)) {
+	if (fs->peer->sslSession)
+	    SSL_SESSION_free(fs->peer->sslSession);
+	fs->peer->sslSession = SSL_get1_session(ssl);
+    }
+#if NOT_YET
+    if (verify_domain) {
+	char *host;
+	STACK_OF(GENERAL_NAME) * altnames;
+	if (fs->peer) {
+	    if (fs->peer->ssldomain)
+		host = fs->peer->ssldomain;
+	    else
+		host = fs->peer->host;
+	} else {
+	    host = fs->request->host;
+	}
+	if (!ssl_verify_domain(host, ssl)) {
+	    debug(17, 1) ("Warning: SSL certificate does not match host name '%s'\n", host);
+	}
+    }
+#endif
+    fwdDispatch(fwdState);
+}
+
+static void
+fwdInitiateSSL(FwdState * fwdState)
+{
+    FwdServer *fs = fwdState->servers;
+    int fd = fwdState->server_fd;
+    SSL *ssl;
+    SSL_CTX *sslContext = NULL;
+    peer *peer = fs->peer;
+    if (peer) {
+	assert(peer->use_ssl);
+	sslContext = peer->sslContext;
+    } else {
+	sslContext = Config.ssl_client.sslContext;
+    }
+    assert(sslContext);
+    if ((ssl = SSL_new(sslContext)) == NULL) {
+	ErrorState *err;
+	debug(83, 1) ("fwdInitiateSSL: Error allocating handle: %s\n",
+	    ERR_error_string(ERR_get_error(), NULL));
+	err = errorCon(ERR_SOCKET_FAILURE, HTTP_INTERNAL_SERVER_ERROR, fwdState->request);
+	err->xerrno = errno;
+	fwdFail(fwdState, err);
+	fwdStateFree(fwdState);
+	return;
+    }
+    SSL_set_fd(ssl, fd);
+    if (peer) {
+	if (peer->sslSession)
+	    SSL_set_session(ssl, peer->sslSession);
+    }
+    fd_table[fd].ssl = ssl;
+    fd_table[fd].read_method = &ssl_read_method;
+    fd_table[fd].write_method = &ssl_write_method;
+    fwdNegotiateSSL(fd, fwdState);
+}
+#endif
 
 static void
 fwdConnectDone(int server_fd, int status, void *data)
 {
     FwdState *fwdState = data;
-    static FwdState *current = NULL;
     FwdServer *fs = fwdState->servers;
     ErrorState *err;
     request_t *request = fwdState->request;
-    assert(current != fwdState);
-    current = fwdState;
     assert(fwdState->server_fd == server_fd);
-    if (Config.onoff.log_ip_on_direct && status != COMM_ERR_DNS && fs->code == DIRECT)
+    if (Config.onoff.log_ip_on_direct && status != COMM_ERR_DNS && fs->code == HIER_DIRECT)
 	hierarchyNote(&fwdState->request->hier, fs->code, fd_table[server_fd].ipaddr);
     if (status == COMM_ERR_DNS) {
 	/*
@@ -236,13 +343,13 @@ fwdConnectDone(int server_fd, int status, void *data)
 	    fwdState->flags.dont_retry = 1;
 	debug(17, 4) ("fwdConnectDone: Unknown host: %s\n",
 	    request->host);
-	err = errorCon(ERR_DNS_FAIL, HTTP_SERVICE_UNAVAILABLE);
+	err = errorCon(ERR_DNS_FAIL, HTTP_SERVICE_UNAVAILABLE, fwdState->request);
 	err->dnsserver_msg = xstrdup(dns_error_message);
 	fwdFail(fwdState, err);
 	comm_close(server_fd);
     } else if (status != COMM_OK) {
 	assert(fs);
-	err = errorCon(ERR_CONNECT_FAIL, HTTP_SERVICE_UNAVAILABLE);
+	err = errorCon(ERR_CONNECT_FAIL, HTTP_SERVICE_UNAVAILABLE, fwdState->request);
 	err->xerrno = errno;
 	fwdFail(fwdState, err);
 	if (fs->peer)
@@ -252,11 +359,17 @@ fwdConnectDone(int server_fd, int status, void *data)
 	debug(17, 3) ("fwdConnectDone: FD %d: '%s'\n", server_fd, storeUrl(fwdState->entry));
 	fd_note(server_fd, storeUrl(fwdState->entry));
 	fd_table[server_fd].uses++;
-	if (fs->peer)
+	if (fd_table[server_fd].uses == 1 && fs->peer)
 	    peerConnectSucceded(fs->peer);
+#if USE_SSL
+	if ((fs->peer && fs->peer->use_ssl) ||
+	    (!fs->peer && request->protocol == PROTO_HTTPS)) {
+	    fwdInitiateSSL(fwdState);
+	    return;
+	}
+#endif
 	fwdDispatch(fwdState);
     }
-    current = NULL;
 }
 
 static void
@@ -268,10 +381,10 @@ fwdConnectTimeout(int fd, void *data)
     ErrorState *err;
     debug(17, 2) ("fwdConnectTimeout: FD %d: '%s'\n", fd, storeUrl(entry));
     assert(fd == fwdState->server_fd);
-    if (Config.onoff.log_ip_on_direct && fs->code == DIRECT && fd_table[fd].ipaddr[0])
+    if (Config.onoff.log_ip_on_direct && fs->code == HIER_DIRECT && fd_table[fd].ipaddr[0])
 	hierarchyNote(&fwdState->request->hier, fs->code, fd_table[fd].ipaddr);
     if (entry->mem_obj->inmem_hi == 0) {
-	err = errorCon(ERR_CONNECT_FAIL, HTTP_GATEWAY_TIMEOUT);
+	err = errorCon(ERR_CONNECT_FAIL, HTTP_GATEWAY_TIMEOUT, fwdState->request);
 	err->xerrno = ETIMEDOUT;
 	fwdFail(fwdState, err);
 	/*
@@ -345,26 +458,30 @@ fwdConnectStart(void *data)
     ErrorState *err;
     FwdServer *fs = fwdState->servers;
     const char *host;
+    const char *name;
     unsigned short port;
+    const char *domain = NULL;
     int ctimeout;
     int ftimeout = Config.Timeout.forward - (squid_curtime - fwdState->start);
     struct in_addr outgoing;
     unsigned short tos;
+#if LINUX_TPROXY
+    struct in_tproxy itp;
+#endif
+
     assert(fs);
     assert(fwdState->server_fd == -1);
     debug(17, 3) ("fwdConnectStart: %s\n", url);
     if (fs->peer) {
 	host = fs->peer->host;
+	name = fs->peer->name;
 	port = fs->peer->http_port;
+	if (fs->peer->options.originserver)
+	    domain = fwdState->request->host;
 	ctimeout = fs->peer->connect_timeout > 0 ? fs->peer->connect_timeout
 	    : Config.Timeout.peer_connect;
-    } else if (fwdState->request->flags.accelerated &&
-	Config.Accel.single_host && Config.Accel.host) {
-	host = Config.Accel.host;
-	port = Config.Accel.port;
-	ctimeout = Config.Timeout.connect;
     } else {
-	host = fwdState->request->host;
+	host = name = fwdState->request->host;
 	port = fwdState->request->port;
 	ctimeout = Config.Timeout.connect;
     }
@@ -372,7 +489,39 @@ fwdConnectStart(void *data)
 	ftimeout = 5;
     if (ftimeout < ctimeout)
 	ctimeout = ftimeout;
-    if ((fd = pconnPop(host, port)) >= 0) {
+    fwdState->request->flags.pinned = 0;
+    if (fs->code == PINNED) {
+	int auth;
+	fd = clientGetPinnedConnection(fwdState->request->pinned_connection, fwdState->request, fs->peer, &auth);
+	if (fd >= 0) {
+#if 0
+	    if (!fs->peer)
+		fs->code = HIER_DIRECT;
+#endif
+	    fwdState->server_fd = fd;
+	    fwdState->n_tries++;
+	    fwdState->request->flags.pinned = 1;
+	    if (auth)
+		fwdState->request->flags.auth = 1;
+	    comm_add_close_handler(fd, fwdServerClosed, fwdState);
+	    fwdConnectDone(fd, COMM_OK, fwdState);
+	    return;
+	}
+	/* Failure. Fall back on next path */
+	cbdataUnlock(fwdState->request->pinned_connection);
+	fwdState->request->pinned_connection = NULL;
+	fwdState->servers = fs->next;
+	fwdServerFree(fs);
+	fwdConnectStart(fwdState);
+	return;
+    }
+#if LINUX_TPROXY
+    if (fd == -1 && fwdState->request->flags.tproxy)
+	fd = pconnPop(name, port, domain, &fwdState->request->client_addr, 0);
+#endif
+    if (fd == -1)
+	fd = pconnPop(name, port, domain, NULL, 0);
+    if (fd != -1) {
 	if (fwdCheckRetriable(fwdState)) {
 	    debug(17, 3) ("fwdConnectStart: reusing pconn FD %d\n", fd);
 	    fwdState->server_fd = fd;
@@ -380,6 +529,12 @@ fwdConnectStart(void *data)
 	    if (!fs->peer)
 		fwdState->origin_tries++;
 	    comm_add_close_handler(fd, fwdServerClosed, fwdState);
+	    if (fs->peer)
+		hierarchyNote(&fwdState->request->hier, fs->code, fs->peer->host);
+	    else if (Config.onoff.log_ip_on_direct && fs->code == HIER_DIRECT)
+		hierarchyNote(&fwdState->request->hier, fs->code, fd_table[fd].ipaddr);
+	    else
+		hierarchyNote(&fwdState->request->hier, fs->code, name);
 	    fwdConnectDone(fd, COMM_OK, fwdState);
 	    return;
 	} else {
@@ -399,7 +554,7 @@ fwdConnectStart(void *data)
     debug(17, 3) ("fwdConnectStart: got addr %s, tos %d\n",
 	inet_ntoa(outgoing), tos);
     fd = comm_openex(SOCK_STREAM,
-	0,
+	IPPROTO_TCP,
 	outgoing,
 	0,
 	COMM_NONBLOCKING,
@@ -407,7 +562,7 @@ fwdConnectStart(void *data)
 	url);
     if (fd < 0) {
 	debug(50, 4) ("fwdConnectStart: %s\n", xstrerror());
-	err = errorCon(ERR_SOCKET_FAILURE, HTTP_INTERNAL_SERVER_ERROR);
+	err = errorCon(ERR_SOCKET_FAILURE, HTTP_INTERNAL_SERVER_ERROR, fwdState->request);
 	err->xerrno = errno;
 	fwdFail(fwdState, err);
 	fwdStateFree(fwdState);
@@ -432,10 +587,37 @@ fwdConnectStart(void *data)
 	ctimeout,
 	fwdConnectTimeout,
 	fwdState);
-    if (fs->peer)
+    if (fs->peer) {
 	hierarchyNote(&fwdState->request->hier, fs->code, fs->peer->host);
-    else
+    } else {
+#if LINUX_TPROXY
+	if (fwdState->request->flags.tproxy) {
+
+	    itp.v.addr.faddr.s_addr = fwdState->src.sin_addr.s_addr;
+	    itp.v.addr.fport = 0;
+
+	    /* If these syscalls fail then we just fallback to connecting
+	     * normally by simply ignoring the errors...
+	     */
+	    itp.op = TPROXY_ASSIGN;
+	    if (setsockopt(fd, SOL_IP, IP_TPROXY, &itp, sizeof(itp)) == -1) {
+		debug(20, 1) ("tproxy ip=%s,0x%x,port=%d ERROR ASSIGN\n",
+		    inet_ntoa(itp.v.addr.faddr),
+		    itp.v.addr.faddr.s_addr,
+		    itp.v.addr.fport);
+	    } else {
+		itp.op = TPROXY_FLAGS;
+		itp.v.flags = ITP_CONNECT;
+		if (setsockopt(fd, SOL_IP, IP_TPROXY, &itp, sizeof(itp)) == -1) {
+		    debug(20, 1) ("tproxy ip=%x,port=%d ERROR CONNECT\n",
+			itp.v.addr.faddr.s_addr,
+			itp.v.addr.fport);
+		}
+	    }
+	}
+#endif
 	hierarchyNote(&fwdState->request->hier, fs->code, fwdState->request->host);
+    }
     commConnectStart(fd, host, port, fwdConnectDone, fwdState);
 }
 
@@ -457,7 +639,7 @@ fwdStartFail(FwdState * fwdState)
 {
     ErrorState *err;
     debug(17, 3) ("fwdStartFail: %s\n", storeUrl(fwdState->entry));
-    err = errorCon(ERR_CANNOT_FORWARD, HTTP_SERVICE_UNAVAILABLE);
+    err = errorCon(ERR_CANNOT_FORWARD, HTTP_SERVICE_UNAVAILABLE, fwdState->request);
     err->xerrno = errno;
     fwdFail(fwdState, err);
     fwdStateFree(fwdState);
@@ -470,28 +652,37 @@ fwdDispatch(FwdState * fwdState)
     request_t *request = fwdState->request;
     StoreEntry *entry = fwdState->entry;
     ErrorState *err;
+    int server_fd = fwdState->server_fd;
     debug(17, 3) ("fwdDispatch: FD %d: Fetching '%s %s'\n",
 	fwdState->client_fd,
 	RequestMethodStr[request->method],
 	storeUrl(entry));
-    /*assert(!EBIT_TEST(entry->flags, ENTRY_DISPATCHED)); */
-    assert(entry->ping_status != PING_WAITING);
-    assert(entry->lock_count);
-    EBIT_SET(entry->flags, ENTRY_DISPATCHED);
-    netdbPingSite(request->host);
     /*
      * Assert that server_fd is set.  This is to guarantee that fwdState
      * is attached to something and will be deallocated when server_fd
      * is closed.
      */
-    assert(fwdState->server_fd > -1);
+    assert(server_fd > -1);
+    /*assert(!EBIT_TEST(entry->flags, ENTRY_DISPATCHED)); */
+    assert(entry->ping_status != PING_WAITING);
+    assert(entry->lock_count);
+    EBIT_SET(entry->flags, ENTRY_DISPATCHED);
+    netdbPingSite(request->host);
+    entry->mem_obj->refresh_timestamp = squid_curtime;
     if (fwdState->servers && (p = fwdState->servers->peer)) {
 	p->stats.fetches++;
 	fwdState->request->peer_login = p->login;
+	fwdState->request->peer_domain = p->domain;
 	httpStart(fwdState);
     } else {
 	fwdState->request->peer_login = NULL;
+	fwdState->request->peer_domain = NULL;
 	switch (request->protocol) {
+#if USE_SSL
+	case PROTO_HTTPS:
+	    httpStart(fwdState);
+	    break;
+#endif
 	case PROTO_HTTP:
 	    httpStart(fwdState);
 	    break;
@@ -515,7 +706,7 @@ fwdDispatch(FwdState * fwdState)
 	default:
 	    debug(17, 1) ("fwdDispatch: Cannot retrieve '%s'\n",
 		storeUrl(entry));
-	    err = errorCon(ERR_UNSUP_REQ, HTTP_BAD_REQUEST);
+	    err = errorCon(ERR_UNSUP_REQ, HTTP_BAD_REQUEST, fwdState->request);
 	    fwdFail(fwdState, err);
 	    /*
 	     * Force a persistent connection to be closed because
@@ -581,6 +772,29 @@ fwdServersFree(FwdServer ** FS)
 }
 
 void
+fwdStartPeer(peer * p, StoreEntry * e, request_t * r)
+{
+    FwdState *fwdState;
+    FwdServer *peer = NULL;
+    debug(17, 3) ("fwdStartPeer: '%s'\n", storeUrl(e));
+    e->mem_obj->request = requestLink(r);
+#if URL_CHECKSUM_DEBUG
+    assert(e->mem_obj->chksum == url_checksum(e->mem_obj->url));
+#endif
+    fwdState = cbdataAlloc(FwdState);
+    fwdState->entry = e;
+    fwdState->client_fd = -1;
+    fwdState->server_fd = -1;
+    fwdState->request = requestLink(r);
+    fwdState->start = squid_curtime;
+    storeLockObject(e);
+    EBIT_SET(e->flags, ENTRY_FWD_HDR_WAIT);
+    storeRegisterAbort(e, fwdAbort, fwdState);
+    peerAddFwdServer(&peer, p, HIER_DIRECT);
+    fwdStartComplete(peer, fwdState);
+}
+
+void
 fwdStart(int fd, StoreEntry * e, request_t * r)
 {
     FwdState *fwdState;
@@ -607,22 +821,20 @@ fwdStart(int fd, StoreEntry * e, request_t * r)
 	    page_id = aclGetDenyInfoPage(&Config.denyInfoList, AclMatchedName);
 	    if (page_id == ERR_NONE)
 		page_id = ERR_FORWARDING_DENIED;
-	    err = errorCon(page_id, HTTP_FORBIDDEN);
-	    err->request = requestLink(r);
-	    err->src_addr = r->client_addr;
+	    err = errorCon(page_id, HTTP_FORBIDDEN, r);
 	    errorAppendEntry(e, err);
 	    return;
 	}
     }
     debug(17, 3) ("fwdStart: '%s'\n", storeUrl(e));
-    e->mem_obj->request = requestLink(r);
+    if (!e->mem_obj->request)
+	e->mem_obj->request = requestLink(r);
 #if URL_CHECKSUM_DEBUG
     assert(e->mem_obj->chksum == url_checksum(e->mem_obj->url));
 #endif
     if (shutting_down) {
 	/* more yuck */
-	err = errorCon(ERR_SHUTTING_DOWN, HTTP_SERVICE_UNAVAILABLE);
-	err->request = requestLink(r);
+	err = errorCon(ERR_SHUTTING_DOWN, HTTP_SERVICE_UNAVAILABLE, r);
 	errorAppendEntry(e, err);
 	return;
     }
@@ -648,6 +860,15 @@ fwdStart(int fd, StoreEntry * e, request_t * r)
     fwdState->server_fd = -1;
     fwdState->request = requestLink(r);
     fwdState->start = squid_curtime;
+
+#if LINUX_TPROXY
+    /* If we need to transparently proxy the request
+     * then we need the client source address and port */
+    fwdState->src.sin_family = AF_INET;
+    fwdState->src.sin_addr = r->client_addr;
+    fwdState->src.sin_port = r->client_port;
+#endif
+
     storeLockObject(e);
     EBIT_SET(e->flags, ENTRY_FWD_HDR_WAIT);
     storeRegisterAbort(e, fwdAbort, fwdState);
@@ -672,8 +893,14 @@ fwdCheckDeferRead(int fd, void *data)
 	(void) 0;
     else {
 	int i = delayMostBytesWanted(mem, INT_MAX);
-	if (0 == i)
+	if (0 == i) {
+	    /* No storeDeferRead here as it's not store dependent.
+	     * Will get changed the day delay pools interact nicely
+	     * with the store..
+	     */
+	    commDeferFD(fd);
 	    return 1;
+	}
 	/* was: rc = -(rc != INT_MAX); */
 	else if (INT_MAX == i)
 	    rc = 0;
@@ -681,6 +908,10 @@ fwdCheckDeferRead(int fd, void *data)
 	    rc = -1;
     }
 #endif
+    if (EBIT_TEST(e->flags, ENTRY_DEFER_READ)) {
+	commDeferFD(mem->serverfd);
+	return 1;
+    }
     if (EBIT_TEST(e->flags, ENTRY_FWD_HDR_WAIT))
 	return rc;
     if (EBIT_TEST(e->flags, RELEASE_REQUEST)) {
@@ -689,11 +920,15 @@ fwdCheckDeferRead(int fd, void *data)
 	 * is disk clients pending on a too large object being fetched and a
 	 * few other corner cases.
 	 */
-	if (mem->inmem_hi - mem->inmem_lo > SM_PAGE_SIZE + Config.Store.maxInMemObjSize + READ_AHEAD_GAP)
+	if (fd >= 0 && mem->inmem_hi - mem->inmem_lo > SM_PAGE_SIZE + Config.Store.maxInMemObjSize + Config.readAheadGap) {
+	    storeDeferRead(e, fd);
 	    return 1;
+	}
     }
-    if (mem->inmem_hi - storeLowestMemReaderOffset(e) > READ_AHEAD_GAP)
+    if (fd >= 0 && mem->inmem_hi - storeLowestMemReaderOffset(e) > Config.readAheadGap) {
+	storeDeferRead(e, fd);
 	return 1;
+    }
     return rc;
 }
 
@@ -741,6 +976,9 @@ fwdUnregister(int fd, FwdState * fwdState)
     debug(17, 3) ("fwdUnregister: %s\n", storeUrl(fwdState->entry));
     assert(fd == fwdState->server_fd);
     assert(fd > -1);
+    commSetDefer(fd, NULL, NULL);
+    if (EBIT_TEST(fwdState->entry->flags, ENTRY_DEFER_READ))
+	storeResumeRead(fwdState->entry);
     comm_remove_close_handler(fd, fwdServerClosed, fwdState);
     fwdState->server_fd = -1;
 }

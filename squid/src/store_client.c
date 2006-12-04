@@ -1,6 +1,6 @@
 
 /*
- * $Id: store_client.c,v 1.105.2.4 2005/04/19 22:19:27 hno Exp $
+ * $Id: store_client.c,v 1.123 2006/06/05 22:47:01 hno Exp $
  *
  * DEBUG: section 20    Storage Manager Client-Side Interface
  * AUTHOR: Duane Wessels
@@ -50,31 +50,15 @@ static store_client_t storeClientType(StoreEntry *);
 static int CheckQuickAbort2(StoreEntry * entry);
 static void CheckQuickAbort(StoreEntry * entry);
 
-/* check if there is any client waiting for this object at all */
-/* return 1 if there is at least one client */
-int
-storeClientWaiting(const StoreEntry * e)
-{
-    MemObject *mem = e->mem_obj;
-    dlink_node *node;
-    store_client *sc;
-    for (node = mem->clients.head; node; node = node->next) {
-	sc = node->data;
-	if (sc->callback_data != NULL)
-	    return 1;
-    }
-    return 0;
-}
-
 #if STORE_CLIENT_LIST_DEBUG
-store_client *
+static store_client *
 storeClientListSearch(const MemObject * mem, void *data)
 {
     dlink_node *node;
     store_client *sc = NULL;
     for (node = mem->clients.head; node; node = node->next) {
 	sc = node->data;
-	if (sc->callback_data == data)
+	if (sc->owner == data)
 	    return sc;
     }
     return NULL;
@@ -122,25 +106,25 @@ storeClientType(StoreEntry * e)
 
 /* add client with fd to client list */
 store_client *
-storeClientListAdd(StoreEntry * e, void *data)
+storeClientRegister(StoreEntry * e, void *owner)
 {
     MemObject *mem = e->mem_obj;
     store_client *sc;
     assert(mem);
-#if STORE_CLIENT_LIST_DEBUG
-    if (storeClientListSearch(mem, data) != NULL)
-	assert(1 == 0);		/* XXX die! */
-#endif
     e->refcount++;
     mem->nclients++;
     sc = cbdataAlloc(store_client);
-    cbdataLock(data);		/* locked while we point to it */
-    sc->callback_data = data;
+    sc->callback_data = NULL;
     sc->seen_offset = 0;
     sc->copy_offset = 0;
     sc->flags.disk_io_pending = 0;
     sc->entry = e;
+    storeLockObject(sc->entry);
     sc->type = storeClientType(e);
+#if STORE_CLIENT_LIST_DEBUG
+    assert(!storeClientListSearch(mem, owner));
+    sc->owner = owner;
+#endif
     dlinkAdd(sc, &sc->node, &mem->clients);
 #if DELAY_POOLS
     sc->delay_id = 0;
@@ -152,12 +136,15 @@ static void
 storeClientCallback(store_client * sc, ssize_t sz)
 {
     STCB *callback = sc->callback;
+    void *cbdata = sc->callback_data;
     char *buf = sc->copy_buf;
     assert(sc->callback);
     sc->callback = NULL;
+    sc->callback_data = NULL;
     sc->copy_buf = NULL;
-    if (cbdataValid(sc->callback_data))
-	callback(sc->callback_data, buf, sz);
+    if (cbdataValid(cbdata))
+	callback(cbdata, buf, sz);
+    cbdataUnlock(cbdata);
 }
 
 static void
@@ -198,9 +185,17 @@ storeClientCopy(store_client * sc,
     assert(sc->entry == e);
     sc->seen_offset = seen_offset;
     sc->callback = callback;
+    sc->callback_data = data;
+    cbdataLock(sc->callback_data);
     sc->copy_buf = buf;
     sc->copy_size = size;
     sc->copy_offset = copy_offset;
+    /* If the read is being deferred, run swapout in case this client has the 
+     * lowest seen_offset. storeSwapOut() frees the memory and clears the 
+     * ENTRY_DEFER_READ bit if necessary */
+    if (EBIT_TEST(e->flags, ENTRY_DEFER_READ)) {
+	storeSwapOut(e);
+    }
     storeClientCopy2(e, sc);
 }
 
@@ -271,6 +266,15 @@ storeClientCopy3(StoreEntry * e, store_client * sc)
     if (e->store_status == STORE_PENDING && sc->seen_offset >= mem->inmem_hi) {
 	/* client has already seen this, wait for more */
 	debug(20, 3) ("storeClientCopy3: Waiting for more\n");
+
+	/* If the read is backed off and all clients have seen all the data in
+	 * memory, re-poll the fd */
+	if ((EBIT_TEST(e->flags, ENTRY_DEFER_READ)) &&
+	    (storeLowestMemReaderOffset(e) == mem->inmem_hi)) {
+	    debug(20, 3) ("storeClientCopy3: %s - clearing ENTRY_DEFER_READ\n", e->mem_obj->url);
+	    /* Clear the flag and re-poll the fd */
+	    storeResumeRead(e);
+	}
 	return;
     }
     /*
@@ -428,6 +432,8 @@ storeClientReadHeader(void *data, const char *buf, ssize_t len)
 		break;
 	    }
 	    break;
+	case STORE_META_OBJSIZE:
+	    break;
 	case STORE_META_STD:
 	case STORE_META_STD_LFS:
 	    break;
@@ -441,7 +447,7 @@ storeClientReadHeader(void *data, const char *buf, ssize_t len)
 	    }
 	    break;
 	default:
-	    debug(20, 1) ("WARNING: got unused STORE_META type %d\n", t->type);
+	    debug(20, 2) ("WARNING: got unused STORE_META type %d\n", t->type);
 	    break;
 	}
     }
@@ -497,17 +503,16 @@ storeClientCopyPending(store_client * sc, StoreEntry * e, void *data)
  * passed sc. Yet.
  */
 int
-storeUnregister(store_client * sc, StoreEntry * e, void *data)
+storeClientUnregister(store_client * sc, StoreEntry * e, void *owner)
 {
     MemObject *mem = e->mem_obj;
-#if STORE_CLIENT_LIST_DEBUG
-    assert(sc == storeClientListSearch(e->mem_obj, data));
-#endif
-    if (mem == NULL)
-	return 0;
-    debug(20, 3) ("storeUnregister: called for '%s'\n", storeKeyText(e->hash.key));
     if (sc == NULL)
 	return 0;
+    debug(20, 3) ("storeClientUnregister: called for '%s'\n", storeKeyText(e->hash.key));
+#if STORE_CLIENT_LIST_DEBUG
+    assert(sc == storeClientListSearch(e->mem_obj, owner));
+#endif
+    assert(sc->entry == e);
     if (mem->clients.head == NULL)
 	return 0;
     dlinkDelete(&sc->node, &mem->clients);
@@ -522,20 +527,19 @@ storeUnregister(store_client * sc, StoreEntry * e, void *data)
     }
     if (NULL != sc->callback) {
 	/* callback with ssize = -1 to indicate unexpected termination */
-	debug(20, 3) ("storeUnregister: store_client for %s has a callback\n",
+	debug(20, 3) ("storeClientUnregister: store_client for %s has a callback\n",
 	    mem->url);
 	storeClientCallback(sc, -1);
     }
 #if DELAY_POOLS
     delayUnregisterDelayIdPtr(&sc->delay_id);
 #endif
-    cbdataUnlock(sc->callback_data);	/* we're done with it now */
-    /*assert(!sc->flags.disk_io_pending); */
-    cbdataFree(sc);
-    assert(e->lock_count > 0);
     storeSwapOutMaintainMemObject(e);
     if (mem->nclients == 0)
 	CheckQuickAbort(e);
+    storeUnlockObject(sc->entry);
+    sc->entry = NULL;
+    cbdataFree(sc);
     return 1;
 }
 
@@ -552,8 +556,6 @@ storeLowestMemReaderOffset(const StoreEntry * entry)
     for (node = mem->clients.head; node; node = nx) {
 	sc = node->data;
 	nx = node->next;
-	if (sc->callback_data == NULL)	/* open slot */
-	    continue;
 	if (sc->copy_offset > highest)
 	    highest = sc->copy_offset;
 	if (mem->swapout.sio != NULL && sc->type != STORE_MEM_CLIENT)
@@ -582,8 +584,6 @@ InvokeHandlers(StoreEntry * e)
 	sc = node->data;
 	nx = node->next;
 	debug(20, 3) ("InvokeHandlers: checking client #%d\n", i++);
-	if (sc->callback_data == NULL)
-	    continue;
 	if (sc->callback == NULL)
 	    continue;
 	if (sc->flags.disk_io_pending)

@@ -1,6 +1,6 @@
 
 /*
- * $Id: urn.c,v 1.68.2.4 2005/09/01 22:14:45 hno Exp $
+ * $Id: urn.c,v 1.80 2006/08/25 12:26:07 serassio Exp $
  *
  * DEBUG: section 52    URN Parsing
  * AUTHOR: Kostas Anagnostakis
@@ -72,7 +72,7 @@ urnFindMinRtt(url_entry * urls, method_t m, int *rtt_ret)
     assert(urls != NULL);
     for (i = 0; NULL != urls[i].url; i++)
 	urlcnt++;
-    debug(53, 3) ("urnFindMinRtt: Counted %d URLs\n", i);
+    debug(52, 3) ("urnFindMinRtt: Counted %d URLs\n", i);
     if (1 == urlcnt) {
 	debug(52, 3) ("urnFindMinRtt: Only one URL - return it!\n");
 	return urls;
@@ -130,20 +130,19 @@ urnStart(request_t * r, StoreEntry * e)
     urlres_r = urlParse(METHOD_GET, urlres);
     if (urlres_r == NULL) {
 	debug(52, 3) ("urnStart: Bad uri-res URL %s\n", urlres);
-	err = errorCon(ERR_URN_RESOLVE, HTTP_NOT_FOUND);
+	err = errorCon(ERR_URN_RESOLVE, HTTP_NOT_FOUND, r);
 	err->url = xstrdup(urlres);
-	err->request = requestLink(r);
 	errorAppendEntry(e, err);
 	return;
     }
     httpHeaderPutStr(&urlres_r->header, HDR_ACCEPT, "text/plain");
     if ((urlres_e = storeGetPublic(urlres, METHOD_GET)) == NULL) {
 	urlres_e = storeCreateEntry(urlres, urlres, null_request_flags, METHOD_GET);
-	urnState->sc = storeClientListAdd(urlres_e, urnState);
+	urnState->sc = storeClientRegister(urlres_e, urnState);
 	fwdStart(-1, urlres_e, urlres_r);
     } else {
 	storeLockObject(urlres_e);
-	urnState->sc = storeClientListAdd(urlres_e, urnState);
+	urnState->sc = storeClientRegister(urlres_e, urnState);
     }
     urnState->urlres_e = urlres_e;
     urnState->urlres_r = requestLink(urlres_r);
@@ -225,8 +224,7 @@ urnHandleReply(void *data, char *buf, ssize_t size)
 	urlres_e->mem_obj->reply->sline.status);
     if (urlres_e->mem_obj->reply->sline.status != HTTP_OK) {
 	debug(52, 3) ("urnHandleReply: failed.\n");
-	err = errorCon(ERR_URN_RESOLVE, HTTP_NOT_FOUND);
-	err->request = requestLink(urnState->request);
+	err = errorCon(ERR_URN_RESOLVE, HTTP_NOT_FOUND, urnState->request);
 	err->url = xstrdup(storeUrl(e));
 	errorAppendEntry(e, err);
 	return;
@@ -236,11 +234,10 @@ urnHandleReply(void *data, char *buf, ssize_t size)
     urls = urnParseReply(s, urnState->request->method);
     for (i = 0; NULL != urls[i].url; i++)
 	urlcnt++;
-    debug(53, 3) ("urnFindMinRtt: Counted %d URLs\n", i);
+    debug(52, 3) ("urnHandleReply: Counted %d URLs\n", i);
     if (urls == NULL) {		/* unkown URN error */
-	debug(52, 3) ("urnTranslateDone: unknown URN %s\n", storeUrl(e));
-	err = errorCon(ERR_URN_RESOLVE, HTTP_NOT_FOUND);
-	err->request = requestLink(urnState->request);
+	debug(52, 3) ("urnHandleReply: unknown URN %s\n", storeUrl(e));
+	err = errorCon(ERR_URN_RESOLVE, HTTP_NOT_FOUND, urnState->request);
 	err->url = xstrdup(storeUrl(e));
 	errorAppendEntry(e, err);
 	return;
@@ -280,7 +277,7 @@ urnHandleReply(void *data, char *buf, ssize_t size)
     httpReplySetHeaders(rep, version, HTTP_MOVED_TEMPORARILY, NULL,
 	"text/html", mb.size, 0, squid_curtime);
     if (urnState->flags.force_menu) {
-	debug(51, 3) ("urnHandleReply: forcing menu\n");
+	debug(52, 3) ("urnHandleReply: forcing menu\n");
     } else if (min_u) {
 	httpHeaderPutStr(&rep->header, HDR_LOCATION, min_u->url);
     }
@@ -294,7 +291,7 @@ urnHandleReply(void *data, char *buf, ssize_t size)
     }
     safe_free(urls);
     /* mb was absorbed in httpBodySet call, so we must not clean it */
-    storeUnregister(urnState->sc, urlres_e, urnState);
+    storeClientUnregister(urnState->sc, urlres_e, urnState);
     storeUnlockObject(urlres_e);
     storeUnlockObject(urnState->entry);
     requestUnlink(urnState->request);

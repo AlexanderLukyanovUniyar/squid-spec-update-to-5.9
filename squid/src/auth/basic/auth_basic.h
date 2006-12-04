@@ -38,10 +38,12 @@ struct _basic_data {
 /* configuration runtime data */
 struct _auth_basic_config {
     int authenticateChildren;
+    int authenticateConcurrency;
     char *basicAuthRealm;
     wordlist *authenticate;
     time_t credentialsTTL;
     int casesensitive;
+    int blankpassword;
 };
 
 typedef struct _auth_basic_config auth_basic_config;

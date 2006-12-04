@@ -1,5 +1,5 @@
 /*
- * $Id: config.h,v 1.4.2.5 2005/04/23 01:32:27 hno Exp $
+ * $Id: config.h,v 1.14 2006/09/08 19:41:23 serassio Exp $
  *
  * AUTHOR: Duane Wessels
  *
@@ -34,7 +34,11 @@
 #ifndef SQUID_CONFIG_H
 #define SQUID_CONFIG_H
 
+#ifndef AUTOCONF_H
+#define AUTOCONF_H 1
 #include "autoconf.h"		/* For GNU autoconf variables */
+#endif
+
 #include "version.h"
 
 /****************************************************************************
@@ -42,6 +46,12 @@
  * DO *NOT* MAKE ANY CHANGES below here unless you know what you're doing...*
  *--------------------------------------------------------------------------*
  ****************************************************************************/
+
+/*
+ * Linux GLIBC supports lots of things, but not all standards
+ * enabled by default. Let it give us what it have.
+ */
+#define _GNU_SOURCE 1
 
 #ifdef USE_POSIX_REGEX
 #ifndef USE_RE_SYNTAX
@@ -101,11 +111,17 @@
 #elif defined(__NetBSD__)
 #define _SQUID_NETBSD_
 
+#elif defined(__OpenBSD__)
+#define _SQUID_OPENBSD_
+
 #elif defined(__CYGWIN32__)  || defined(__CYGWIN__)
 #define _SQUID_CYGWIN_
+#define _SQUID_WIN32_
 
 #elif defined(WIN32) || defined(WINNT) || defined(__WIN32__) || defined(__WIN32)
 #define _SQUID_MSWIN_
+#define _SQUID_WIN32_
+#include "squid_mswin.h"
 
 #elif defined(__APPLE__)
 #define _SQUID_APPLE_
@@ -126,6 +142,21 @@
 #ifndef fd_mask
 #define fd_mask unsigned long
 #endif
+#endif
+
+/* Large cache file support needs SIZEOF_INT64_T.
+ * On system with __int64 type could be not defined, so here we define it if needed.
+ */
+#if (SIZEOF_INT64_T == 0) && (SIZEOF___INT64 > 0)
+#undef SIZEOF_INT64_T
+#define SIZEOF_INT64_T SIZEOF___INT64
+#endif 
+
+/* 
+ * Don't allow inclusion of malloc.h on FreeBSD, Next and OpenBSD 
+ */
+#if defined(HAVE_MALLOC_H) && (defined(_SQUID_FREEBSD_) || defined(_SQUID_NEXT_) || defined(_SQUID_OPENBSD_))
+#undef HAVE_MALLOC_H
 #endif
 
 #if !defined(CACHEMGR_HOSTNAME)
@@ -180,7 +211,7 @@
 #define squid_srandom srand
 #endif
 
-#if __GNUC__
+#if __GNUC__ && !defined(_SQUID_MSWIN_)
 #define PRINTF_FORMAT_ARG1 __attribute__ ((format (printf, 1, 2)))
 #define PRINTF_FORMAT_ARG2 __attribute__ ((format (printf, 2, 3)))
 #define PRINTF_FORMAT_ARG3 __attribute__ ((format (printf, 3, 4)))

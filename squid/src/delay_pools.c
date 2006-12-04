@@ -1,6 +1,6 @@
 
 /*
- * $Id: delay_pools.c,v 1.19.2.12 2006/02/25 22:56:52 hno Exp $
+ * $Id: delay_pools.c,v 1.34 2006/10/23 11:22:21 hno Exp $
  *
  * DEBUG: section 77    Delay Pools
  * AUTHOR: David Luyer <david@luyer.net>
@@ -89,7 +89,7 @@ union _delayPool {
 typedef union _delayPool delayPool;
 
 static delayPool *delay_data = NULL;
-static fd_set delay_no_delay;
+static char *delay_no_delay;
 static time_t delay_pools_last_update = 0;
 static hash_table *delay_id_ptr_hash = NULL;
 static long memory_used = 0;
@@ -134,7 +134,7 @@ void
 delayPoolsInit(void)
 {
     delay_pools_last_update = getCurrentTime();
-    FD_ZERO(&delay_no_delay);
+    delay_no_delay = xcalloc(1, Squid_MaxFD);
     cachemgrRegister("delay", "Delay Pool Levels", delayPoolStats, 0, 1);
 }
 
@@ -145,7 +145,6 @@ delayInitDelayData(unsigned short pools)
 	return;
     delay_data = xcalloc(pools, sizeof(*delay_data));
     memory_used += pools * sizeof(*delay_data);
-    eventAdd("delayPoolsUpdate", delayPoolsUpdate, NULL, 1.0, 1);
     delay_id_ptr_hash = hash_create(delayIdPtrHashCmp, 256, delayIdPtrHash);
 }
 
@@ -164,7 +163,6 @@ delayFreeDelayData(unsigned short pools)
 {
     if (!delay_id_ptr_hash)
 	return;
-    eventDelete(delayPoolsUpdate, NULL);
     safe_free(delay_data);
     memory_used -= pools * sizeof(*delay_data);
     hashFreeItems(delay_id_ptr_hash, delayIdZero);
@@ -284,19 +282,19 @@ delayFreeDelayPool(unsigned short pool)
 void
 delaySetNoDelay(int fd)
 {
-    FD_SET(fd, &delay_no_delay);
+    delay_no_delay[fd] = 1;
 }
 
 void
 delayClearNoDelay(int fd)
 {
-    FD_CLR(fd, &delay_no_delay);
+    delay_no_delay[fd] = 0;
 }
 
 int
 delayIsNoDelay(int fd)
 {
-    return FD_ISSET(fd, &delay_no_delay);
+    return delay_no_delay[fd];
 }
 
 static delay_id
@@ -319,7 +317,12 @@ delayClient(clientHttpRequest * http)
     r = http->request;
 
     memset(&ch, '\0', sizeof(ch));
-    ch.src_addr = r->client_addr;
+#if FOLLOW_X_FORWARDED_FOR
+    if (Config.onoff.delay_pool_uses_indirect_client) {
+	ch.src_addr = r->indirect_client_addr;
+    } else
+#endif /* FOLLOW_X_FORWARDED_FOR */
+	ch.src_addr = r->client_addr;
     ch.my_addr = r->my_addr;
     ch.my_port = r->my_port;
     ch.conn = http->conn;
@@ -541,7 +544,6 @@ delayPoolsUpdate(void *unused)
     unsigned char class;
     if (!Config.Delay.pools)
 	return;
-    eventAdd("delayPoolsUpdate", delayPoolsUpdate, NULL, 1.0, 1);
     if (incr < 1)
 	return;
     delay_pools_last_update = squid_curtime;
@@ -652,8 +654,6 @@ delayMostBytesWanted(const MemObject * mem, int max)
     dlink_node *node;
     for (node = mem->clients.head; node; node = node->next) {
 	sc = (store_client *) node->data;
-	if (sc->callback_data == NULL)	/* open slot */
-	    continue;
 	i = delayBytesWanted(sc->delay_id, i, max);
 	found = 1;
     }
@@ -670,8 +670,6 @@ delayMostBytesAllowed(const MemObject * mem, size_t * read_sz)
     delay_id d = 0;
     for (node = mem->clients.head; node; node = node->next) {
 	sc = (store_client *) node->data;
-	if (sc->callback_data == NULL)	/* open slot */
-	    continue;
 	j = delayBytesWanted(sc->delay_id, 0, INT_MAX);
 	if (j > jmax) {
 	    jmax = j;
@@ -681,6 +679,8 @@ delayMostBytesAllowed(const MemObject * mem, size_t * read_sz)
     if (jmax >= 0 && jmax < (int) *read_sz) {
 	if (jmax == 0)
 	    jmax = 1;
+	if (jmax > 1460)
+	    jmax = 1460;
 	*read_sz = (size_t) jmax;
     }
     return d;

@@ -1,6 +1,6 @@
 
 /*
- * $Id: HttpHdrCc.c,v 1.22.2.1 2005/04/22 20:18:43 hno Exp $
+ * $Id: HttpHdrCc.c,v 1.23 2005/05/17 16:56:37 hno Exp $
  *
  * DEBUG: section 65    HTTP Cache Control Header
  * AUTHOR: Alex Rousskov

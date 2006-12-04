@@ -1,6 +1,6 @@
 
 /*
- * $Id: HttpHeaderTools.c,v 1.32.2.6 2006/02/25 23:07:49 hno Exp $
+ * $Id: HttpHeaderTools.c,v 1.37 2006/07/26 20:09:33 hno Exp $
  *
  * DEBUG: section 66    HTTP Header Tools
  * AUTHOR: Alex Rousskov
@@ -230,6 +230,14 @@ strListAdd(String * str, const char *item, char del)
 	stringAppend(str, buf, 2);
     }
     stringAppend(str, item, strlen(item));
+}
+
+/* appends an item to the list if not already there */
+void
+strListAddUnique(String * str, const char *item, char del)
+{
+    if (!strListIsMember(str, item, del))
+	strListAdd(str, item, del);
 }
 
 /*
@@ -468,7 +476,13 @@ httpHdrMangleList(HttpHeader * l, request_t * request)
 {
     HttpHeaderEntry *e;
     HttpHeaderPos p = HttpHeaderInitPos;
-    while ((e = httpHeaderGetEntry(l, &p)))
-	if (0 == httpHdrMangle(e, request))
+    int removed_headers = 0;
+    while ((e = httpHeaderGetEntry(l, &p))) {
+	if (0 == httpHdrMangle(e, request)) {
 	    httpHeaderDelAt(l, p);
+	    removed_headers++;
+	}
+    }
+    if (removed_headers)
+	httpHeaderRefreshMask(l);
 }

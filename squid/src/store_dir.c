@@ -1,6 +1,6 @@
 
 /*
- * $Id: store_dir.c,v 1.135.2.3 2005/03/26 02:50:54 hno Exp $
+ * $Id: store_dir.c,v 1.143 2006/09/18 22:54:39 hno Exp $
  *
  * DEBUG: section 47    Store Directory Routines
  * AUTHOR: Duane Wessels
@@ -48,6 +48,7 @@
 static int storeDirValidSwapDirSize(int, squid_off_t);
 static STDIRSELECT storeDirSelectSwapDirRoundRobin;
 static STDIRSELECT storeDirSelectSwapDirLeastLoad;
+static void startOneSwapDirCreation(SwapDir *);
 
 /*
  * This function pointer is set according to 'store_dir_select_algorithm'
@@ -74,27 +75,45 @@ storeDirInit(void)
 }
 
 void
+startOneSwapDirCreation(SwapDir * sd)
+{
+    /*
+     * On Windows, fork() is not available.
+     * The following is a workaround for create store directories sequentially
+     * when running on native Windows port.
+     */
+#ifndef _SQUID_MSWIN_
+    if (fork())
+	return;
+#endif
+    if (NULL != sd->newfs)
+	sd->newfs(sd);
+#ifndef _SQUID_MSWIN_
+    exit(0);
+#endif
+}
+
+void
 storeCreateSwapDirectories(void)
 {
     int i;
-    SwapDir *sd;
+#ifndef _SQUID_MSWIN_
     pid_t pid;
     int status;
-    for (i = 0; i < Config.cacheSwap.n_configured; i++) {
-	if (fork())
-	    continue;
-	sd = &Config.cacheSwap.swapDirs[i];
-	if (NULL != sd->newfs)
-	    sd->newfs(sd);
-	exit(0);
-    }
-    do {
-#ifdef _SQUID_NEXT_
-	pid = wait3(&status, WNOHANG, NULL);
-#else
-	pid = waitpid(-1, &status, 0);
 #endif
-    } while (pid > 0 || (pid < 0 && errno == EINTR));
+
+    for (i = 0; i < Config.cacheSwap.n_configured; i++) {
+	startOneSwapDirCreation(&Config.cacheSwap.swapDirs[i]);
+#ifndef _SQUID_MSWIN_
+	do {
+#ifdef _SQUID_NEXT_
+	    pid = wait3(&status, WNOHANG, NULL);
+#else
+	    pid = waitpid(-1, &status, 0);
+#endif
+	} while (pid > 0 || (pid < 0 && errno == EINTR));
+#endif /* _SQUID_MSWIN_ */
+    }
 }
 
 /*
@@ -156,7 +175,10 @@ storeDirSelectSwapDirRoundRobin(const StoreEntry * e)
 	if (!storeDirValidSwapDirSize(dirn, objsize))
 	    continue;
 	/* check for error or overload condition */
-	load = sd->checkobj(sd, e);
+	if (sd->checkobj(sd, e) == 0) {
+	    continue;
+	}
+	load = sd->checkload(sd, ST_OP_CREATE);
 	if (load < 0 || load > 1000) {
 	    continue;
 	}
@@ -197,7 +219,10 @@ storeDirSelectSwapDirLeastLoad(const StoreEntry * e)
     for (i = 0; i < Config.cacheSwap.n_configured; i++) {
 	SD = &Config.cacheSwap.swapDirs[i];
 	SD->flags.selected = 0;
-	load = SD->checkobj(SD, e);
+	if (SD->checkobj(SD, e) == 0) {
+	    continue;
+	}
+	load = SD->checkload(SD, ST_OP_CREATE);
 	if (load < 0 || load > 1000) {
 	    continue;
 	}
@@ -266,14 +291,14 @@ storeDirSwapLog(const StoreEntry * e, int op)
 	e->swap_dirn,
 	e->swap_filen);
     sd = &Config.cacheSwap.swapDirs[e->swap_dirn];
-    sd->log.write(sd, e, op);
+    (sd->log.write) (sd, e, op);
 }
 
 void
 storeDirUpdateSwapSize(SwapDir * SD, squid_off_t size, int sign)
 {
-    int blks = (size + SD->fs.blksize - 1) / SD->fs.blksize;
-    int k = (blks * SD->fs.blksize >> 10) * sign;
+    squid_off_t blks = (size + SD->fs.blksize - 1) / SD->fs.blksize;
+    int k = ((blks * (squid_off_t) SD->fs.blksize) >> 10) * sign;
     SD->cur_size += k;
     store_swap_size += k;
     if (sign > 0)
@@ -328,6 +353,8 @@ storeDirConfigure(void)
 	Config.Swap.maxSize += SD->max_size;
 	SD->low_size = (int) (((float) SD->max_size *
 		(float) Config.Swap.lowWaterMark) / 100.0);
+	if (SD->checkconfig)
+	    SD->checkconfig(SD);
     }
 }
 
@@ -424,7 +451,7 @@ storeDirWriteCleanLogs(int reopen)
 		continue;
 	    if (EBIT_TEST(e->flags, ENTRY_SPECIAL))
 		continue;
-	    sd->log.clean.write(sd, e);
+	    (sd->log.clean.write) (sd, e);
 	    if ((++n & 0xFFFF) == 0) {
 		getCurrentTime();
 		debug(20, 1) ("  %7d entries written so far.\n", n);
@@ -517,8 +544,14 @@ storeDirGetBlkSize(const char *path, int *blksize)
 #define fsbtoblk(num, fsbs, bs) \
     (((fsbs) != 0 && (fsbs) < (bs)) ? \
             (num) / ((bs) / (fsbs)) : (num) * ((fsbs) / (bs)))
+
+#if HAVE_STATVFS
+int
+storeDirGetUFSStats(const char *path, fsblkcnt_t * totl_kb, fsblkcnt_t * free_kb, fsfilcnt_t * totl_in, fsfilcnt_t * free_in)
+#else
 int
 storeDirGetUFSStats(const char *path, int *totl_kb, int *free_kb, int *totl_in, int *free_in)
+#endif
 {
 #if HAVE_STATVFS
     struct statvfs sfs;
@@ -526,10 +559,10 @@ storeDirGetUFSStats(const char *path, int *totl_kb, int *free_kb, int *totl_in, 
 	debug(50, 1) ("%s: %s\n", path, xstrerror());
 	return 1;
     }
-    *totl_kb = (int) fsbtoblk(sfs.f_blocks, sfs.f_frsize, 1024);
-    *free_kb = (int) fsbtoblk(sfs.f_bfree, sfs.f_frsize, 1024);
-    *totl_in = (int) sfs.f_files;
-    *free_in = (int) sfs.f_ffree;
+    *totl_kb = fsbtoblk(sfs.f_blocks, sfs.f_frsize, 1024);
+    *free_kb = fsbtoblk(sfs.f_bfree, sfs.f_frsize, 1024);
+    *totl_in = sfs.f_files;
+    *free_in = sfs.f_ffree;
 #else
     struct statfs sfs;
     if (statfs(path, &sfs)) {

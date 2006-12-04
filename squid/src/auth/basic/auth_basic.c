@@ -1,5 +1,5 @@
 /*
- * $Id: auth_basic.c,v 1.14.2.10 2005/04/22 20:29:31 hno Exp $
+ * $Id: auth_basic.c,v 1.25 2006/07/30 23:27:04 hno Exp $
  *
  * DEBUG: section 29    Authenticator
  * AUTHOR: Duane Wessels
@@ -64,6 +64,7 @@ static AUTHSFIXERR authenticateBasicFixErrorHeader;
 static AUTHSFREE authenticateBasicFreeUser;
 static AUTHSFREECONFIG authBasicFreeConfig;
 static AUTHSPARSE authBasicParse;
+static AUTHSCHECKCONFIG authBasicCheckConfig;
 static AUTHSINIT authBasicInit;
 static AUTHSSTART authenticateBasicStart;
 static AUTHSSTATS authenticateBasicStats;
@@ -92,6 +93,7 @@ authSchemeSetup_basic(authscheme_entry_t * authscheme)
     assert(!authbasic_initialised);
     authscheme->Active = authenticateBasicActive;
     authscheme->parse = authBasicParse;
+    authscheme->checkconfig = authBasicCheckConfig;
     authscheme->dump = authBasicCfgDump;
     authscheme->init = authBasicInit;
     authscheme->authAuthenticate = authenticateBasicAuthenticateUser;
@@ -313,12 +315,12 @@ authBasicCfgDump(StoreEntry * entry, const char *name, authScheme * scheme)
 	storeAppendPrintf(entry, " %s", list->key);
 	list = list->next;
     }
-    storeAppendPrintf(entry, "\n%s %s realm %s\n%s %s children %d\n%s %s credentialsttl %d seconds\n%s %s casesensitive %s\n",
-	name, "basic", config->basicAuthRealm,
-	name, "basic", config->authenticateChildren,
-	name, "basic", (int) config->credentialsTTL,
-	name, "basic", config->casesensitive ? "on" : "off");
-
+    storeAppendPrintf(entry, "\n%s %s realm %s\n", name, "basic", config->basicAuthRealm);
+    storeAppendPrintf(entry, "%s %s children %d\n", name, "basic", config->authenticateChildren);
+    storeAppendPrintf(entry, "%s %s concurrency %d\n", name, "basic", config->authenticateConcurrency);
+    storeAppendPrintf(entry, "%s %s credentialsttl %d seconds\n", name, "basic", (int) config->credentialsTTL);
+    storeAppendPrintf(entry, "%s %s casesensitive %s\n", name, "basic", config->casesensitive ? "on" : "off");
+    storeAppendPrintf(entry, "%s %s blankpassword %s\n", name, "basic", config->blankpassword ? "on" : "off");
 }
 
 static void
@@ -339,18 +341,28 @@ authBasicParse(authScheme * scheme, int n_configured, char *param_str)
 	if (basicConfig->authenticate)
 	    wordlistDestroy(&basicConfig->authenticate);
 	parse_wordlist(&basicConfig->authenticate);
-	requirePathnameExists("authparam basic program", basicConfig->authenticate->key);
     } else if (strcasecmp(param_str, "children") == 0) {
 	parse_int(&basicConfig->authenticateChildren);
+    } else if (strcasecmp(param_str, "concurrency") == 0) {
+	parse_int(&basicConfig->authenticateConcurrency);
     } else if (strcasecmp(param_str, "realm") == 0) {
 	parse_eol(&basicConfig->basicAuthRealm);
     } else if (strcasecmp(param_str, "credentialsttl") == 0) {
 	parse_time_t(&basicConfig->credentialsTTL);
     } else if (strcasecmp(param_str, "casesensitive") == 0) {
 	parse_onoff(&basicConfig->casesensitive);
+    } else if (strcasecmp(param_str, "blankpassword") == 0) {
+	parse_onoff(&basicConfig->blankpassword);
     } else {
-	debug(28, 0) ("unrecognised basic auth scheme parameter '%s'\n", param_str);
+	debug(29, 0) ("unrecognised basic auth scheme parameter '%s'\n", param_str);
     }
+}
+
+static void
+authBasicCheckConfig(authScheme * scheme)
+{
+    auth_basic_config *config = scheme->scheme_data;
+    requirePathnameExists("auth_param basic program", config->authenticate->key);
 }
 
 static void
@@ -462,7 +474,7 @@ authenticateBasicDecodeAuth(auth_user_request_t * auth_user_request, const char 
 	    proxy_auth);
 	local_basic.passwd = NULL;
 	auth_user_request->message = xstrdup("no password was present in the HTTP [proxy-]authorization header. This is most likely a browser bug");
-    } else if (*cleartext == '\0') {
+    } else if (*cleartext == '\0' && !basicConfig->blankpassword) {
 	debug(29, 4) ("authenticateBasicDecodeAuth: Disallowing empty password,"
 	    "user is '%s'\n", local_basic.username);
 	local_basic.passwd = NULL;
@@ -561,7 +573,8 @@ authBasicInit(authScheme * scheme)
 	    basicauthenticators = helperCreate("basicauthenticator");
 	basicauthenticators->cmdline = basicConfig->authenticate;
 	basicauthenticators->n_to_start = basicConfig->authenticateChildren;
-	basicauthenticators->ipc_type = IPC_TCP_SOCKET;
+	basicauthenticators->concurrency = basicConfig->authenticateConcurrency;
+	basicauthenticators->ipc_type = IPC_STREAM;
 	helperOpenServers(basicauthenticators);
 	if (!init) {
 	    cachemgrRegister("basicauthenticator",

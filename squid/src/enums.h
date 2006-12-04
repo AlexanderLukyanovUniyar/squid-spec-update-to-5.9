@@ -1,6 +1,6 @@
 
 /*
- * $Id: enums.h,v 1.203.2.18 2005/11/11 17:45:03 wessels Exp $
+ * $Id: enums.h,v 1.235 2006/09/30 21:10:48 hno Exp $
  *
  *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/
@@ -115,6 +115,7 @@ typedef enum {
     ACL_IDENT,
     ACL_IDENT_REGEX,
 #endif
+    ACL_TYPE,
     ACL_PROTO,
     ACL_METHOD,
     ACL_BROWSER,
@@ -140,6 +141,13 @@ typedef enum {
     ACL_MAX_USER_IP,
     ACL_EXTERNAL,
     ACL_URLLOGIN,
+#if USE_SSL
+    ACL_USER_CERT,
+    ACL_CA_CERT,
+#endif
+    ACL_URLGROUP,
+    ACL_EXTUSER,
+    ACL_EXTUSER_REGEX,
     ACL_ENUM_MAX
 } squid_acl;
 
@@ -245,6 +253,11 @@ typedef enum {
 #if X_ACCELERATOR_VARY
     HDR_X_ACCELERATOR_VARY,
 #endif
+    HDR_X_ERROR_URL,		/* errormap, requested URL */
+    HDR_X_ERROR_STATUS,		/* errormap, received HTTP status line */
+    HDR_FRONT_END_HTTPS,
+    HDR_PROXY_SUPPORT,
+    HDR_KEEP_ALIVE,
     HDR_OTHER,
     HDR_ENUM_END
 } http_hdr_type;
@@ -291,7 +304,7 @@ typedef enum {
 
 typedef enum {
     HIER_NONE,
-    DIRECT,
+    HIER_DIRECT,
     SIBLING_HIT,
     PARENT_HIT,
     DEFAULT_PARENT,
@@ -312,6 +325,9 @@ typedef enum {
     CARP,
 #endif
     ANY_OLD_PARENT,
+    USERHASH_PARENT,
+    SOURCEHASH_PARENT,
+    PINNED,
     HIER_MAX
 } hier_code;
 
@@ -399,6 +415,7 @@ enum {
     METHOD_UNSUBSCRIBE,
     METHOD_POLL,
     METHOD_REPORT,
+    /* Extension methods must be last, Add any new methods before this line */
     METHOD_EXT00,
     METHOD_EXT01,
     METHOD_EXT02,
@@ -510,10 +527,9 @@ enum {
     ENTRY_NEGCACHED,
     ENTRY_VALIDATED,
     ENTRY_BAD_LENGTH,
-    ENTRY_ABORTED
-#if UNUSED_CODE
-    ENTRY_DONT_LOG
-#endif
+    ENTRY_ABORTED,
+    ENTRY_DEFER_READ,
+    KEY_EARLY_PUBLIC
 };
 
 typedef enum {
@@ -534,6 +550,7 @@ typedef enum {
     AUTH_BASIC,
     AUTH_NTLM,
     AUTH_DIGEST,
+    AUTH_NEGOTIATE,
     AUTH_BROKEN			/* known type, but broken data */
 } auth_type_t;
 
@@ -567,6 +584,7 @@ typedef enum {
     MEM_ACL_IP_DATA,
     MEM_ACL_LIST,
     MEM_ACL_NAME_LIST,
+    MEM_ACL_REQUEST_TYPE,
     MEM_AUTH_USER_T,
     MEM_AUTH_USER_HASH,
     MEM_ACL_PROXY_AUTH_MATCH,
@@ -609,7 +627,9 @@ typedef enum {
     MEM_EVENT,
     MEM_TLV,
     MEM_SWAP_LOG_DATA,
-    MEM_CLIENT_REQ_BUF,
+#if USE_SSL
+    MEM_ACL_CERT_DATA,
+#endif
     MEM_MAX
 } mem_type;
 
@@ -627,6 +647,7 @@ enum {
     STORE_META_VALID,
     STORE_META_VARY_HEADERS,	/* Stores Vary request headers */
     STORE_META_STD_LFS,		/* standard metadata in lfs format */
+    STORE_META_OBJSIZE,		/* object size, if its known */
     STORE_META_END
 };
 
@@ -719,11 +740,12 @@ enum {
     VARY_NONE,
     VARY_MATCH,
     VARY_OTHER,
+    VARY_RESTART,
     VARY_CANCEL
 };
 
-/* CygWin & Windows NT Port */
-#if defined(_SQUID_MSWIN_) || defined(_SQUID_CYGWIN_)
+/* Windows Port */
+#ifdef _SQUID_WIN32_
 /*
  * Supported Windows OS types codes
  */
@@ -741,5 +763,22 @@ enum {
 };
 
 #endif
+
+/*
+ * Special case pending filedescriptors. Set in fd_table[fd].read/write_pending
+ */
+typedef enum {
+    COMM_PENDING_NORMAL,	/* No special processing required */
+    COMM_PENDING_WANTS_READ,	/* need to read, no matter what commSetSelect indicates */
+    COMM_PENDING_WANTS_WRITE,	/* need to write, no matter what commSetSelect indicates */
+    COMM_PENDING_NOW		/* needs to be called again, without needing to wait for readiness
+				 * for example when data is already buffered etc */
+} comm_pending;
+
+typedef enum {
+    ST_OP_NONE,
+    ST_OP_OPEN,
+    ST_OP_CREATE
+} store_op_t;
 
 #endif /* SQUID_ENUMS_H */

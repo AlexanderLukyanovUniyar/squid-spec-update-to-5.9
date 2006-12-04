@@ -1,6 +1,6 @@
 
 /*
- * $Id: HttpRequest.c,v 1.30.2.4 2006/03/10 22:58:35 hno Exp $
+ * $Id: HttpRequest.c,v 1.41 2006/07/17 02:31:59 hno Exp $
  *
  * DEBUG: section 73    HTTP Request
  * AUTHOR: Duane Wessels
@@ -60,13 +60,30 @@ requestDestroy(request_t * req)
     if (req->auth_user_request)
 	authenticateAuthUserRequestUnlock(req->auth_user_request);
     safe_free(req->canonical);
+    safe_free(req->vary_hdr);
     safe_free(req->vary_headers);
+    stringClean(&req->vary_encoding);
+    safe_free(req->urlgroup);
+    safe_free(req->extacl_user);
+    safe_free(req->extacl_passwd);
     stringClean(&req->urlpath);
     httpHeaderClean(&req->header);
     if (req->cache_control)
 	httpHdrCcDestroy(req->cache_control);
     if (req->range)
 	httpHdrRangeDestroy(req->range);
+    stringClean(&req->extacl_log);
+    if (req->vary) {
+	if (req->etags == &req->vary->etags)
+	    req->etags = NULL;
+	storeLocateVaryDone(req->vary);
+	req->vary = NULL;
+    }
+    assert(req->etags == NULL);
+    safe_free(req->etag);
+    if (req->pinned_connection)
+	cbdataUnlock(req->pinned_connection);
+    req->pinned_connection = NULL;
     memFree(req, MEM_REQUEST_T);
 }
 

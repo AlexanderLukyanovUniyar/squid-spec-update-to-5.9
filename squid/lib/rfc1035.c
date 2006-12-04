@@ -1,6 +1,6 @@
 
 /*
- * $Id: rfc1035.c,v 1.22.2.11 2005/05/11 14:24:28 hno Exp $
+ * $Id: rfc1035.c,v 1.29 2005/05/17 16:56:36 hno Exp $
  *
  * Low level DNS protocol routines
  * AUTHOR: Duane Wessels

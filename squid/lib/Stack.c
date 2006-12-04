@@ -1,5 +1,5 @@
 /*
- * $Id: Stack.c,v 1.11.2.1 2005/06/30 18:50:56 serassio Exp $
+ * $Id: Stack.c,v 1.12 2005/10/23 15:20:49 hno Exp $
  *
  * AUTHOR: Alex Rousskov
  *

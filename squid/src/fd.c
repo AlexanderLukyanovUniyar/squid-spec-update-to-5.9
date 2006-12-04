@@ -1,6 +1,6 @@
 
 /*
- * $Id: fd.c,v 1.43.2.1 2003/12/14 12:30:36 hno Exp $
+ * $Id: fd.c,v 1.55 2006/10/23 11:25:29 hno Exp $
  *
  * DEBUG: section 51    Filedescriptor Functions
  * AUTHOR: Duane Wessels
@@ -37,6 +37,12 @@
 
 int default_read_method(int, char *, int);
 int default_write_method(int, const char *, int);
+#ifdef _SQUID_MSWIN_
+int socket_read_method(int, char *, int);
+int socket_write_method(int, const char *, int);
+int file_read_method(int, char *, int);
+int file_write_method(int, const char *, int);
+#endif
 
 const char *fdTypeStr[] =
 {
@@ -71,7 +77,7 @@ fdUpdateBiggest(int fd, int opening)
      * re-opening it
      */
     assert(!opening);
-    while (!fd_table[Biggest_FD].flags.open)
+    while (!fd_table[Biggest_FD].flags.open && Biggest_FD > 0)
 	Biggest_FD--;
 }
 
@@ -84,14 +90,43 @@ fd_close(int fd)
 	assert(F->write_handler == NULL);
     }
     debug(51, 3) ("fd_close FD %d %s\n", fd, F->desc);
+    commSetEvents(fd, 0, 0);
     F->flags.open = 0;
+#if DELAY_POOLS
+    if (F->slow_id)
+	commRemoveSlow(fd);
+#endif
     fdUpdateBiggest(fd, 0);
     Number_FD--;
-    commUpdateReadBits(fd, NULL);
-    commUpdateWriteBits(fd, NULL);
     memset(F, '\0', sizeof(fde));
     F->timeout = 0;
 }
+
+#ifdef _SQUID_MSWIN_
+int
+socket_read_method(int fd, char *buf, int len)
+{
+    return (recv(fd, buf, len, 0));
+}
+
+int
+file_read_method(int fd, char *buf, int len)
+{
+    return (_read(fd, buf, len));
+}
+
+int
+socket_write_method(int fd, const char *buf, int len)
+{
+    return (send(fd, buf, len, 0));
+}
+
+int
+file_write_method(int fd, const char *buf, int len)
+{
+    return (_write(fd, buf, len));
+}
+#endif
 
 int
 default_read_method(int fd, char *buf, int len)
@@ -119,8 +154,26 @@ fd_open(int fd, unsigned int type, const char *desc)
     debug(51, 3) ("fd_open FD %d %s\n", fd, desc);
     F->type = type;
     F->flags.open = 1;
+#ifdef _SQUID_MSWIN_
+    F->win32.handle = _get_osfhandle(fd);
+    switch (type) {
+    case FD_SOCKET:
+    case FD_PIPE:
+	F->read_method = &socket_read_method;
+	F->write_method = &socket_write_method;
+	break;
+    case FD_FILE:
+    case FD_LOG:
+	F->read_method = &file_read_method;
+	F->write_method = &file_write_method;
+	break;
+    default:
+	fatalf("fd_open(): unknown FD type - FD#: %i, type: %u, desc %s\n", fd, type, desc);
+    }
+#else
     F->read_method = &default_read_method;
     F->write_method = &default_write_method;
+#endif
     fdUpdateBiggest(fd, 1);
     if (desc)
 	xstrncpy(F->desc, desc, FD_DESC_SZ);
@@ -145,6 +198,13 @@ fd_bytes(int fd, int len, unsigned int type)
 	F->bytes_read += len;
     else
 	F->bytes_written += len;
+}
+
+void
+fd_init(void)
+{
+    fd_table = xcalloc(Squid_MaxFD, sizeof(fde));
+    /* XXX account fd_table */
 }
 
 void

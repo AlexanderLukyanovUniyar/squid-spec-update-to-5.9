@@ -1,6 +1,6 @@
 
 /*
- * $Id: store_log.c,v 1.23.2.1 2005/03/26 02:50:54 hno Exp $
+ * $Id: store_log.c,v 1.26 2006/09/02 14:08:42 hno Exp $
  *
  * DEBUG: section 20    Storage Manager Logging Functions
  * AUTHOR: Duane Wessels

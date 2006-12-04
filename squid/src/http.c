@@ -1,6 +1,6 @@
 
 /*
- * $Id: http.c,v 1.384.2.34 2005/10/18 15:09:56 hno Exp $
+ * $Id: http.c,v 1.418 2006/10/23 21:34:17 hno Exp $
  *
  * DEBUG: section 11    Hypertext Transfer Protocol (HTTP)
  * AUTHOR: Harvest Derived
@@ -54,6 +54,7 @@ static void httpMakePrivate(StoreEntry *);
 static void httpMakePublic(StoreEntry *);
 static int httpCachableReply(HttpStateData *);
 static void httpMaybeRemovePublic(StoreEntry *, http_status);
+static int peer_supports_connection_pinning(HttpStateData * httpState);
 
 static void
 httpStateFree(int fd, void *data)
@@ -100,7 +101,7 @@ httpTimeout(int fd, void *data)
     debug(11, 4) ("httpTimeout: FD %d: '%s'\n", fd, storeUrl(entry));
     if (entry->store_status == STORE_PENDING) {
 	fwdFail(httpState->fwd,
-	    errorCon(ERR_READ_TIMEOUT, HTTP_GATEWAY_TIMEOUT));
+	    errorCon(ERR_READ_TIMEOUT, HTTP_GATEWAY_TIMEOUT, httpState->fwd->request));
     }
     comm_close(fd);
 }
@@ -137,8 +138,6 @@ httpMaybeRemovePublic(StoreEntry * e, http_status status)
     int remove = 0;
     int forbidden = 0;
     StoreEntry *pe;
-    if (!EBIT_TEST(e->flags, KEY_PRIVATE))
-	return;
     switch (status) {
     case HTTP_OK:
     case HTTP_NON_AUTHORITATIVE_INFORMATION:
@@ -170,14 +169,16 @@ httpMaybeRemovePublic(StoreEntry * e, http_status status)
     }
     if (!remove && !forbidden)
 	return;
-    assert(e->mem_obj);
-    if (e->mem_obj->request)
-	pe = storeGetPublicByRequest(e->mem_obj->request);
-    else
-	pe = storeGetPublic(e->mem_obj->url, e->mem_obj->method);
-    if (pe != NULL) {
-	assert(e != pe);
-	storeRelease(pe);
+    if (EBIT_TEST(e->flags, KEY_PRIVATE)) {
+	assert(e->mem_obj);
+	if (e->mem_obj->request)
+	    pe = storeGetPublicByRequest(e->mem_obj->request);
+	else
+	    pe = storeGetPublic(e->mem_obj->url, e->mem_obj->method);
+	if (pe != NULL) {
+	    assert(e != pe);
+	    storeRelease(pe);
+	}
     }
     /*
      * Also remove any cached HEAD response in case the object has
@@ -187,8 +188,7 @@ httpMaybeRemovePublic(StoreEntry * e, http_status status)
 	pe = storeGetPublicByRequestMethod(e->mem_obj->request, METHOD_HEAD);
     else
 	pe = storeGetPublic(e->mem_obj->url, METHOD_HEAD);
-    if (pe != NULL) {
-	assert(e != pe);
+    if (pe != NULL && e != pe) {
 	storeRelease(pe);
     }
     if (forbidden)
@@ -224,19 +224,31 @@ httpCachableReply(HttpStateData * httpState)
     HttpHeader *hdr = &rep->header;
     const int cc_mask = (rep->cache_control) ? rep->cache_control->mask : 0;
     const char *v;
-    if (EBIT_TEST(cc_mask, CC_PRIVATE))
+#if HTTP_VIOLATIONS
+    const refresh_t *R = NULL;
+    /* This strange looking define first looks up the frefresh pattern
+     * and then checks if the specified flag is set. The main purpose
+     * of this is to simplify the refresh pattern lookup
+     */
+#define REFRESH_OVERRIDE(flag) \
+	((R = (R ? R : refreshLimits(httpState->entry->mem_obj->url))) , \
+	(R && R->flags.flag))
+#else
+#define REFRESH_OVERRIDE(field)	0
+#endif
+    if (EBIT_TEST(cc_mask, CC_PRIVATE) && !REFRESH_OVERRIDE(ignore_private))
 	return 0;
-    if (EBIT_TEST(cc_mask, CC_NO_CACHE))
+    if (EBIT_TEST(cc_mask, CC_NO_CACHE) && !REFRESH_OVERRIDE(ignore_no_cache))
 	return 0;
     if (EBIT_TEST(cc_mask, CC_NO_STORE))
 	return 0;
-    if (httpState->request->flags.auth) {
+    if (httpState->request->flags.auth_sent) {
 	/*
 	 * Responses to requests with authorization may be cached
 	 * only if a Cache-Control: public reply header is present.
 	 * RFC 2068, sec 14.9.4
 	 */
-	if (!EBIT_TEST(cc_mask, CC_PUBLIC))
+	if (!EBIT_TEST(cc_mask, CC_PUBLIC) && !REFRESH_OVERRIDE(ignore_auth))
 	    return 0;
     }
     /* Pragma: no-cache in _replies_ is not documented in HTTP,
@@ -245,7 +257,7 @@ httpCachableReply(HttpStateData * httpState)
 	String s = httpHeaderGetList(hdr, HDR_PRAGMA);
 	const int no_cache = strListIsMember(&s, "no-cache", ',');
 	stringClean(&s);
-	if (no_cache)
+	if (no_cache && !REFRESH_OVERRIDE(ignore_no_cache))
 	    return 0;
     }
     /*
@@ -332,22 +344,41 @@ httpCachableReply(HttpStateData * httpState)
 const char *
 httpMakeVaryMark(request_t * request, HttpReply * reply)
 {
-    String vary, hdr;
+    String vary = StringNull, hdr;
     const char *pos = NULL;
     const char *item;
     const char *value;
     int ilen;
-    static String vstr =
-    {0, 0, NULL};
+    String vstr = StringNull;
 
     stringClean(&vstr);
-    vary = httpHeaderGetList(&reply->header, HDR_VARY);
+    hdr = httpHeaderGetList(&reply->header, HDR_VARY);
+    if (strBuf(hdr))
+	strListAdd(&vary, strBuf(hdr), ',');
+    stringClean(&hdr);
+#if X_ACCELERATOR_VARY
+    hdr = httpHeaderGetList(&reply->header, HDR_X_ACCELERATOR_VARY);
+    if (strBuf(hdr))
+	strListAdd(&vary, strBuf(hdr), ',');
+    stringClean(&hdr);
+#endif
     while (strListGetItem(&vary, ',', &item, &ilen, &pos)) {
 	char *name = xmalloc(ilen + 1);
 	xstrncpy(name, item, ilen + 1);
 	Tolower(name);
+	if (strcmp(name, "accept-encoding") == 0) {
+	    aclCheck_t checklist;
+	    memset(&checklist, 0, sizeof(checklist));
+	    checklist.request = request;
+	    checklist.reply = reply;
+	    if (Config.accessList.vary_encoding && aclCheckFast(Config.accessList.vary_encoding, &checklist)) {
+		stringClean(&request->vary_encoding);
+		request->vary_encoding = httpHeaderGetStrOrList(&request->header, HDR_ACCEPT_ENCODING);
+		strCat(request->vary_encoding, "");
+	    }
+	}
 	if (strcmp(name, "*") == 0) {
-	    /* Can not handle "Vary: *" withtout ETag support */
+	    /* Can not handle "Vary: *" efficiently, bail out making the response not cached */
 	    safe_free(name);
 	    stringClean(&vary);
 	    stringClean(&vstr);
@@ -365,30 +396,16 @@ httpMakeVaryMark(request_t * request, HttpReply * reply)
 	}
 	stringClean(&hdr);
     }
-    stringClean(&vary);
-#if X_ACCELERATOR_VARY
-    pos = NULL;
-    vary = httpHeaderGetList(&reply->header, HDR_X_ACCELERATOR_VARY);
-    while (strListGetItem(&vary, ',', &item, &ilen, &pos)) {
-	char *name = xmalloc(ilen + 1);
-	xstrncpy(name, item, ilen + 1);
-	Tolower(name);
-	strListAdd(&vstr, name, ',');
-	hdr = httpHeaderGetByName(&request->header, name);
-	safe_free(name);
-	value = strBuf(hdr);
-	if (value) {
-	    value = rfc1738_escape_part(value);
-	    stringAppend(&vstr, "=\"", 2);
-	    stringAppend(&vstr, value, strlen(value));
-	    stringAppend(&vstr, "\"", 1);
-	}
-	stringClean(&hdr);
+    safe_free(request->vary_hdr);
+    safe_free(request->vary_headers);
+    if (strBuf(vary) && strBuf(vstr)) {
+	request->vary_hdr = xstrdup(strBuf(vary));
+	request->vary_headers = xstrdup(strBuf(vstr));
     }
-    stringClean(&vary);
-#endif
     debug(11, 3) ("httpMakeVaryMark: %s\n", strBuf(vstr));
-    return strBuf(vstr);
+    stringClean(&vary);
+    stringClean(&vstr);
+    return request->vary_headers;
 }
 
 /* rewrite this later using new interfaces @?@ */
@@ -437,6 +454,8 @@ httpProcessReplyHeader(HttpStateData * httpState, const char *buf, int size)
 	    return;		/* headers not complete */
 	}
     }
+    safe_free(entry->mem_obj->vary_headers);
+    safe_free(entry->mem_obj->vary_encoding);
     /* Cut away any excess body data (only needed for debug?) */
     memBufAppend(&httpState->reply_hdr, "\0", 1);
     httpState->reply_hdr.buf[hdr_size] = '\0';
@@ -454,22 +473,26 @@ httpProcessReplyHeader(HttpStateData * httpState, const char *buf, int size)
 	ctx_exit(ctx);
 	return;
     }
+    if (!peer_supports_connection_pinning(httpState))
+	httpState->orig_request->flags.no_connection_auth = 1;
     storeTimestampsSet(entry);
     /* Check if object is cacheable or not based on reply code */
     debug(11, 3) ("httpProcessReplyHeader: HTTP CODE: %d\n", reply->sline.status);
-    if (neighbors_do_private_keys)
-	httpMaybeRemovePublic(entry, reply->sline.status);
     if (httpHeaderHas(&reply->header, HDR_VARY)
 #if X_ACCELERATOR_VARY
 	|| httpHeaderHas(&reply->header, HDR_X_ACCELERATOR_VARY)
 #endif
 	) {
-	const char *vary = httpMakeVaryMark(httpState->orig_request, reply);
+	const char *vary = NULL;
+	if (Config.onoff.cache_vary)
+	    vary = httpMakeVaryMark(httpState->orig_request, reply);
 	if (!vary) {
 	    httpMakePrivate(entry);
 	    goto no_cache;
 	}
 	entry->mem_obj->vary_headers = xstrdup(vary);
+	if (strBuf(httpState->orig_request->vary_encoding))
+	    entry->mem_obj->vary_encoding = xstrdup(strBuf(httpState->orig_request->vary_encoding));
     }
     switch (httpCachableReply(httpState)) {
     case 1:
@@ -495,6 +518,8 @@ httpProcessReplyHeader(HttpStateData * httpState, const char *buf, int size)
 	else if (EBIT_TEST(reply->cache_control->mask, CC_MUST_REVALIDATE))
 	    EBIT_SET(entry->flags, ENTRY_REVALIDATE);
     }
+    if (neighbors_do_private_keys && !Config.onoff.collapsed_forwarding)
+	httpMaybeRemovePublic(entry, reply->sline.status);
     if (httpState->flags.keepalive)
 	if (httpState->peer)
 	    httpState->peer->stats.n_keepalives_sent++;
@@ -550,6 +575,46 @@ httpPconnTransferDone(HttpStateData * httpState)
     return 1;
 }
 
+/* Small helper function to verify if connection pinning is supported or not
+ */
+static int
+peer_supports_connection_pinning(HttpStateData * httpState)
+{
+    const HttpReply *rep = httpState->entry->mem_obj->reply;
+    const HttpHeader *hdr = &rep->header;
+    const request_t *req = httpState->request;
+    int rc;
+    String header;
+
+    if (!httpState->peer)
+	return 1;
+
+    if (!httpState->peer->connection_auth)
+	return 0;
+
+    if (rep->sline.status != HTTP_UNAUTHORIZED)
+	return 1;
+
+    if (httpState->peer->connection_auth == 1)
+	return 1;
+
+    if (httpState->peer->options.originserver)
+	return 1;
+
+    if (req->flags.pinned)
+	return 1;
+
+    if (!httpHeaderHas(hdr, HDR_PROXY_SUPPORT))
+	return 0;
+
+    header = httpHeaderGetStrOrList(hdr, HDR_PROXY_SUPPORT);
+    /* XXX This ought to be done in a case-insensitive manner */
+    rc = (strStr(header, "Session-Based-Authentication") != NULL);
+    stringClean(&header);
+
+    return rc;
+}
+
 /* This will be called when data is ready to be read from fd.  Read until
  * error or connection closed. */
 /* XXX this function is too long! */
@@ -560,10 +625,13 @@ httpReadReply(int fd, void *data)
     LOCAL_ARRAY(char, buf, SQUID_TCP_SO_RCVBUF);
     StoreEntry *entry = httpState->entry;
     const request_t *request = httpState->request;
+    const request_t *orig_request = httpState->orig_request;
     int len;
     int bin;
     int clen;
     size_t read_sz = SQUID_TCP_SO_RCVBUF;
+    struct in_addr *client_addr = NULL;
+    u_short client_port = 0;
 #if DELAY_POOLS
     delay_id delay_id;
 #endif
@@ -579,6 +647,7 @@ httpReadReply(int fd, void *data)
     else
 	delay_id = delayMostBytesAllowed(entry->mem_obj, &read_sz);
 #endif
+
     errno = 0;
     statCounter.syscalls.sock.reads++;
     len = FD_READ_METHOD(fd, buf, read_sz);
@@ -607,19 +676,19 @@ httpReadReply(int fd, void *data)
 	}
     }
     if (len < 0) {
-	debug(50, 2) ("httpReadReply: FD %d: read failure: %s.\n",
+	debug(11, 2) ("httpReadReply: FD %d: read failure: %s.\n",
 	    fd, xstrerror());
 	if (ignoreErrno(errno)) {
 	    commSetSelect(fd, COMM_SELECT_READ, httpReadReply, httpState, 0);
 	} else {
 	    ErrorState *err;
-	    err = errorCon(ERR_READ_ERROR, HTTP_BAD_GATEWAY);
+	    err = errorCon(ERR_READ_ERROR, HTTP_BAD_GATEWAY, httpState->fwd->request);
 	    err->xerrno = errno;
 	    fwdFail(httpState->fwd, err);
 	    comm_close(fd);
 	}
     } else if (len == 0 && entry->mem_obj->inmem_hi == 0) {
-	fwdFail(httpState->fwd, errorCon(ERR_ZERO_SIZE_OBJECT, HTTP_BAD_GATEWAY));
+	fwdFail(httpState->fwd, errorCon(ERR_ZERO_SIZE_OBJECT, HTTP_BAD_GATEWAY, httpState->fwd->request));
 	httpState->eof = 1;
 	comm_close(fd);
     } else if (len == 0) {
@@ -635,11 +704,11 @@ httpReadReply(int fd, void *data)
 	    httpProcessReplyHeader(httpState, buf, len);
 	if (entry->mem_obj->reply->sline.status == HTTP_HEADER_TOO_LARGE) {
 	    storeEntryReset(entry);
-	    fwdFail(httpState->fwd, errorCon(ERR_TOO_BIG, HTTP_BAD_GATEWAY));
+	    fwdFail(httpState->fwd, errorCon(ERR_TOO_BIG, HTTP_BAD_GATEWAY, httpState->fwd->request));
 	    httpState->fwd->flags.dont_retry = 1;
 	} else if (entry->mem_obj->reply->sline.status == HTTP_INVALID_HEADER && !(entry->mem_obj->reply->sline.version.major == 0 && entry->mem_obj->reply->sline.version.minor == 9)) {
 	    storeEntryReset(entry);
-	    fwdFail(httpState->fwd, errorCon(ERR_INVALID_RESP, HTTP_BAD_GATEWAY));
+	    fwdFail(httpState->fwd, errorCon(ERR_INVALID_RESP, HTTP_BAD_GATEWAY, httpState->fwd->request));
 	    httpState->fwd->flags.dont_retry = 1;
 	} else {
 	    fwdComplete(httpState->fwd);
@@ -654,14 +723,14 @@ httpReadReply(int fd, void *data)
 		if (s == HTTP_HEADER_TOO_LARGE) {
 		    debug(11, 1) ("WARNING: %s:%d: HTTP header too large\n", __FILE__, __LINE__);
 		    storeEntryReset(entry);
-		    fwdFail(httpState->fwd, errorCon(ERR_TOO_BIG, HTTP_BAD_GATEWAY));
+		    fwdFail(httpState->fwd, errorCon(ERR_TOO_BIG, HTTP_BAD_GATEWAY, httpState->fwd->request));
 		    httpState->fwd->flags.dont_retry = 1;
 		    comm_close(fd);
 		    return;
 		}
 		if (s == HTTP_INVALID_HEADER && !(entry->mem_obj->reply->sline.version.major == 0 && entry->mem_obj->reply->sline.version.minor == 9)) {
 		    storeEntryReset(entry);
-		    fwdFail(httpState->fwd, errorCon(ERR_INVALID_RESP, HTTP_BAD_GATEWAY));
+		    fwdFail(httpState->fwd, errorCon(ERR_INVALID_RESP, HTTP_BAD_GATEWAY, httpState->fwd->request));
 		    httpState->fwd->flags.dont_retry = 1;
 		    comm_close(fd);
 		    return;
@@ -702,7 +771,7 @@ httpReadReply(int fd, void *data)
 		 */
 		if (!httpState->flags.request_sent) {
 		    debug(11, 1) ("httpReadReply: Request not yet fully sent \"%s %s\"\n",
-			RequestMethodStr[httpState->orig_request->method],
+			RequestMethodStr[orig_request->method],
 			storeUrl(entry));
 		    keep_alive = 0;
 		}
@@ -722,13 +791,19 @@ httpReadReply(int fd, void *data)
 		    } else if (len > 0) {
 			debug(11, Config.onoff.relaxed_header_parser <= 0 || keep_alive ? 1 : 2)
 			    ("httpReadReply: Excess data from \"%s %s\"\n",
-			    RequestMethodStr[httpState->orig_request->method],
+			    RequestMethodStr[orig_request->method],
 			    storeUrl(entry));
 			storeAppend(entry, buf, len);
 			keep_alive = 0;
 		    }
 		}
 		if (keep_alive) {
+		    int pinned = 0;
+#if LINUX_TPROXY
+		    if (orig_request->flags.tproxy) {
+			client_addr = &httpState->request->client_addr;
+		    }
+#endif
 		    /* yes we have to clear all these! */
 		    commSetDefer(fd, NULL, NULL);
 		    commSetTimeout(fd, -1, NULL, NULL);
@@ -738,10 +813,21 @@ httpReadReply(int fd, void *data)
 #endif
 		    comm_remove_close_handler(fd, httpStateFree, httpState);
 		    fwdUnregister(fd, httpState->fwd);
-		    if (request->flags.accelerated && Config.Accel.single_host && Config.Accel.host)
-			pconnPush(fd, Config.Accel.host, Config.Accel.port);
-		    else
-			pconnPush(fd, request->host, request->port);
+		    if (request->flags.pinned) {
+			pinned = 1;
+		    } else if (request->flags.connection_auth && request->flags.auth_sent) {
+			pinned = 1;
+		    }
+		    if (orig_request->pinned_connection && pinned) {
+			clientPinConnection(orig_request->pinned_connection, fd, orig_request, httpState->peer, request->flags.connection_auth);
+		    } else if (httpState->peer) {
+			if (httpState->peer->options.originserver)
+			    pconnPush(fd, httpState->peer->name, httpState->peer->http_port, httpState->orig_request->host, client_addr, client_port);
+			else
+			    pconnPush(fd, httpState->peer->name, httpState->peer->http_port, NULL, client_addr, client_port);
+		    } else {
+			pconnPush(fd, request->host, request->port, NULL, client_addr, client_port);
+		    }
 		    fwdComplete(httpState->fwd);
 		    httpState->fd = -1;
 		    httpStateFree(fd, httpState);
@@ -764,7 +850,7 @@ httpReadReply(int fd, void *data)
 	    /* Server is nasty on us. Shut down */
 	    debug(11, Config.onoff.relaxed_header_parser <= 0 || entry->mem_obj->reply->keep_alive ? 1 : 2)
 		("httpReadReply: Excess data from \"%s %s\"\n",
-		RequestMethodStr[httpState->orig_request->method],
+		RequestMethodStr[orig_request->method],
 		storeUrl(entry));
 	    fwdComplete(httpState->fwd);
 	    comm_close(fd);
@@ -797,7 +883,7 @@ httpSendComplete(int fd, char *bufnotused, size_t size, int errflag, void *data)
 	return;
     if (errflag) {
 	ErrorState *err;
-	err = errorCon(ERR_WRITE_ERROR, HTTP_BAD_GATEWAY);
+	err = errorCon(ERR_WRITE_ERROR, HTTP_BAD_GATEWAY, httpState->fwd->request);
 	err->xerrno = errno;
 	fwdFail(httpState->fwd, err);
 	comm_close(fd);
@@ -836,14 +922,26 @@ httpBuildRequestHeader(request_t * request,
     const HttpHeader *hdr_in = &orig_request->header;
     int we_do_ranges;
     const HttpHeaderEntry *e;
-    String strVia;
     String strFwd;
     HttpHeaderPos pos = HttpHeaderInitPos;
+    String etags = StringNull;
+
     httpHeaderInit(hdr_out, hoRequest);
     /* append our IMS header */
     if (request->lastmod > -1)
 	httpHeaderPutTime(hdr_out, HDR_IF_MODIFIED_SINCE, request->lastmod);
-
+    if (request->etag) {
+	etags = httpHeaderGetList(hdr_in, HDR_IF_NONE_MATCH);
+	strListAddUnique(&etags, request->etag, ',');
+    } else if (request->etags) {
+	int i;
+	etags = httpHeaderGetList(hdr_in, HDR_IF_NONE_MATCH);
+	for (i = 0; i < request->etags->count; i++)
+	    strListAddUnique(&etags, request->etags->items[i], ',');
+    }
+    if (strLen(etags))
+	httpHeaderPutStr(hdr_out, HDR_IF_NONE_MATCH, strBuf(etags));
+    stringClean(&etags);
     /* decide if we want to do Ranges ourselves 
      * (and fetch the whole object now)
      * We want to handle Ranges ourselves iff
@@ -857,6 +955,8 @@ httpBuildRequestHeader(request_t * request,
     if (NULL == orig_request->range)
 	we_do_ranges = 0;
     else if (!orig_request->flags.cachable)
+	we_do_ranges = 0;
+    else if (orig_request->flags.auth)
 	we_do_ranges = 0;
     else if (httpHdrRangeOffsetLimit(orig_request->range))
 	we_do_ranges = 0;
@@ -879,24 +979,29 @@ httpBuildRequestHeader(request_t * request,
 	    /* Only pass on proxy authentication to peers for which
 	     * authentication forwarding is explicitly enabled
 	     */
-	    if (request->flags.proxying && orig_request->peer_login &&
-		strcmp(orig_request->peer_login, "PASS") == 0) {
+	    if (flags.proxying && orig_request->peer_login && strcmp(orig_request->peer_login, "PASS") == 0) {
 		httpHeaderAddEntry(hdr_out, httpHeaderEntryClone(e));
+		if (request->flags.connection_proxy_auth)
+		    request->flags.pinned = 1;
 	    }
 	    break;
 	case HDR_AUTHORIZATION:
-	    /* Pass on WWW authentication even if used locally. If this is
-	     * not wanted in an accelerator then the header can be removed
-	     * using the anonymization functions
+	    /* Pass on WWW authentication.
 	     */
-	    httpHeaderAddEntry(hdr_out, httpHeaderEntryClone(e));
-	    /* XXX Some accelerators might want to strip the header
-	     * and regard the reply as cacheable, but authentication
-	     * is not normally enabled for accelerators without reading
-	     * the code, so there is not much use in adding logics here
-	     * without first defining the concept of having authentication
-	     * in the accelerator...
-	     */
+	    if (!flags.originpeer) {
+		httpHeaderAddEntry(hdr_out, httpHeaderEntryClone(e));
+		if (orig_request->flags.connection_auth)
+		    orig_request->flags.pinned = 1;
+	    } else {
+		/* In accelerators, only forward authentication if enabled
+		 * (see also below for proxy->server authentication)
+		 */
+		if (orig_request->peer_login && (strcmp(orig_request->peer_login, "PASS") == 0 || strcmp(orig_request->peer_login, "PROXYPASS") == 0)) {
+		    httpHeaderAddEntry(hdr_out, httpHeaderEntryClone(e));
+		    if (orig_request->flags.connection_auth)
+			orig_request->flags.pinned = 1;
+		}
+	    }
 	    break;
 	case HDR_HOST:
 	    /*
@@ -905,7 +1010,9 @@ httpBuildRequestHeader(request_t * request,
 	     * went through our redirector and the admin configured
 	     * 'redir_rewrites_host' to be off.
 	     */
-	    if (request->flags.redirected && !Config.onoff.redir_rewrites_host)
+	    if (orig_request->peer_domain)
+		httpHeaderPutStr(hdr_out, HDR_HOST, orig_request->peer_domain);
+	    else if (request->flags.redirected && !Config.onoff.redir_rewrites_host)
 		httpHeaderAddEntry(hdr_out, httpHeaderEntryClone(e));
 	    else {
 		/* use port# only if not default */
@@ -923,6 +1030,12 @@ httpBuildRequestHeader(request_t * request,
 	    if (!httpHeaderHas(hdr_out, HDR_IF_MODIFIED_SINCE))
 		httpHeaderAddEntry(hdr_out, httpHeaderEntryClone(e));
 	    break;
+	case HDR_IF_NONE_MATCH:
+	    /* append unless we added our own;
+	     * note: at most one client's ims header can pass through */
+	    if (!httpHeaderHas(hdr_out, HDR_IF_NONE_MATCH))
+		httpHeaderAddEntry(hdr_out, httpHeaderEntryClone(e));
+	    break;
 	case HDR_MAX_FORWARDS:
 	    if (orig_request->method == METHOD_TRACE) {
 		/* sacrificing efficiency over clarity, etc. */
@@ -931,18 +1044,29 @@ httpBuildRequestHeader(request_t * request,
 		    httpHeaderPutInt(hdr_out, HDR_MAX_FORWARDS, hops - 1);
 	    }
 	    break;
+	case HDR_X_FORWARDED_FOR:
+	    if (!opt_forwarded_for)
+		httpHeaderAddEntry(hdr_out, httpHeaderEntryClone(e));
+	    break;
 	case HDR_RANGE:
 	case HDR_IF_RANGE:
 	case HDR_REQUEST_RANGE:
 	    if (!we_do_ranges)
 		httpHeaderAddEntry(hdr_out, httpHeaderEntryClone(e));
 	    break;
+	case HDR_VIA:
+	    /* If Via is disabled then forward any received header as-is */
+	    if (!Config.onoff.via)
+		httpHeaderAddEntry(hdr_out, httpHeaderEntryClone(e));
+	    break;
 	case HDR_PROXY_CONNECTION:
 	case HDR_CONNECTION:
-	case HDR_VIA:
-	case HDR_X_FORWARDED_FOR:
 	case HDR_CACHE_CONTROL:
 	    /* append these after the loop if needed */
+	    break;
+	case HDR_FRONT_END_HTTPS:
+	    if (!flags.front_end_https)
+		httpHeaderAddEntry(hdr_out, httpHeaderEntryClone(e));
 	    break;
 	default:
 	    /* pass on all other header fields */
@@ -951,26 +1075,30 @@ httpBuildRequestHeader(request_t * request,
     }
 
     /* append Via */
-    strVia = httpHeaderGetList(hdr_in, HDR_VIA);
-    snprintf(bbuf, BBUF_SZ, "%d.%d %s",
-	orig_request->http_ver.major,
-	orig_request->http_ver.minor, ThisCache);
-    strListAdd(&strVia, bbuf, ',');
-    httpHeaderPutStr(hdr_out, HDR_VIA, strBuf(strVia));
-    stringClean(&strVia);
-
+    if (Config.onoff.via) {
+	String strVia = httpHeaderGetList(hdr_in, HDR_VIA);
+	snprintf(bbuf, BBUF_SZ, "%d.%d %s",
+	    orig_request->http_ver.major,
+	    orig_request->http_ver.minor, ThisCache);
+	strListAdd(&strVia, bbuf, ',');
+	httpHeaderPutStr(hdr_out, HDR_VIA, strBuf(strVia));
+	stringClean(&strVia);
+    }
     /* append X-Forwarded-For */
-    strFwd = httpHeaderGetList(hdr_in, HDR_X_FORWARDED_FOR);
-    strListAdd(&strFwd,
-	(((orig_request->client_addr.s_addr != no_addr.s_addr) && opt_forwarded_for) ?
-	    inet_ntoa(orig_request->client_addr) : "unknown"), ',');
-    httpHeaderPutStr(hdr_out, HDR_X_FORWARDED_FOR, strBuf(strFwd));
-    stringClean(&strFwd);
-
+    if (opt_forwarded_for) {
+	strFwd = httpHeaderGetList(hdr_in, HDR_X_FORWARDED_FOR);
+	strListAdd(&strFwd,
+	    (((orig_request->client_addr.s_addr != no_addr.s_addr) && opt_forwarded_for) ?
+		inet_ntoa(orig_request->client_addr) : "unknown"), ',');
+	httpHeaderPutStr(hdr_out, HDR_X_FORWARDED_FOR, strBuf(strFwd));
+	stringClean(&strFwd);
+    }
     /* append Host if not there already */
     if (!httpHeaderHas(hdr_out, HDR_HOST)) {
-	/* use port# only if not default */
-	if (orig_request->port == urlDefaultPort(orig_request->protocol)) {
+	if (orig_request->peer_domain) {
+	    httpHeaderPutStr(hdr_out, HDR_HOST, orig_request->peer_domain);
+	} else if (orig_request->port == urlDefaultPort(orig_request->protocol)) {
+	    /* use port# only if not default */
 	    httpHeaderPutStr(hdr_out, HDR_HOST, orig_request->host);
 	} else {
 	    httpHeaderPutStrf(hdr_out, HDR_HOST, "%s:%d",
@@ -979,26 +1107,80 @@ httpBuildRequestHeader(request_t * request,
     }
     /* append Authorization if known in URL, not in header and going direct */
     if (!httpHeaderHas(hdr_out, HDR_AUTHORIZATION)) {
-	if (!request->flags.proxying && *request->login) {
-	    httpHeaderPutStrf(hdr_out, HDR_AUTHORIZATION, "Basic %s",
-		base64_encode(request->login));
+	if (!request->flags.proxying) {
+	    if (*request->login) {
+		httpHeaderPutStrf(hdr_out, HDR_AUTHORIZATION, "Basic %s",
+		    base64_encode(request->login));
+	    } else if (orig_request->extacl_user && orig_request->extacl_passwd) {
+		char loginbuf[256];
+		snprintf(loginbuf, sizeof(loginbuf), "%s:%s", orig_request->extacl_user, orig_request->extacl_passwd);
+		httpHeaderPutStrf(hdr_out, HDR_AUTHORIZATION, "Basic %s",
+		    base64_encode(loginbuf));
+	    }
 	}
     }
     /* append Proxy-Authorization if configured for peer, and proxying */
     if (request->flags.proxying && orig_request->peer_login &&
-	!httpHeaderHas(hdr_out, HDR_PROXY_AUTHORIZATION) &&
-	strcmp(orig_request->peer_login, "PASS") != 0) {
+	!httpHeaderHas(hdr_out, HDR_PROXY_AUTHORIZATION)) {
 	if (*orig_request->peer_login == '*') {
 	    /* Special mode, to pass the username to the upstream cache */
 	    char loginbuf[256];
 	    const char *username = "-";
 	    if (orig_request->auth_user_request)
 		username = authenticateUserRequestUsername(orig_request->auth_user_request);
+	    else if (orig_request->extacl_user)
+		username = orig_request->extacl_user;
 	    snprintf(loginbuf, sizeof(loginbuf), "%s%s", username, orig_request->peer_login + 1);
 	    httpHeaderPutStrf(hdr_out, HDR_PROXY_AUTHORIZATION, "Basic %s",
 		base64_encode(loginbuf));
+	} else if (strcmp(orig_request->peer_login, "PASS") == 0) {
+	    if (orig_request->extacl_user && orig_request->extacl_passwd) {
+		char loginbuf[256];
+		snprintf(loginbuf, sizeof(loginbuf), "%s:%s", orig_request->extacl_user, orig_request->extacl_passwd);
+		httpHeaderPutStrf(hdr_out, HDR_PROXY_AUTHORIZATION, "Basic %s",
+		    base64_encode(loginbuf));
+	    }
+	} else if (strcmp(orig_request->peer_login, "PROXYPASS") == 0) {
+	    /* Nothing to do */
 	} else {
 	    httpHeaderPutStrf(hdr_out, HDR_PROXY_AUTHORIZATION, "Basic %s",
+		base64_encode(orig_request->peer_login));
+	}
+    }
+    /* append WWW-Authorization if configured for peer */
+    if (flags.originpeer && orig_request->peer_login &&
+	!httpHeaderHas(hdr_out, HDR_AUTHORIZATION)) {
+	if (strcmp(orig_request->peer_login, "PASS") == 0) {
+	    /* No credentials to forward.. (should have been done above if available) */
+	} else if (strcmp(orig_request->peer_login, "PROXYPASS") == 0) {
+	    /* Special mode, convert proxy authentication to WWW authentication
+	     * (also applies to cookie authentication)
+	     */
+	    const char *auth = httpHeaderGetStr(hdr_in, HDR_PROXY_AUTHORIZATION);
+	    if (auth && strncasecmp(auth, "basic ", 6) == 0) {
+		httpHeaderPutStr(hdr_out, HDR_AUTHORIZATION, auth);
+		if (orig_request->flags.connection_auth)
+		    orig_request->flags.pinned = 1;
+	    } else if (orig_request->extacl_user && orig_request->extacl_passwd) {
+		char loginbuf[256];
+		snprintf(loginbuf, sizeof(loginbuf), "%s:%s", orig_request->extacl_user, orig_request->extacl_passwd);
+		httpHeaderPutStrf(hdr_out, HDR_AUTHORIZATION, "Basic %s",
+		    base64_encode(loginbuf));
+	    }
+	} else if (*orig_request->peer_login == '*') {
+	    /* Special mode, to pass the username to the upstream cache */
+	    char loginbuf[256];
+	    const char *username = "-";
+	    if (orig_request->auth_user_request)
+		username = authenticateUserRequestUsername(orig_request->auth_user_request);
+	    else if (orig_request->extacl_user)
+		username = orig_request->extacl_user;
+	    snprintf(loginbuf, sizeof(loginbuf), "%s%s", username, orig_request->peer_login + 1);
+	    httpHeaderPutStrf(hdr_out, HDR_AUTHORIZATION, "Basic %s",
+		base64_encode(loginbuf));
+	} else {
+	    /* Fixed login string */
+	    httpHeaderPutStrf(hdr_out, HDR_AUTHORIZATION, "Basic %s",
 		base64_encode(orig_request->peer_login));
 	}
     }
@@ -1023,12 +1205,17 @@ httpBuildRequestHeader(request_t * request,
 	httpHdrCcDestroy(cc);
     }
     /* maybe append Connection: keep-alive */
-    if (flags.keepalive) {
+    if (flags.keepalive || request->flags.pinned) {
 	if (flags.proxying) {
 	    httpHeaderPutStr(hdr_out, HDR_PROXY_CONNECTION, "keep-alive");
 	} else {
 	    httpHeaderPutStr(hdr_out, HDR_CONNECTION, "keep-alive");
 	}
+    }
+    /* append Front-End-Https */
+    if (flags.front_end_https) {
+	if (flags.front_end_https == 1 || request->protocol == PROTO_HTTPS)
+	    httpHeaderPutStr(hdr_out, HDR_FRONT_END_HTTPS, "On");
     }
     /* Now mangle the headers. */
     httpHdrMangleList(hdr_out, orig_request);
@@ -1053,6 +1240,10 @@ httpBuildRequestPrefix(request_t * request,
 	HttpHeader hdr;
 	Packer p;
 	httpBuildRequestHeader(request, orig_request, entry, &hdr, flags);
+	if (request->flags.pinned && request->flags.connection_auth)
+	    request->flags.auth_sent = 1;
+	else
+	    request->flags.auth_sent = httpHeaderHas(&hdr, HDR_AUTHORIZATION);
 	packerToMemInit(&p, mb);
 	httpHeaderPackInto(&hdr, &p);
 	httpHeaderClean(&hdr);
@@ -1084,10 +1275,15 @@ httpSendRequest(HttpStateData * httpState)
     else
 	sendHeaderDone = httpSendComplete;
 
-    if (p != NULL)
-	httpState->flags.proxying = 1;
-    else
+    if (p != NULL) {
+	if (p->options.originserver)
+	    httpState->flags.originpeer = 1;
+	else
+	    httpState->flags.proxying = 1;
+    } else {
 	httpState->flags.proxying = 0;
+	httpState->flags.originpeer = 0;
+    }
     /*
      * Is keep-alive okay for all request methods?
      */
@@ -1099,16 +1295,20 @@ httpSendRequest(HttpStateData * httpState)
 	httpState->flags.keepalive = 1;
     else if ((double) p->stats.n_keepalives_recv / (double) p->stats.n_keepalives_sent > 0.50)
 	httpState->flags.keepalive = 1;
-    if (httpState->peer)
+    if (httpState->peer) {
 	if (neighborType(httpState->peer, httpState->request) == PEER_SIBLING &&
 	    !httpState->peer->options.allow_miss)
 	    httpState->flags.only_if_cached = 1;
+	httpState->flags.front_end_https = httpState->peer->front_end_https;
+    }
     memBufDefInit(&mb);
     httpBuildRequestPrefix(req,
 	httpState->orig_request,
 	entry,
 	&mb,
 	httpState->flags);
+    if (req->flags.pinned)
+	httpState->flags.keepalive = 1;
     debug(11, 6) ("httpSendRequest: FD %d:\n%s\n", fd, mb.buf);
     comm_write_mbuf(fd, mb, sendHeaderDone, httpState);
 }
@@ -1131,8 +1331,13 @@ httpStart(FwdState * fwd)
     if (fwd->servers)
 	httpState->peer = fwd->servers->peer;	/* might be NULL */
     if (httpState->peer) {
+	const char *url;
+	if (httpState->peer->options.originserver)
+	    url = strBuf(orig_req->urlpath);
+	else
+	    url = storeUrl(httpState->entry);
 	proxy_req = requestCreate(orig_req->method,
-	    PROTO_NONE, storeUrl(httpState->entry));
+	    orig_req->protocol, url);
 	xstrncpy(proxy_req->host, httpState->peer->host, SQUIDHOSTNAMELEN);
 	proxy_req->port = httpState->peer->http_port;
 	proxy_req->flags = orig_req->flags;
@@ -1251,7 +1456,7 @@ httpSendRequestEntry(int fd, char *bufnotused, size_t size, int errflag, void *d
 	return;
     if (errflag) {
 	ErrorState *err;
-	err = errorCon(ERR_WRITE_ERROR, HTTP_BAD_GATEWAY);
+	err = errorCon(ERR_WRITE_ERROR, HTTP_BAD_GATEWAY, httpState->fwd->request);
 	err->xerrno = errno;
 	fwdFail(httpState->fwd, err);
 	comm_close(fd);

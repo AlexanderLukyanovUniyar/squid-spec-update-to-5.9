@@ -1,6 +1,6 @@
 ## Process this file with automake to produce Makefile.in
 #
-# $Id: Makefile.am,v 1.5.2.9 2006/03/10 22:51:47 hno Exp $
+# $Id: Makefile.am,v 1.12 2006/04/28 10:17:15 hno Exp $
 #
 
 errordir = $(datadir)/errors

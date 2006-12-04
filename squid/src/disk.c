@@ -1,6 +1,6 @@
 
 /*
- * $Id: disk.c,v 1.157.2.6 2005/03/26 23:27:10 serassio Exp $
+ * $Id: disk.c,v 1.164 2006/05/27 14:47:02 hno Exp $
  *
  * DEBUG: section 6     Disk I/O Routines
  * AUTHOR: Harvest Derived
@@ -38,7 +38,7 @@
 static PF diskHandleRead;
 static PF diskHandleWrite;
 
-#if defined(_SQUID_MSWIN_) || defined(_SQUID_OS2_) || defined(_SQUID_CYGWIN_)
+#if defined(_SQUID_WIN32_) || defined(_SQUID_OS2_)
 static int
 diskWriteIsComplete(int fd)
 {
@@ -91,7 +91,7 @@ file_close(int fd)
 	read_callback(-1, F->read_data);
     }
     if (F->flags.write_daemon) {
-#if defined(_SQUID_MSWIN_) || defined(_SQUID_OS2_) || defined(_SQUID_CYGWIN_)
+#if defined(_SQUID_WIN32_) || defined(_SQUID_OS2_)
 	/*
 	 * on some operating systems, you can not delete or rename
 	 * open files, so we won't allow delayed close.
@@ -113,10 +113,10 @@ file_close(int fd)
 #if CALL_FSYNC_BEFORE_CLOSE
     fsync(fd);
 #endif
-    close(fd);
     debug(6, F->flags.close_request ? 2 : 5)
 	("file_close: FD %d, really closing\n", fd);
     fd_close(fd);
+    close(fd);
     statCounter.syscalls.disk.closes++;
 }
 

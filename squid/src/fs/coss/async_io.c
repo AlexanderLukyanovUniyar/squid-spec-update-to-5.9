@@ -11,12 +11,14 @@
  * supports are read/write, and since COSS works on a single file
  * per storedir it should work just fine.
  *
- * $Id: async_io.c,v 1.7.2.7 2005/03/26 23:40:21 hno Exp $
+ * $Id: async_io.c,v 1.14 2006/09/16 20:29:58 serassio Exp $
  */
 
 #include "squid.h"
 #include <time.h>
+#if HAVE_AIO_H
 #include <aio.h>
+#endif
 
 #include "async_io.h"
 
@@ -29,6 +31,7 @@
 
 /* Internal routines */
 
+#if !USE_AUFSOPS
 /*
  * find a free aio slot.
  * Return the index, or -1 if we can't find one.
@@ -49,8 +52,6 @@ a_file_findslot(async_queue_t * q)
 }
 
 
-
-
 /* Exported routines */
 
 void
@@ -61,6 +62,7 @@ a_file_read(async_queue_t * q, int fd, void *buf, int req_len, off_t offset,
     async_queue_entry_t *qe;
 
     assert(q->aq_state == AQ_STATE_SETUP);
+    assert(offset >= 0);
 
     /* Find a free slot */
     slot = a_file_findslot(q);
@@ -109,6 +111,7 @@ a_file_write(async_queue_t * q, int fd, off_t offset, void *buf, int len,
     async_queue_entry_t *qe;
 
     assert(q->aq_state == AQ_STATE_SETUP);
+    assert(offset >= 0);
 
     /* Find a free slot */
     slot = a_file_findslot(q);
@@ -196,6 +199,9 @@ a_file_callback(async_queue_t * q)
 		fd = aqe->aq_e_fd;
 		type = aqe->aq_e_type;
 
+		/* debugging assert */
+		assert(reterr == 0);
+
 		/* Free slot */
 		memset(aqe, 0, sizeof(async_queue_entry_t));
 		aqe->aq_e_state = AQ_ENTRY_FREE;
@@ -216,6 +222,7 @@ a_file_callback(async_queue_t * q)
     }
     return completed;
 }
+#endif
 
 
 void

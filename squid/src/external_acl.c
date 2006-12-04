@@ -1,6 +1,6 @@
 
 /*
- * $Id: external_acl.c,v 1.1.2.34 2005/03/30 22:46:41 hno Exp $
+ * $Id: external_acl.c,v 1.28 2006/07/31 02:04:55 hno Exp $
  *
  * DEBUG: section 82    External ACL
  * AUTHOR: Henrik Nordstrom, MARA Systems AB
@@ -45,8 +45,8 @@
 #ifndef DEFAULT_EXTERNAL_ACL_TTL
 #define DEFAULT_EXTERNAL_ACL_TTL 1 * 60 * 60
 #endif
-#ifndef DEFAULT_EXTERNAL_ACL_CONCURRENCY
-#define DEFAULT_EXTERNAL_ACL_CONCURRENCY 5
+#ifndef DEFAULT_EXTERNAL_ACL_CHILDREN
+#define DEFAULT_EXTERNAL_ACL_CHILDREN 5
 #endif
 
 typedef struct _external_acl_format external_acl_format;
@@ -55,7 +55,9 @@ typedef struct _external_acl_data external_acl_data;
 static char *makeExternalAclKey(aclCheck_t * ch, external_acl_data * acl_data);
 static void external_acl_cache_delete(external_acl * def, external_acl_entry * entry);
 static int external_acl_entry_expired(external_acl * def, external_acl_entry * entry);
+static int external_acl_grace_expired(external_acl * def, external_acl_entry * entry);
 static void external_acl_cache_touch(external_acl * def, external_acl_entry * entry);
+static int external_acl_is_pending(external_acl * def, const char *key);
 
 /*******************************************************************
  * external_acl cache entry
@@ -67,7 +69,9 @@ struct _external_acl_entry {
     int result;
     time_t date;
     char *user;
-    char *error;
+    char *passwd;
+    char *message;
+    char *log;
     external_acl *def;
 };
 
@@ -78,10 +82,12 @@ struct _external_acl {
     external_acl *next;
     int ttl;
     int negative_ttl;
+    int grace;
     char *name;
     external_acl_format *format;
     wordlist *cmdline;
     int children;
+    int concurrency;
     helper *helper;
     hash_table *cache;
     dlink_list lru_list;
@@ -97,19 +103,34 @@ struct _external_acl {
 
 struct _external_acl_format {
     enum {
-	EXT_ACL_LOGIN = 1,
+	EXT_ACL_UNKNOWN,
+	EXT_ACL_LOGIN,
 #if USE_IDENT
 	EXT_ACL_IDENT,
 #endif
 	EXT_ACL_SRC,
+	EXT_ACL_SRCPORT,
+	EXT_ACL_MYADDR,
+	EXT_ACL_MYPORT,
 	EXT_ACL_DST,
 	EXT_ACL_PROTO,
 	EXT_ACL_PORT,
+	EXT_ACL_PATH,
 	EXT_ACL_METHOD,
 	EXT_ACL_HEADER,
 	EXT_ACL_HEADER_MEMBER,
 	EXT_ACL_HEADER_ID,
-	EXT_ACL_HEADER_ID_MEMBER
+	EXT_ACL_HEADER_ID_MEMBER,
+#if USE_SSL
+	EXT_ACL_USER_CERT,
+	EXT_ACL_CA_CERT,
+	EXT_ACL_USER_CERT_RAW,
+	EXT_ACL_USER_CERTCHAIN_RAW,
+#endif
+	EXT_ACL_EXT_USER,
+	EXT_ACL_ACL,
+	EXT_ACL_DATA,
+	EXT_ACL_END
     } type;
     external_acl_format *next;
     char *header;
@@ -167,13 +188,13 @@ parse_externalAclHelper(external_acl ** list)
 
     a->ttl = DEFAULT_EXTERNAL_ACL_TTL;
     a->negative_ttl = -1;
-    a->children = DEFAULT_EXTERNAL_ACL_CONCURRENCY;
+    a->children = DEFAULT_EXTERNAL_ACL_CHILDREN;
 
     token = strtok(NULL, w_space);
     if (!token)
 	self_destruct();
     a->name = xstrdup(token);
-    a->quote = QUOTE_METHOD_SHELL;
+    a->quote = QUOTE_METHOD_URL;
 
     token = strtok(NULL, w_space);
     /* Parse options */
@@ -185,7 +206,7 @@ parse_externalAclHelper(external_acl ** list)
 	} else if (strncmp(token, "children=", 9) == 0) {
 	    a->children = atoi(token + 9);
 	} else if (strncmp(token, "concurrency=", 12) == 0) {
-	    a->children = atoi(token + 12);
+	    a->concurrency = atoi(token + 12);
 	} else if (strncmp(token, "cache=", 6) == 0) {
 	    a->cache_size = atoi(token + 6);
 	} else if (strcmp(token, "protocol=2.5") == 0) {
@@ -196,6 +217,8 @@ parse_externalAclHelper(external_acl ** list)
 	    a->quote = QUOTE_METHOD_URL;
 	} else if (strcmp(token, "quote=shell") == 0) {
 	    a->quote = QUOTE_METHOD_SHELL;
+	} else if (strncmp(token, "grace=", 6) == 0) {
+	    a->grace = atoi(token + 6);
 	} else {
 	    break;
 	}
@@ -258,14 +281,41 @@ parse_externalAclHelper(external_acl ** list)
 #endif
 	else if (strcmp(token, "%SRC") == 0)
 	    format->type = EXT_ACL_SRC;
+	else if (strcmp(token, "%SRCPORT") == 0)
+	    format->type = EXT_ACL_SRCPORT;
+	else if (strcmp(token, "%MYADDR") == 0)
+	    format->type = EXT_ACL_MYADDR;
+	else if (strcmp(token, "%MYPORT") == 0)
+	    format->type = EXT_ACL_MYPORT;
 	else if (strcmp(token, "%DST") == 0)
 	    format->type = EXT_ACL_DST;
 	else if (strcmp(token, "%PROTO") == 0)
 	    format->type = EXT_ACL_PROTO;
 	else if (strcmp(token, "%PORT") == 0)
 	    format->type = EXT_ACL_PORT;
+	else if (strcmp(token, "%PATH") == 0)
+	    format->type = EXT_ACL_PATH;
 	else if (strcmp(token, "%METHOD") == 0)
 	    format->type = EXT_ACL_METHOD;
+#if USE_SSL
+	else if (strcmp(token, "%USER_CERT") == 0)
+	    format->type = EXT_ACL_USER_CERT_RAW;
+	else if (strcmp(token, "%USER_CERTCHAIN") == 0)
+	    format->type = EXT_ACL_USER_CERTCHAIN_RAW;
+	else if (strncmp(token, "%USER_CERT_", 11) == 0) {
+	    format->type = EXT_ACL_USER_CERT;
+	    format->header = xstrdup(token + 11);
+	} else if (strncmp(token, "%CA_CERT_", 9) == 0) {
+	    format->type = EXT_ACL_CA_CERT;
+	    format->header = xstrdup(token + 9);
+	}
+#endif
+	else if (strcmp(token, "%EXT_USER") == 0)
+	    format->type = EXT_ACL_EXT_USER;
+	else if (strcmp(token, "%ACL") == 0)
+	    format->type = EXT_ACL_ACL;
+	else if (strcmp(token, "%DATA") == 0)
+	    format->type = EXT_ACL_DATA;
 	else {
 	    self_destruct();
 	}
@@ -303,8 +353,14 @@ dump_externalAclHelper(StoreEntry * sentry, const char *name, const external_acl
 	    storeAppendPrintf(sentry, " ttl=%d", node->ttl);
 	if (node->negative_ttl != node->ttl)
 	    storeAppendPrintf(sentry, " negative_ttl=%d", node->negative_ttl);
-	if (node->children != DEFAULT_EXTERNAL_ACL_CONCURRENCY)
-	    storeAppendPrintf(sentry, " concurrency=%d", node->children);
+	if (node->grace)
+	    storeAppendPrintf(sentry, " grace=%d", node->grace);
+	if (node->children != DEFAULT_EXTERNAL_ACL_CHILDREN)
+	    storeAppendPrintf(sentry, " children=%d", node->children);
+	if (node->concurrency)
+	    storeAppendPrintf(sentry, " concurrency=%d", node->concurrency);
+	if (node->cache_size)
+	    storeAppendPrintf(sentry, " cache=%d", node->cache_size);
 	for (format = node->format; format; format = format->next) {
 	    switch (format->type) {
 	    case EXT_ACL_HEADER:
@@ -324,10 +380,35 @@ dump_externalAclHelper(StoreEntry * sentry, const char *name, const external_acl
 		DUMP_EXT_ACL_TYPE(IDENT);
 #endif
 		DUMP_EXT_ACL_TYPE(SRC);
+		DUMP_EXT_ACL_TYPE(SRCPORT);
+		DUMP_EXT_ACL_TYPE(MYADDR);
+		DUMP_EXT_ACL_TYPE(MYPORT);
 		DUMP_EXT_ACL_TYPE(DST);
 		DUMP_EXT_ACL_TYPE(PROTO);
 		DUMP_EXT_ACL_TYPE(PORT);
+		DUMP_EXT_ACL_TYPE(PATH);
 		DUMP_EXT_ACL_TYPE(METHOD);
+		DUMP_EXT_ACL_TYPE(EXT_USER);
+#if USE_SSL
+	    case EXT_ACL_USER_CERT_RAW:
+		storeAppendPrintf(sentry, " %%USER_CERT");
+		break;
+	    case EXT_ACL_USER_CERTCHAIN_RAW:
+		storeAppendPrintf(sentry, " %%USER_CERTCHAIN");
+		break;
+	    case EXT_ACL_USER_CERT:
+		storeAppendPrintf(sentry, " %%USER_CERT_%s", format->header);
+		break;
+	    case EXT_ACL_CA_CERT:
+		storeAppendPrintf(sentry, " %%CA_CERT_%s", format->header);
+		break;
+#endif
+		DUMP_EXT_ACL_TYPE(ACL);
+		DUMP_EXT_ACL_TYPE(DATA);
+	    case EXT_ACL_UNKNOWN:
+	    case EXT_ACL_END:
+		fatal("unknown external_acl format error");
+		break;
 	    }
 	}
 	for (word = node->cmdline; word; word = word->next)
@@ -366,6 +447,7 @@ find_externalAclHelper(const char *name)
 
 struct _external_acl_data {
     external_acl *def;
+    const char *name;
     wordlist *arguments;
 };
 
@@ -380,7 +462,7 @@ free_external_acl_data(void *data)
 }
 
 void
-aclParseExternal(void *dataptr)
+aclParseExternal(void *dataptr, const char *name)
 {
     external_acl_data **datap = dataptr;
     external_acl_data *data;
@@ -392,6 +474,7 @@ aclParseExternal(void *dataptr)
     token = strtok(NULL, w_space);
     if (!token)
 	self_destruct();
+    data->name = name;
     data->def = find_externalAclHelper(token);
     cbdataLock(data->def);
     if (!data->def)
@@ -414,8 +497,10 @@ aclMatchExternal(void *data, aclCheck_t * ch)
     int result;
     external_acl_entry *entry = NULL;
     external_acl_data *acl = data;
+    request_t *request;
     const char *key = "";
     debug(82, 9) ("aclMatchExternal: acl=\"%s\"\n", acl->def->name);
+    request = ch->request;
     if (ch->extacl_entry) {
 	entry = ch->extacl_entry;
 	if (!cbdataValid(entry))
@@ -445,33 +530,48 @@ aclMatchExternal(void *data, aclCheck_t * ch)
 	}
     }
     if (!entry) {
+	int lookup_needed = 1;
 	entry = hash_lookup(acl->def->cache, key);
-	if (entry && external_acl_entry_expired(acl->def, entry)) {
-	    /* Expired entry, ignore */
-	    debug(82, 2) ("external_acl_cache_lookup: '%s' = expired\n", key);
-	    entry = NULL;
+	if (entry && !external_acl_entry_expired(acl->def, entry)) {
+	    lookup_needed = external_acl_grace_expired(acl->def, entry);
+	    /* Don't make graceful lookups if already pending */
+	    if (lookup_needed && external_acl_is_pending(acl->def, key))
+		lookup_needed = 0;
+	    /* Don't make graceful lookups when under high load */
+	    if (acl->def->helper->stats.queue_size > acl->def->helper->n_running * 2 / 3)
+		lookup_needed = 0;
 	}
-    }
-    if (!entry || entry->result == -1) {
-	debug(82, 2) ("aclMatchExternal: %s(\"%s\") = lookup needed\n", acl->def->name, key);
-	if (acl->def->helper->stats.queue_size >= acl->def->helper->n_running)
-	    debug(82, 1) ("aclMatchExternal: '%s' queue overload. Request rejected.\n", acl->def->name);
-	else
-	    ch->state[ACL_EXTERNAL] = ACL_LOOKUP_NEEDED;
-	return -1;
+	if (lookup_needed) {
+	    debug(82, 2) ("aclMatchExternal: %s(\"%s\") = lookup needed\n", acl->def->name, key);
+	    if (acl->def->helper->stats.queue_size <= acl->def->helper->n_running) {
+		ch->state[ACL_EXTERNAL] = ACL_LOOKUP_NEEDED;
+		return -1;
+	    } else {
+		if (!entry) {
+		    debug(82, 1) ("aclMatchExternal: '%s' queue overload. Request rejected '%s'.\n", acl->def->name, key);
+		    return -1;
+		} else {
+		    debug(82, 1) ("aclMatchExternal: '%s' queue overload. Using stale result. '%s'\n", acl->def->name, key);
+		    /* Fall thru to processing below */
+		}
+	    }
+	}
     }
     external_acl_cache_touch(acl->def, entry);
     result = entry->result;
+    external_acl_message = entry->message;
+
     debug(82, 2) ("aclMatchExternal: %s = %d\n", acl->def->name, result);
-    /* FIXME: This should allocate it's own storage in the request. This
-     * piggy backs on ident, and may fail if there is child proxies..
-     * Register the username for logging purposes
-     */
     if (entry->user) {
-	xstrncpy(ch->rfc931, entry->user, USER_IDENT_SZ);
-	if (cbdataValid(ch->conn))
-	    xstrncpy(ch->conn->rfc931, entry->user, USER_IDENT_SZ);
+	safe_free(request->extacl_user);
+	request->extacl_user = xstrdup(entry->user);
     }
+    if (entry->passwd) {
+	safe_free(request->extacl_passwd);
+	request->extacl_passwd = xstrdup(entry->passwd);
+    }
+    if (entry->log)
+	stringReset(&ch->request->extacl_log, entry->log);
     return result;
 }
 
@@ -515,6 +615,7 @@ makeExternalAclKey(aclCheck_t * ch, external_acl_data * acl_data)
     external_acl_format *format;
     request_t *request = ch->request;
     String sb = StringNull;
+    int data_used = 0;
     memBufReset(&mb);
     for (format = acl_data->def->format; format; format = format->next) {
 	const char *str = NULL;
@@ -534,6 +635,17 @@ makeExternalAclKey(aclCheck_t * ch, external_acl_data * acl_data)
 	case EXT_ACL_SRC:
 	    str = inet_ntoa(ch->src_addr);
 	    break;
+	case EXT_ACL_SRCPORT:
+	    snprintf(buf, sizeof(buf), "%d", request->client_port);
+	    str = buf;
+	    break;
+	case EXT_ACL_MYADDR:
+	    str = inet_ntoa(request->my_addr);
+	    break;
+	case EXT_ACL_MYPORT:
+	    snprintf(buf, sizeof(buf), "%d", request->my_port);
+	    str = buf;
+	    break;
 	case EXT_ACL_DST:
 	    str = request->host;
 	    break;
@@ -543,6 +655,9 @@ makeExternalAclKey(aclCheck_t * ch, external_acl_data * acl_data)
 	case EXT_ACL_PORT:
 	    snprintf(buf, sizeof(buf), "%d", request->port);
 	    str = buf;
+	    break;
+	case EXT_ACL_PATH:
+	    str = strBuf(request->urlpath);
 	    break;
 	case EXT_ACL_METHOD:
 	    str = RequestMethodStr[request->method];
@@ -563,6 +678,66 @@ makeExternalAclKey(aclCheck_t * ch, external_acl_data * acl_data)
 	    sb = httpHeaderGetListMember(&request->header, format->header_id, format->member, format->separator);
 	    str = strBuf(sb);
 	    break;
+#if USE_SSL
+	case EXT_ACL_USER_CERT_RAW:
+	    if (cbdataValid(ch->conn)) {
+		SSL *ssl = fd_table[ch->conn->fd].ssl;
+		if (ssl)
+		    str = sslGetUserCertificatePEM(ssl);
+	    }
+	    break;
+	case EXT_ACL_USER_CERTCHAIN_RAW:
+	    if (cbdataValid(ch->conn)) {
+		SSL *ssl = fd_table[ch->conn->fd].ssl;
+		if (ssl)
+		    str = sslGetUserCertificateChainPEM(ssl);
+	    }
+	    break;
+	case EXT_ACL_USER_CERT:
+	    if (cbdataValid(ch->conn)) {
+		SSL *ssl = fd_table[ch->conn->fd].ssl;
+		if (ssl)
+		    str = sslGetUserAttribute(ssl, format->header);
+	    }
+	    break;
+	case EXT_ACL_CA_CERT:
+	    if (cbdataValid(ch->conn)) {
+		SSL *ssl = fd_table[ch->conn->fd].ssl;
+		if (ssl)
+		    str = sslGetCAAttribute(ssl, format->header);
+	    }
+	    break;
+#endif
+	case EXT_ACL_EXT_USER:
+	    str = request->extacl_user;
+	    break;
+	case EXT_ACL_DATA:
+	    data_used = 1;
+	    for (arg = acl_data->arguments; arg; arg = arg->next) {
+		if (arg != acl_data->arguments)
+		    stringAppend(&sb, " ", 1);
+		if (acl_data->def->quote == QUOTE_METHOD_URL) {
+		    const char *quoted = rfc1738_escape(arg->key);
+		    stringAppend(&sb, quoted, strlen(quoted));
+		} else {
+		    static MemBuf mb2 = MemBufNULL;
+		    strwordquote(&mb2, arg->key);
+		    stringAppend(&sb, mb2.buf, mb2.size);
+		    memBufClean(&mb2);
+		}
+		first = 0;
+	    }
+	    str = strBuf(sb);
+	    break;
+
+	case EXT_ACL_ACL:
+	    str = acl_data->name;
+	    break;
+
+	case EXT_ACL_UNKNOWN:
+	case EXT_ACL_END:
+	    fatal("unknown external_acl format error");
+	    break;
 	}
 	if (str)
 	    if (!*str)
@@ -580,16 +755,18 @@ makeExternalAclKey(aclCheck_t * ch, external_acl_data * acl_data)
 	stringClean(&sb);
 	first = 0;
     }
-    for (arg = acl_data->arguments; arg; arg = arg->next) {
-	if (!first)
-	    memBufAppend(&mb, " ", 1);
-	if (acl_data->def->quote == QUOTE_METHOD_URL) {
-	    const char *quoted = rfc1738_escape(arg->key);
-	    memBufAppend(&mb, quoted, strlen(quoted));
-	} else {
-	    strwordquote(&mb, arg->key);
+    if (!data_used) {
+	for (arg = acl_data->arguments; arg; arg = arg->next) {
+	    if (!first)
+		memBufAppend(&mb, " ", 1);
+	    if (acl_data->def->quote == QUOTE_METHOD_URL) {
+		const char *quoted = rfc1738_escape(arg->key);
+		memBufAppend(&mb, quoted, strlen(quoted));
+	    } else {
+		strwordquote(&mb, arg->key);
+	    }
+	    first = 0;
 	}
-	first = 0;
     }
     return mb.buf;
 }
@@ -603,17 +780,30 @@ external_acl_entry_expired(external_acl * def, external_acl_entry * entry)
 	return 0;
 }
 
+static int
+external_acl_grace_expired(external_acl * def, external_acl_entry * entry)
+{
+    int ttl;
+    ttl = entry->result == 1 ? def->ttl : def->negative_ttl;
+    ttl = (ttl * (100 - def->grace)) / 100;
+    if (entry->date + ttl < squid_curtime)
+	return 1;
+    else
+	return 0;
+}
+
 static void
 free_external_acl_entry(void *data)
 {
     external_acl_entry *entry = data;
     safe_free(entry->hash.key);
     safe_free(entry->user);
-    safe_free(entry->error);
+    safe_free(entry->message);
+    safe_free(entry->log);
 }
 
 static external_acl_entry *
-external_acl_cache_add(external_acl * def, const char *key, int result, char *user, char *error)
+external_acl_cache_add(external_acl * def, const char *key, int result, char *user, char *passwd, char *message, char *log)
 {
     external_acl_entry *entry = hash_lookup(def->cache, key);
     debug(82, 2) ("external_acl_cache_add: Adding '%s' = %d\n", key, result);
@@ -622,11 +812,17 @@ external_acl_cache_add(external_acl * def, const char *key, int result, char *us
 	entry->date = squid_curtime;
 	entry->result = result;
 	safe_free(entry->user);
-	safe_free(entry->error);
 	if (user)
 	    entry->user = xstrdup(user);
-	if (error)
-	    entry->error = xstrdup(error);
+	safe_free(entry->passwd);
+	if (passwd)
+	    entry->passwd = xstrdup(passwd);
+	safe_free(entry->message);
+	if (message)
+	    entry->message = xstrdup(message);
+	safe_free(entry->log);
+	if (log)
+	    entry->log = xstrdup(log);
 	external_acl_cache_touch(def, entry);
 	return entry;
     }
@@ -640,8 +836,12 @@ external_acl_cache_add(external_acl * def, const char *key, int result, char *us
     entry->result = result;
     if (user)
 	entry->user = xstrdup(user);
-    if (error)
-	entry->error = xstrdup(error);
+    if (passwd)
+	entry->passwd = xstrdup(passwd);
+    if (message)
+	entry->message = xstrdup(message);
+    if (log)
+	entry->log = xstrdup(log);
     entry->def = def;
     hash_join(def->cache, &entry->hash);
     dlinkAdd(entry, &entry->lru, &def->lru_list);
@@ -684,11 +884,7 @@ free_externalAclState(void *data)
 
 /*
  * The helper program receives queries on stdin, one
- * per line, and must return the result on on stdout as
- *   OK user="Users login name"
- * on success, and
- *   ERR error="Description of the error"
- * on error (the user/error options are optional)
+ * per line, and must return the result on on stdout
  *
  * General result syntax:
  *
@@ -697,7 +893,8 @@ free_externalAclState(void *data)
  * Keywords:
  *
  *   user=        The users name (login)
- *   error=       Error description (only defined for ERR results)
+ *   message=     Message describing the reason
+ *   log=         A string to be used in access logging
  *
  * Other keywords may be added to the protocol later
  *
@@ -717,7 +914,9 @@ externalAclHandleReply(void *data, char *reply)
     char *value;
     char *t;
     char *user = NULL;
-    char *error = NULL;
+    char *passwd = NULL;
+    char *message = NULL;
+    char *log = NULL;
     external_acl_entry *entry = NULL;
 
     debug(82, 2) ("externalAclHandleReply: reply=\"%s\"\n", reply);
@@ -735,15 +934,25 @@ externalAclHandleReply(void *data, char *reply)
 		    rfc1738_unescape(value);
 		if (strcmp(token, "user") == 0)
 		    user = value;
+		else if (strcmp(token, "login") == 0)
+		    user = value;
 		else if (strcmp(token, "error") == 0)
-		    error = value;
+		    message = value;
+		else if (strcmp(token, "message") == 0)
+		    message = value;
+		else if (strcmp(token, "log") == 0)
+		    log = value;
+		else if (strcmp(token, "password") == 0)
+		    passwd = value;
+		else if (strcmp(token, "passwd") == 0)
+		    passwd = value;
 	    }
 	}
     }
     dlinkDelete(&state->list, &state->def->queue);
     if (cbdataValid(state->def)) {
 	if (reply)
-	    entry = external_acl_cache_add(state->def, state->key, result, user, error);
+	    entry = external_acl_cache_add(state->def, state->key, result, user, passwd, message, log);
 	else {
 	    external_acl_entry *oldentry = hash_lookup(state->def->cache, state->key);
 	    if (oldentry)
@@ -754,7 +963,12 @@ externalAclHandleReply(void *data, char *reply)
 	cbdataUnlock(state->def);
 	state->def = NULL;
 
-	if (cbdataValid(state->callback_data))
+	if (entry)
+	    external_acl_message = entry->message;
+	else
+	    external_acl_message = NULL;
+
+	if (state->callback && cbdataValid(state->callback_data))
 	    state->callback(state->callback_data, entry);
 	cbdataUnlock(state->callback_data);
 	state->callback_data = NULL;
@@ -763,6 +977,26 @@ externalAclHandleReply(void *data, char *reply)
 	cbdataFree(state);
 	state = next;
     } while (state);
+}
+
+const char *
+externalAclMessage(external_acl_entry * entry)
+{
+    return entry->message;
+}
+
+static int
+external_acl_is_pending(external_acl * def, const char *key)
+{
+    /* Check for a pending lookup */
+    dlink_node *node;
+    for (node = def->queue.head; node; node = node->next) {
+	externalAclState *oldstatetmp = node->data;
+	if (strcmp(key, oldstatetmp->key) == 0) {
+	    return 1;
+	}
+    }
+    return 0;
 }
 
 void
@@ -774,6 +1008,10 @@ externalAclLookup(aclCheck_t * ch, void *acl_data, EAH * callback, void *callbac
     const char *key;
     external_acl_entry *entry;
     externalAclState *state;
+    dlink_node *node;
+    externalAclState *oldstate = NULL;
+    int graceful = 0;
+
     if (acl->def->require_auth) {
 	int ti;
 	/* Make sure the user is authenticated */
@@ -786,56 +1024,69 @@ externalAclLookup(aclCheck_t * ch, void *acl_data, EAH * callback, void *callbac
     key = makeExternalAclKey(ch, acl);
     if (!key) {
 	debug(82, 1) ("externalAclLookup: lookup in '%s', prerequisit failure\n", def->name);
+	external_acl_message = "MISSING REQUIRED INFORMATION";
 	callback(callback_data, NULL);
 	return;
     }
     debug(82, 2) ("externalAclLookup: lookup in '%s' for '%s'\n", def->name, key);
     entry = hash_lookup(def->cache, key);
+    if (entry && external_acl_entry_expired(def, entry))
+	entry = NULL;
+
+    /* Check for a pending lookup to hook into */
+    for (node = def->queue.head; node; node = node->next) {
+	externalAclState *oldstatetmp = node->data;
+	if (strcmp(key, oldstatetmp->key) == 0) {
+	    oldstate = oldstatetmp;
+	    break;
+	}
+    }
+
+    /* No need to refresh a already pending lookup during grace period */
+    if (entry && external_acl_grace_expired(def, entry)) {
+	if (oldstate) {
+	    callback(callback_data, entry);
+	    return;
+	} else {
+	    graceful = 1;
+	}
+    }
+    /* No pending lookup found. Sumbit to helper */
     state = cbdataAlloc(externalAclState);
     state->def = def;
     cbdataLock(state->def);
-    state->callback = callback;
-    state->callback_data = callback_data;
     state->key = xstrdup(key);
-    cbdataLock(state->callback_data);
-    if (entry && !external_acl_entry_expired(def, entry)) {
-	if (entry->result == -1) {
-	    /* There is a pending lookup. Hook into it */
-	    dlink_node *node;
-	    for (node = def->queue.head; node; node = node->next) {
-		externalAclState *oldstate = node->data;
-		if (strcmp(state->key, oldstate->key) == 0) {
-		    state->queue = oldstate->queue;
-		    oldstate->queue = state;
-		    return;
-		}
-	    }
-	} else {
-	    /* There is a cached valid result.. use it */
-	    /* This should not really happen, but what the heck.. */
-	    callback(callback_data, entry);
+    if (!graceful) {
+	state->callback = callback;
+	state->callback_data = callback_data;
+	cbdataLock(state->callback_data);
+    }
+    if (oldstate) {
+	/* Hook into pending lookup */
+	state->queue = oldstate->queue;
+	oldstate->queue = state;
+    } else {
+	/* Check for queue overload */
+	if (def->helper->stats.queue_size >= def->helper->n_running) {
+	    debug(82, 1) ("externalAclLookup: '%s' queue overload\n", def->name);
 	    cbdataFree(state);
+	    callback(callback_data, entry);
 	    return;
 	}
+	/* Send it off to the helper */
+	memBufDefInit(&buf);
+	memBufPrintf(&buf, "%s\n", key);
+	helperSubmit(def->helper, buf.buf, externalAclHandleReply, state);
+	dlinkAdd(state, &state->list, &def->queue);
+	memBufClean(&buf);
     }
-    /* Check for queue overload */
-    if (def->helper->stats.queue_size >= def->helper->n_running) {
-	int result = -1;
-	external_acl_entry *entry = hash_lookup(def->cache, key);
-	debug(82, 1) ("externalAclLookup: '%s' queue overload\n", def->name);
-	if (entry)
-	    result = entry->result;
-	cbdataFree(state);
+    if (graceful) {
+	/* No need to wait during grace period */
 	callback(callback_data, entry);
 	return;
+    } else {
+	ch->state[ACL_EXTERNAL] = ACL_LOOKUP_PENDING;
     }
-    /* Send it off to the helper */
-    memBufDefInit(&buf);
-    memBufPrintf(&buf, "%s\n", key);
-    helperSubmit(def->helper, buf.buf, externalAclHandleReply, state);
-    external_acl_cache_add(def, key, -1, NULL, NULL);
-    dlinkAdd(state, &state->list, &def->queue);
-    memBufClean(&buf);
 }
 
 int
@@ -859,6 +1110,15 @@ externalAclStats(StoreEntry * sentry)
 }
 
 void
+externalAclConfigure(void)
+{
+    external_acl *p;
+    for (p = Config.externalAclHelperList; p; p = p->next) {
+	requirePathnameExists("external_acl_type", p->cmdline->key);
+    }
+}
+
+void
 externalAclInit(void)
 {
     static int firstTimeInit = 1;
@@ -871,7 +1131,8 @@ externalAclInit(void)
 	    p->helper = helperCreate(p->name);
 	p->helper->cmdline = p->cmdline;
 	p->helper->n_to_start = p->children;
-	p->helper->ipc_type = IPC_TCP_SOCKET;
+	p->helper->concurrency = p->concurrency;
+	p->helper->ipc_type = IPC_STREAM;
 	helperOpenServers(p->helper);
     }
     if (firstTimeInit) {

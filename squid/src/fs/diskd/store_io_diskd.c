@@ -1,6 +1,6 @@
 
 /*
- * $Id: store_io_diskd.c,v 1.22.2.4 2005/03/26 02:50:55 hno Exp $
+ * $Id: store_io_diskd.c,v 1.32 2006/07/05 06:52:13 adrian Exp $
  *
  * DEBUG: section 79    Squid-side DISKD I/O functions.
  * AUTHOR: Duane Wessels
@@ -76,7 +76,7 @@ storeDiskdOpen(SwapDir * SD, StoreEntry * e, STFNCB * file_callback,
 
     sio->swap_filen = f;
     sio->swap_dirn = SD->index;
-    sio->mode = O_RDONLY | O_BINARY;
+    sio->mode = O_RDONLY | O_BINARY | O_NOATIME;
     sio->callback = callback;
     sio->callback_data = callback_data;
     sio->e = e;
@@ -175,6 +175,7 @@ storeDiskdClose(SwapDir * SD, storeIOState * sio)
     diskdstate_t *diskdstate = sio->fsstate;
     debug(79, 3) ("storeDiskdClose: dirno %d, fileno %08X\n", SD->index,
 	sio->swap_filen);
+    diskdstate->flags.close_request = 1;
     x = storeDiskdSend(_MQD_CLOSE,
 	SD,
 	diskdstate->id,
@@ -186,7 +187,6 @@ storeDiskdClose(SwapDir * SD, storeIOState * sio)
 	debug(79, 1) ("storeDiskdSend CLOSE: %s\n", xstrerror());
 	storeDiskdIOCallback(sio, DISK_ERROR);
     }
-    diskdstate->flags.close_request = 1;
     diskd_stats.close.ops++;
 }
 
@@ -298,6 +298,24 @@ storeDiskdUnlink(SwapDir * SD, StoreEntry * e)
     }
     diskd_stats.unlink.ops++;
 }
+
+void
+storeDiskdRecycle(SwapDir * SD, StoreEntry * e)
+{
+    debug(79, 3) ("storeDiskdUnlink: fileno %08X\n", e->swap_filen);
+
+    /* Release the object without releasing the underlying physical object */
+    storeExpireNow(e);
+    storeReleaseRequest(e);
+    if (e->swap_filen > -1) {
+	storeDiskdDirReplRemove(e);
+	storeDiskdDirMapBitReset(SD, e->swap_filen);
+	e->swap_filen = -1;
+	e->swap_dirn = -1;
+    }
+    storeRelease(e);
+}
+
 
 
 /*  === STATIC =========================================================== */
@@ -454,7 +472,7 @@ static void
 storeDiskdIOCallback(storeIOState * sio, int errflag)
 {
     int valid = cbdataValid(sio->callback_data);
-    debug(79, 3) ("storeUfsIOCallback: errflag=%d\n", errflag);
+    debug(79, 3) ("storeDiskdIOCallback: errflag=%d\n", errflag);
     cbdataUnlock(sio->callback_data);
     if (valid)
 	sio->callback(sio->callback_data, errflag, sio);

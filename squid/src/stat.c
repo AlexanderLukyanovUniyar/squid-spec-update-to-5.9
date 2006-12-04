@@ -1,6 +1,6 @@
 
 /*
- * $Id: stat.c,v 1.351.2.16 2005/03/29 09:52:00 hno Exp $
+ * $Id: stat.c,v 1.377 2006/11/01 20:58:52 wessels Exp $
  *
  * DEBUG: section 18    Cache Manager Statistics
  * AUTHOR: Harvest Derived
@@ -279,8 +279,6 @@ statStoreEntry(MemBuf * mb, StoreEntry * e)
 		storeOffset(mem->swapout.sio));
 	for (i = 0, node = mem->clients.head; node; node = node->next, i++) {
 	    sc = (store_client *) node->data;
-	    if (sc->callback_data == NULL)
-		continue;
 	    memBufPrintf(mb, "\tClient #%d, %p\n", i, sc->callback_data);
 	    memBufPrintf(mb, "\t\tcopy_offset: %" PRINTF_OFF_T "\n",
 		sc->copy_offset);
@@ -442,21 +440,37 @@ statFiledescriptors(StoreEntry * sentry)
     int i;
     fde *f;
     storeAppendPrintf(sentry, "Active file descriptors:\n");
+#ifdef _SQUID_MSWIN_
+    storeAppendPrintf(sentry, "%-4s %-10s %-6s %-4s %-7s* %-7s* %-21s %s\n",
+	"File",
+	"Handle",
+#else
     storeAppendPrintf(sentry, "%-4s %-6s %-4s %-7s* %-7s* %-21s %s\n",
 	"File",
+#endif
 	"Type",
 	"Tout",
 	"Nread",
 	"Nwrite",
 	"Remote Address",
 	"Description");
+#ifdef _SQUID_MSWIN_
+    storeAppendPrintf(sentry, "---- ---------- ------ ---- -------- -------- --------------------- ------------------------------\n");
+#else
     storeAppendPrintf(sentry, "---- ------ ---- -------- -------- --------------------- ------------------------------\n");
+#endif
     for (i = 0; i < Squid_MaxFD; i++) {
 	f = &fd_table[i];
 	if (!f->flags.open)
 	    continue;
+#ifdef _SQUID_MSWIN_
+	storeAppendPrintf(sentry, "%4d 0x%-8lX %-6.6s %4d %7" PRINTF_OFF_T "%c %7" PRINTF_OFF_T "%c %-21s %s\n",
+	    i,
+	    f->win32.handle,
+#else
 	storeAppendPrintf(sentry, "%4d %-6.6s %4d %7" PRINTF_OFF_T "%c %7" PRINTF_OFF_T "%c %-21s %s\n",
 	    i,
+#endif
 	    fdTypeStr[f->type],
 	    f->timeout_handler ? (int) (f->timeout - squid_curtime) / 60 : 0,
 	    f->bytes_read,
@@ -486,6 +500,14 @@ info_get(StoreEntry * sentry)
 	runtime = 1.0;
     storeAppendPrintf(sentry, "Squid Object Cache: Version %s\n",
 	version_string);
+#ifdef _SQUID_WIN32_
+    if (WIN32_run_mode == _WIN_SQUID_RUN_MODE_SERVICE) {
+	storeAppendPrintf(sentry, "\nRunning as %s Windows System Service on %s\n",
+	    WIN32_Service_name, WIN32_OS_string);
+	storeAppendPrintf(sentry, "Service command line is: %s\n", WIN32_Service_Command_Line);
+    } else
+	storeAppendPrintf(sentry, "Running on %s\n", WIN32_OS_string);
+#endif
     storeAppendPrintf(sentry, "Start Time:\t%s\n",
 	mkrfc1123(squid_start.tv_sec));
     storeAppendPrintf(sentry, "Current Time:\t%s\n",
@@ -502,6 +524,12 @@ info_get(StoreEntry * sentry)
 	statCounter.icp.pkts_sent);
     storeAppendPrintf(sentry, "\tNumber of queued ICP replies:\t%u\n",
 	statCounter.icp.replies_queued);
+#if USE_HTCP
+    storeAppendPrintf(sentry, "\tNumber of HTCP messages received:\t%u\n",
+	statCounter.htcp.pkts_recv);
+    storeAppendPrintf(sentry, "\tNumber of HTCP messages sent:\t%u\n",
+	statCounter.htcp.pkts_sent);
+#endif
     storeAppendPrintf(sentry, "\tRequest failure ratio:\t%5.2f\n",
 	request_failure_ratio);
 
@@ -583,34 +611,34 @@ info_get(StoreEntry * sentry)
     storeAppendPrintf(sentry, "Memory usage for %s via mstats():\n",
 	appname);
     storeAppendPrintf(sentry, "\tTotal space in arena:  %6d KB\n",
-	ms.bytes_total >> 10);
+	(int) (ms.bytes_total >> 10));
     storeAppendPrintf(sentry, "\tTotal free:            %6d KB %d%%\n",
-	ms.bytes_free >> 10, percent(ms.bytes_free, ms.bytes_total));
+	(int) (ms.bytes_free >> 10), percent(ms.bytes_free, ms.bytes_total));
 #elif HAVE_MALLINFO && HAVE_STRUCT_MALLINFO
     mp = mallinfo();
     storeAppendPrintf(sentry, "Memory usage for %s via mallinfo():\n",
 	appname);
     storeAppendPrintf(sentry, "\tTotal space in arena:  %6ld KB\n",
-	(long int) mp.arena >> 10);
+	(long int) (mp.arena >> 10));
     storeAppendPrintf(sentry, "\tOrdinary blocks:       %6ld KB %6ld blks\n",
-	(long int) mp.uordblks >> 10, (long int) mp.ordblks);
+	(long int) (mp.uordblks >> 10), (long int) mp.ordblks);
     storeAppendPrintf(sentry, "\tSmall blocks:          %6ld KB %6ld blks\n",
-	(long int) mp.usmblks >> 10, (long int) mp.smblks);
+	(long int) (mp.usmblks >> 10), (long int) mp.smblks);
     storeAppendPrintf(sentry, "\tHolding blocks:        %6ld KB %6ld blks\n",
-	(long int) mp.hblkhd >> 10, (long int) mp.hblks);
+	(long int) (mp.hblkhd >> 10), (long int) mp.hblks);
     storeAppendPrintf(sentry, "\tFree Small blocks:     %6ld KB\n",
-	(long int) mp.fsmblks >> 10);
+	(long int) (mp.fsmblks >> 10));
     storeAppendPrintf(sentry, "\tFree Ordinary blocks:  %6ld KB\n",
-	(long int) mp.fordblks >> 10);
-    t = mp.uordblks + mp.usmblks + mp.hblkhd;
+	(long int) (mp.fordblks >> 10));
+    t = (mp.uordblks + mp.usmblks + mp.hblkhd) >> 10;
     storeAppendPrintf(sentry, "\tTotal in use:          %6d KB %d%%\n",
-	t >> 10, percent(t, mp.arena + mp.hblkhd));
-    t = mp.fsmblks + mp.fordblks;
+	t, percent(t, (mp.arena + mp.hblkhd) >> 10));
+    t = (mp.fsmblks + mp.fordblks) >> 10;
     storeAppendPrintf(sentry, "\tTotal free:            %6d KB %d%%\n",
-	t >> 10, percent(t, mp.arena + mp.hblkhd));
-    t = mp.arena + mp.hblkhd;
+	t, percent(t, (mp.arena + mp.hblkhd) >> 10));
+    t = (mp.arena + mp.hblkhd) >> 10;
     storeAppendPrintf(sentry, "\tTotal size:            %6d KB\n",
-	t >> 10);
+	t);
 #if HAVE_EXT_MALLINFO
     storeAppendPrintf(sentry, "\tmax size of small blocks:\t%d\n", mp.mxfast);
     storeAppendPrintf(sentry, "\tnumber of small blocks in a holding block:\t%d\n",
@@ -626,7 +654,7 @@ info_get(StoreEntry * sentry)
 #endif /* HAVE_MALLINFO */
     storeAppendPrintf(sentry, "Memory accounted for:\n");
     storeAppendPrintf(sentry, "\tTotal accounted:       %6d KB\n",
-	statMemoryAccounted() >> 10);
+	(int) (statMemoryAccounted() >> 10));
     storeAppendPrintf(sentry, "\tmemPoolAlloc calls: %u\n",
 	mem_pool_alloc_calls);
     storeAppendPrintf(sentry, "\tmemPoolFree calls: %u\n",
@@ -647,6 +675,7 @@ info_get(StoreEntry * sentry)
 	RESERVED_FD);
     storeAppendPrintf(sentry, "\tStore Disk files open:                %4d\n",
 	store_open_disk_fd);
+    comm_select_status(sentry);
 
     storeAppendPrintf(sentry, "Internal Data Structures:\n");
     storeAppendPrintf(sentry, "\t%6d StoreEntries\n",
@@ -667,7 +696,7 @@ info_get(StoreEntry * sentry)
 #endif
 }
 
-#define XAVG(X) (dt ? (double) (f->X - l->X) / dt : 0.0)
+#define XAVG(X) (dt ? (f->X > l->X ? ((double) (f->X - l->X) / dt) : 0.0) : 0.0)
 static void
 statAvgDump(StoreEntry * sentry, int minutes, int hours)
 {
@@ -835,11 +864,10 @@ statAvgDump(StoreEntry * sentry, int minutes, int hours)
     storeAppendPrintf(sentry, "aborted_requests = %f/sec\n",
 	XAVG(aborted_requests));
 
-#if HAVE_POLL
-    storeAppendPrintf(sentry, "syscalls.polls = %f/sec\n", XAVG(syscalls.polls));
-#else
-    storeAppendPrintf(sentry, "syscalls.selects = %f/sec\n", XAVG(syscalls.selects));
-#endif
+    if (statCounter.syscalls.polls)
+	storeAppendPrintf(sentry, "syscalls.polls = %f/sec\n", XAVG(syscalls.polls));
+    if (statCounter.syscalls.selects)
+	storeAppendPrintf(sentry, "syscalls.selects = %f/sec\n", XAVG(syscalls.selects));
     storeAppendPrintf(sentry, "syscalls.disk.opens = %f/sec\n", XAVG(syscalls.disk.opens));
     storeAppendPrintf(sentry, "syscalls.disk.closes = %f/sec\n", XAVG(syscalls.disk.closes));
     storeAppendPrintf(sentry, "syscalls.disk.reads = %f/sec\n", XAVG(syscalls.disk.reads));
@@ -1442,6 +1470,7 @@ statClientRequests(StoreEntry * s)
     StoreEntry *e;
     int fd;
     for (i = ClientActiveRequests.head; i; i = i->next) {
+	const char *p = NULL;
 	http = i->data;
 	assert(http);
 	conn = http->conn;
@@ -1477,6 +1506,20 @@ statClientRequests(StoreEntry * s)
 	    (long int) http->start.tv_sec,
 	    (int) http->start.tv_usec,
 	    tvSubDsec(http->start, current_time));
+	if (http->request->auth_user_request)
+	    p = authenticateUserRequestUsername(http->request->auth_user_request);
+	else if (http->request->extacl_user) {
+	    p = http->request->extacl_user;
+	}
+	if (!p && conn->rfc931[0])
+	    p = conn->rfc931;
+#if USE_SSL
+	if (!p)
+	    p = sslGetUserEmail(fd_table[conn->fd].ssl);
+#endif
+	if (!p)
+	    p = dash_str;
+	storeAppendPrintf(s, "username %s\n", p);
 #if DELAY_POOLS
 	storeAppendPrintf(s, "delay_pool %d\n", delayClient(http) >> 16);
 #endif
@@ -1568,7 +1611,7 @@ statGraphDump(StoreEntry * e)
 
 #endif /* STAT_GRAPHS */
 
-int
+size_t
 statMemoryAccounted(void)
 {
     return memTotalAllocated();

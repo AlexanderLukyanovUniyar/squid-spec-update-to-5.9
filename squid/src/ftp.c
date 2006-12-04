@@ -1,6 +1,6 @@
 
 /*
- * $Id: ftp.c,v 1.316.2.36 2006/02/25 23:34:13 hno Exp $
+ * $Id: ftp.c,v 1.340 2006/09/18 23:03:36 hno Exp $
  *
  * DEBUG: section 9     File Transfer Protocol (FTP)
  * AUTHOR: Harvest Derived
@@ -114,7 +114,6 @@ typedef struct _Ftpdata {
 	char *buf;
 	size_t size;
 	size_t offset;
-	FREE *freefunc;
 	wordlist *message;
 	char *last_command;
 	char *last_reply;
@@ -125,7 +124,6 @@ typedef struct _Ftpdata {
 	char *buf;
 	size_t size;
 	size_t offset;
-	FREE *freefunc;
 	char *host;
 	u_short port;
     } data;
@@ -160,7 +158,7 @@ static void ftpLoginParser(const char *, FtpStateData *, int escaped);
 static wordlist *ftpParseControlReply(char *, size_t, int *, int *);
 static int ftpRestartable(FtpStateData * ftpState);
 static void ftpAppendSuccessHeader(FtpStateData * ftpState);
-static void ftpAuthRequired(HttpReply * reply, request_t * request, const char *realm);
+static HttpReply *ftpAuthRequired(request_t * request, const char *realm);
 static void ftpHackShortcut(FtpStateData * ftpState, FTPSM * nextState);
 static void ftpUnhack(FtpStateData * ftpState);
 static void ftpScheduleReadControlReply(FtpStateData *, int);
@@ -284,25 +282,19 @@ ftpStateFreed(void *data)
     if (ftpState == NULL)
 	return;
     debug(9, 3) ("ftpStateFree: %s\n", storeUrl(ftpState->entry));
-    storeUnregisterAbort(ftpState->entry);
+    storeClientUnregisterAbort(ftpState->entry);
     storeUnlockObject(ftpState->entry);
     if (ftpState->reply_hdr) {
 	memFree(ftpState->reply_hdr, MEM_8K_BUF);
-	/* this seems unnecessary, but people report SEGV's
-	 * when freeing memory in this function */
 	ftpState->reply_hdr = NULL;
     }
     requestUnlink(ftpState->request);
     if (ftpState->ctrl.buf) {
-	ftpState->ctrl.freefunc(ftpState->ctrl.buf);
-	/* this seems unnecessary, but people report SEGV's
-	 * when freeing memory in this function */
+	memFreeBuf(ftpState->ctrl.size, ftpState->ctrl.buf);
 	ftpState->ctrl.buf = NULL;
     }
     if (ftpState->data.buf) {
-	ftpState->data.freefunc(ftpState->data.buf);
-	/* this seems unnecessary, but people report SEGV's
-	 * when freeing memory in this function */
+	memFreeBuf(ftpState->data.size, ftpState->data.buf);
 	ftpState->data.buf = NULL;
     }
     if (ftpState->pathcomps)
@@ -319,6 +311,7 @@ ftpStateFreed(void *data)
     stringClean(&ftpState->title_url);
     stringClean(&ftpState->base_href);
     safe_free(ftpState->filepath);
+    safe_free(ftpState->dirpath);
     safe_free(ftpState->data.host);
 }
 
@@ -448,7 +441,7 @@ ftpListingFinish(FtpStateData * ftpState)
     storeAppendPrintf(e, "Generated %s by %s (%s)\n",
 	mkrfc1123(squid_curtime),
 	getMyHostname(),
-	full_appname_string);
+	visible_appname_string);
     storeAppendPrintf(e, "</ADDRESS></BODY></HTML>\n");
 }
 
@@ -1143,11 +1136,8 @@ ftpStart(FwdState * fwd)
 	    snprintf(realm, 8192, "ftp %s port %d",
 		ftpState->user, request->port);
 	}
-	/* create reply */
-	reply = entry->mem_obj->reply;
-	assert(reply != NULL);
 	/* create appropriate reply */
-	ftpAuthRequired(reply, request, realm);
+	reply = ftpAuthRequired(request, realm);
 	httpReplySwapOut(reply, entry);
 	fwdComplete(ftpState->fwd);
 	comm_close(fd);
@@ -1160,13 +1150,9 @@ ftpStart(FwdState * fwd)
 	ftpState->user, ftpState->password);
     ftpState->state = BEGIN;
     ftpState->ctrl.last_command = xstrdup("Connect to server");
-    ftpState->ctrl.buf = memAllocate(MEM_4K_BUF);
-    ftpState->ctrl.freefunc = memFree4K;
-    ftpState->ctrl.size = 4096;
+    ftpState->ctrl.buf = memAllocBuf(4096, &ftpState->ctrl.size);
     ftpState->ctrl.offset = 0;
-    ftpState->data.buf = xmalloc(SQUID_TCP_SO_RCVBUF);
-    ftpState->data.size = SQUID_TCP_SO_RCVBUF;
-    ftpState->data.freefunc = xfree;
+    ftpState->data.buf = memAllocBuf(SQUID_TCP_SO_RCVBUF, &ftpState->data.size);
     ftpScheduleReadControlReply(ftpState, 0);
 }
 
@@ -1389,7 +1375,6 @@ ftpReadControlReply(int fd, void *data)
 static void
 ftpHandleControlReply(FtpStateData * ftpState)
 {
-    char *oldbuf;
     wordlist **W;
     int bytes_used = 0;
     wordlistDestroy(&ftpState->ctrl.message);
@@ -1398,12 +1383,7 @@ ftpHandleControlReply(FtpStateData * ftpState)
     if (ftpState->ctrl.message == NULL) {
 	/* didn't get complete reply yet */
 	if (ftpState->ctrl.offset == ftpState->ctrl.size) {
-	    oldbuf = ftpState->ctrl.buf;
-	    ftpState->ctrl.buf = xcalloc(ftpState->ctrl.size << 1, 1);
-	    xmemcpy(ftpState->ctrl.buf, oldbuf, ftpState->ctrl.size);
-	    ftpState->ctrl.size <<= 1;
-	    ftpState->ctrl.freefunc(oldbuf);
-	    ftpState->ctrl.freefunc = xfree;
+	    ftpState->ctrl.buf = memReallocBuf(ftpState->ctrl.buf, ftpState->ctrl.size << 1, &ftpState->ctrl.size);
 	}
 	ftpScheduleReadControlReply(ftpState, 0);
 	return;
@@ -1754,7 +1734,7 @@ ftpSendPasv(FtpStateData * ftpState)
     int fd;
     struct sockaddr_in addr;
     socklen_t addr_len;
-    if (ftpState->request->method == METHOD_HEAD) {
+    if (ftpState->request->method == METHOD_HEAD && (ftpState->flags.isdir || ftpState->size != -1)) {
 	/* Terminate here for HEAD requests */
 	ftpAppendSuccessHeader(ftpState);
 	storeTimestampsSet(ftpState->entry);
@@ -1786,7 +1766,7 @@ ftpSendPasv(FtpStateData * ftpState)
     }
     /* Open data channel with the same local address as control channel */
     fd = comm_open(SOCK_STREAM,
-	0,
+	IPPROTO_TCP,
 	addr.sin_addr,
 	0,
 	COMM_NONBLOCKING,
@@ -1926,7 +1906,7 @@ ftpOpenListenSocket(FtpStateData * ftpState, int fallback)
 	port = ntohs(addr.sin_port);
     }
     fd = comm_open(SOCK_STREAM,
-	0,
+	IPPROTO_TCP,
 	addr.sin_addr,
 	port,
 	COMM_NONBLOCKING | (fallback ? COMM_REUSEADDR : 0),
@@ -2477,30 +2457,30 @@ ftpFailedErrorMessage(FtpStateData * ftpState, err_type error)
 	case SENT_PASS:
 	    if (ftpState->ctrl.replycode > 500)
 		if (ftpState->password_url)
-		    err = errorCon(ERR_FTP_FORBIDDEN, HTTP_FORBIDDEN);
+		    err = errorCon(ERR_FTP_FORBIDDEN, HTTP_FORBIDDEN, ftpState->fwd->request);
 		else
-		    err = errorCon(ERR_FTP_FORBIDDEN, HTTP_UNAUTHORIZED);
+		    err = errorCon(ERR_FTP_FORBIDDEN, HTTP_UNAUTHORIZED, ftpState->fwd->request);
 	    else if (ftpState->ctrl.replycode == 421)
-		err = errorCon(ERR_FTP_UNAVAILABLE, HTTP_SERVICE_UNAVAILABLE);
+		err = errorCon(ERR_FTP_UNAVAILABLE, HTTP_SERVICE_UNAVAILABLE, ftpState->fwd->request);
 	    break;
 	case SENT_CWD:
 	case SENT_RETR:
 	    if (ftpState->ctrl.replycode == 550)
-		err = errorCon(ERR_FTP_NOT_FOUND, HTTP_NOT_FOUND);
+		err = errorCon(ERR_FTP_NOT_FOUND, HTTP_NOT_FOUND, ftpState->fwd->request);
 	    break;
 	default:
 	    break;
 	}
 	break;
     case ERR_READ_TIMEOUT:
-	err = errorCon(error, HTTP_GATEWAY_TIMEOUT);
+	err = errorCon(error, HTTP_GATEWAY_TIMEOUT, ftpState->fwd->request);
 	break;
     default:
-	err = errorCon(error, HTTP_BAD_GATEWAY);
+	err = errorCon(error, HTTP_BAD_GATEWAY, ftpState->fwd->request);
 	break;
     }
     if (err == NULL)
-	err = errorCon(ERR_FTP_FAILURE, HTTP_BAD_GATEWAY);
+	err = errorCon(ERR_FTP_FAILURE, HTTP_BAD_GATEWAY, ftpState->fwd->request);
     err->xerrno = errno;
     err->ftp.server_msg = ftpState->ctrl.message;
     ftpState->ctrl.message = NULL;
@@ -2542,8 +2522,7 @@ ftpSendReply(FtpStateData * ftpState)
 	err_code = ERR_FTP_PUT_ERROR;
 	http_code = HTTP_INTERNAL_SERVER_ERROR;
     }
-    err = errorCon(err_code, http_code);
-    err->request = requestLink(ftpState->request);
+    err = errorCon(err_code, http_code, ftpState->request);
     if (ftpState->old_request)
 	err->ftp.request = xstrdup(ftpState->old_request);
     else
@@ -2629,18 +2608,16 @@ ftpAppendSuccessHeader(FtpStateData * ftpState)
     }
 }
 
-static void
-ftpAuthRequired(HttpReply * old_reply, request_t * request, const char *realm)
+static HttpReply *
+ftpAuthRequired(request_t * request, const char *realm)
 {
-    ErrorState *err = errorCon(ERR_CACHE_ACCESS_DENIED, HTTP_UNAUTHORIZED);
+    ErrorState *err = errorCon(ERR_CACHE_ACCESS_DENIED, HTTP_UNAUTHORIZED, request);
     HttpReply *rep;
-    err->request = requestLink(request);
     rep = errorBuildReply(err);
     errorStateFree(err);
     /* add Authenticate header */
     httpHeaderPutAuth(&rep->header, "Basic", realm);
-    /* move new reply to the old one */
-    httpReplyAbsorb(old_reply, rep);
+    return rep;
 }
 
 char *

@@ -1,6 +1,6 @@
 ## Process this file with automake to produce Makefile.in
 #
-#  $Id: Makefile.am,v 1.3.2.2 2004/08/09 13:57:00 hno Exp $
+#  $Id: Makefile.am,v 1.9 2006/09/08 19:41:24 serassio Exp $
 #
 
 if NEED_OWN_SNPRINTF
@@ -8,23 +8,43 @@ SNPRINTFSOURCE=snprintf.c
 else
 SNPRINTFSOURCE=
 endif
+if NEED_OWN_STRSEP
+STRSEPSOURCE=strsep.c
+else
+STRSEPSOURCE=
+endif
 if NEED_OWN_MD5
 MD5SOURCE=md5.c
 else
 MD5SOURCE=
 endif
+if ENABLE_WIN32SPECIFIC
+LIBSSPWIN32=libsspwin32.a
+else
+LIBSSPWIN32=
+endif
+
+if ENABLE_MINGW32SPECIFIC
+WIN32SRC = win32lib.c
+else
+WIN32SRC=
+endif
 
 EXTRA_LIBRARIES = \
 	libdlmalloc.a \
-	libregex.a
+	libregex.a \
+	libsspwin32.a
 noinst_LIBRARIES = \
 	@LIBDLMALLOC@ \
 	libmiscutil.a \
 	libntlmauth.a \
-	@LIBREGEX@
+	@LIBREGEX@ \
+	$(LIBSSPWIN32)
 EXTRA_libmiscutil_a_SOURCES = \
 	md5.c \
-	snprintf.c
+	snprintf.c \
+	strsep.c \
+	win32lib.c
 libmiscutil_a_SOURCES = \
 	Array.c \
 	base64.c \
@@ -43,9 +63,11 @@ libmiscutil_a_SOURCES = \
 	$(SNPRINTFSOURCE) \
 	splay.c \
 	Stack.c \
+	$(STRSEPSOURCE) \
 	stub_memaccount.c \
 	util.c \
-	uudecode.c
+	uudecode.c \
+	$(WIN32SRC)
 libmiscutil_a_LIBADD = \
 	@LIBOBJS@
 # $(top_srcdir)/include/version.h should be a dependency
@@ -57,5 +79,7 @@ libntlmauth_a_SOURCES = \
 	ntlmauth.c
 libntlmauth_a_LIBADD = \
 	@LIBOBJS@
+libsspwin32_a_SOURCES = \
+	sspwin32.c
 
 INCLUDES	= -I$(top_builddir)/include -I$(top_srcdir)/include

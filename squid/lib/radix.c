@@ -1,5 +1,5 @@
 /*
- * $Id: radix.c,v 1.16.2.1 2003/06/18 23:53:34 hno Exp $
+ * $Id: radix.c,v 1.21 2006/06/02 17:32:44 serassio Exp $
  *
  * DEBUG: section 53     Radix tree data structure implementation
  * AUTHOR: NetBSD Derived
@@ -96,7 +96,7 @@
 #endif
 #if HAVE_GNUMALLOC_H
 #include <gnumalloc.h>
-#elif HAVE_MALLOC_H && !defined(_SQUID_FREEBSD_) && !defined(_SQUID_NEXT_)
+#elif HAVE_MALLOC_H
 #include <malloc.h>
 #endif
 #if HAVE_MEMORY_H
@@ -127,9 +127,33 @@ static unsigned char normal_chars[] =
 {0, 0x80, 0xc0, 0xe0, 0xf0, 0xf8, 0xfc, 0xfe, 0xFF};
 static char *rn_zeros, *rn_ones;
 
+/* aliases */
 #define rn_masktop (squid_mask_rnhead->rnh_treetop)
-#undef squid_Bcmp
+#define rn_dupedkey rn_u.rn_leaf.rn_Dupedkey
+#define rn_off rn_u.rn_node.rn_Off
+#define rn_l rn_u.rn_node.rn_L
+#define rn_r rn_u.rn_node.rn_R
+#define rm_mask rm_rmu.rmu_mask
+#define rm_leaf rm_rmu.rmu_leaf /* extra field would make 32 bytes */
+
+
+/* Helper macros */
 #define squid_Bcmp(a, b, l) (l == 0 ? 0 : memcmp((caddr_t)(a), (caddr_t)(b), (u_long)l))
+#define squid_R_Malloc(p, t, n) (p = (t) xmalloc((unsigned int)(n)))
+#define squid_Free(p) xfree((char *)p)
+#define squid_MKGet(m) {\
+	if (squid_rn_mkfreelist) {\
+		m = squid_rn_mkfreelist; \
+		squid_rn_mkfreelist = (m)->rm_mklist; \
+	} else \
+		squid_R_Malloc(m, struct squid_radix_mask *, sizeof (*(m)));\
+	}
+
+#define squid_MKFree(m) { (m)->rm_mklist = squid_rn_mkfreelist; squid_rn_mkfreelist = (m);}
+
+#ifndef min
+#define min(x,y) ((x)<(y)? (x) : (y))
+#endif
 /*
  * The data structure for the keys is a radix tree with one way
  * branching removed.  The index rn_b at an internal node n represents a bit

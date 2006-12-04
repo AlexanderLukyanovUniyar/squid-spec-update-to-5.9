@@ -1,6 +1,6 @@
 
 /*
- * $Id: globals.h,v 1.108.2.7 2005/06/13 22:26:21 hno Exp $
+ * $Id: globals.h,v 1.122 2006/09/25 19:31:34 serassio Exp $
  *
  *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/
@@ -57,6 +57,8 @@ extern const char *const localhost;	/* "127.0.0.1" */
 extern const char *const null_string;	/* "" */
 extern const char *const version_string;	/* VERSION */
 extern const char *const full_appname_string;	/* PACKAGE "/" VERSION */
+extern const char *const appname_string;	/* PACKAGE */
+extern char *visible_appname_string;
 extern const char *const w_space;	/* " \t\n\r" */
 extern const char *fdTypeStr[];
 extern const char *hier_strings[];
@@ -100,8 +102,6 @@ extern int theInSnmpConnection;	/* -1 */
 extern int theOutSnmpConnection;	/* -1 */
 extern char *snmp_agentinfo;
 #endif
-extern int vhost_mode;		/* 0 */
-extern int vport_mode;		/* 0 */
 extern int n_disk_objects;	/* 0 */
 extern iostats IOStats;
 extern struct _acl_deny_info_list *DenyInfoList;	/* NULL */
@@ -158,14 +158,25 @@ extern squid_off_t store_maxobjsize;	/* -1 */
 extern RemovalPolicy *mem_policy;
 extern hash_table *proxy_auth_username_cache;	/* NULL */
 extern int incoming_sockets_accepted;
-#if defined(_SQUID_MSWIN_) || defined(_SQUID_CYGWIN_)
+#ifdef _SQUID_WIN32_
+extern unsigned int WIN32_Socks_initialized;	/* 0 */
 extern unsigned int WIN32_OS_version;	/* 0 */
 extern char *WIN32_OS_string;	/* NULL */
+extern char *WIN32_Service_name;	/* NULL */
+extern char *WIN32_Command_Line;	/* NULL */
+extern char *WIN32_Service_Command_Line;	/* NULL */
+extern unsigned int WIN32_run_mode;	/* _WIN_SQUID_RUN_MODE_INTERACTIVE */
 #endif
+extern const char *external_acl_message;	/* NULL */
 #if HAVE_SBRK
 extern void *sbrk_start;	/* 0 */
 #endif
 extern int opt_send_signal;	/* -1 */
 extern int opt_no_daemon;	/* 0 */
+#if LINUX_TPROXY
+extern int need_linux_tproxy;	/* 0 */
+#endif
+extern int opt_parse_cfg_only;	/* 0 */
+extern int n_coss_dirs;		/* 0 */
 
 #endif /* SQUID_GLOBALS_H */

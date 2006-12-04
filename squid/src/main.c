@@ -1,6 +1,6 @@
 
 /*
- * $Id: main.c,v 1.345.2.27 2005/06/27 21:24:28 hno Exp $
+ * $Id: main.c,v 1.392 2006/10/23 11:22:21 hno Exp $
  *
  * DEBUG: section 1     Startup and Main Loop
  * AUTHOR: Harvest Derived
@@ -35,12 +35,21 @@
 
 #include "squid.h"
 
+#if defined(USE_WIN32_SERVICE) && defined(_SQUID_WIN32_)
+#include <windows.h>
+#include <process.h>
+static int opt_install_service = FALSE;
+static int opt_remove_service = FALSE;
+static int opt_signal_service = FALSE;
+static int opt_command_line = FALSE;
+extern void WIN32_svcstatusupdate(DWORD, DWORD);
+void WINAPI WIN32_svcHandler(DWORD);
+#endif
+
 /* for error reporting from xmalloc and friends */
 extern void (*failure_notify) (const char *);
 
-static int opt_parse_cfg_only = 0;
 static char *opt_syslog_facility = NULL;
-static int httpPortNumOverride = 1;
 static int icpPortNumOverride = 1;	/* Want to detect "-u 0" */
 static int configured_once = 0;
 #if MALLOC_DBG
@@ -52,11 +61,6 @@ static volatile int do_shutdown = 0;
 
 static void mainRotate(void);
 static void mainReconfigure(void);
-static SIGHDLR rotate_logs;
-static SIGHDLR reconfigure;
-#if ALARM_UPDATES_TIME
-static SIGHDLR time_tick;
-#endif
 static void mainInitialize(void);
 static void usage(void);
 static void mainParseOptions(int, char **);
@@ -72,7 +76,9 @@ static EVH SquidShutdown;
 static void mainSetCwd(void);
 static int checkRunningPid(void);
 
+#ifndef _SQUID_MSWIN_
 static const char *squid_start_script = "squid_start";
+#endif
 
 #if TEST_ACCESS
 #include "test_access.c"
@@ -82,15 +88,26 @@ static void
 usage(void)
 {
     fprintf(stderr,
-	"Usage: %s [-dhvzCDFNRVYX] [-s | -l facility] [-f config-file] [-[au] port] [-k signal]\n"
-	"       -a port   Specify HTTP port number (default: %d).\n"
+#if defined(USE_WIN32_SERVICE) && defined(_SQUID_WIN32_)
+	"Usage: %s [-hirvzCDFRYX] [-d level] [-s | -l facility] [-f config-file] [-u port] [-k signal] [-n name] [-O command-line]\n"
+#else
+	"Usage: %s [-hvzCDFNRYX] [-d level] [-s | -l facility] [-f config-file] [-u port] [-k signal]\n"
+#endif
 	"       -d level  Write debugging to stderr also.\n"
 	"       -f file   Use given config-file instead of\n"
 	"                 %s\n"
 	"       -h        Print help message.\n"
+#if defined(USE_WIN32_SERVICE) && defined(_SQUID_WIN32_)
+	"       -i        Installs as a Windows Service (see -n option).\n"
+#endif
 	"       -k reconfigure|rotate|shutdown|interrupt|kill|debug|check|parse\n"
 	"                 Parse configuration file, then send signal to \n"
 	"                 running copy (except -k parse) and exit.\n"
+#if defined(USE_WIN32_SERVICE) && defined(_SQUID_WIN32_)
+	"       -n name   Specify Windows Service name to use for service operations\n"
+	"                 default is: " _WIN_SQUID_DEFAULT_SERVICE_NAME ".\n"
+	"       -r        Removes a Windows Service (see -n option).\n"
+#endif
 	"       -s | -l facility\n"
 	"                 Enable logging to syslog.\n"
 	"       -u port   Specify ICP port number (default: %d), disable with 0.\n"
@@ -100,12 +117,15 @@ usage(void)
 	"       -D        Disable initial DNS tests.\n"
 	"       -F        Don't serve any requests until store is rebuilt.\n"
 	"       -N        No daemon mode.\n"
+#if defined(USE_WIN32_SERVICE) && defined(_SQUID_WIN32_)
+	"       -O options\n"
+	"                 Set Windows Service Command line options in Registry.\n"
+#endif
 	"       -R        Do not set REUSEADDR on port.\n"
 	"       -S        Double-check swap during rebuild.\n"
-	"       -V        Virtual host httpd-accelerator.\n"
 	"       -X        Force full debugging.\n"
 	"       -Y        Only return UDP_HIT or UDP_MISS_NOFETCH during fast reload.\n",
-	appname, CACHE_HTTP_PORT, DefaultConfigFile, CACHE_ICP_PORT);
+	appname, DefaultConfigFile, CACHE_ICP_PORT);
     exit(1);
 }
 
@@ -115,7 +135,11 @@ mainParseOptions(int argc, char *argv[])
     extern char *optarg;
     int c;
 
-    while ((c = getopt(argc, argv, "CDFNRSVYXa:d:f:hk:m::sl:u:vz?")) != -1) {
+#if defined(USE_WIN32_SERVICE) && defined(_SQUID_WIN32_)
+    while ((c = getopt(argc, argv, "CDFO:RSYXd:f:hik:m::n:rsl:u:vz?")) != -1) {
+#else
+    while ((c = getopt(argc, argv, "CDFNRSYXd:f:hk:m::sl:u:vz?")) != -1) {
+#endif
 	switch (c) {
 	case 'C':
 	    opt_catch_signals = 0;
@@ -129,14 +153,17 @@ mainParseOptions(int argc, char *argv[])
 	case 'N':
 	    opt_no_daemon = 1;
 	    break;
+#if defined(USE_WIN32_SERVICE) && defined(_SQUID_WIN32_)
+	case 'O':
+	    opt_command_line = 1;
+	    WIN32_Command_Line = xstrdup(optarg);
+	    break;
+#endif
 	case 'R':
 	    opt_reuseaddr = 0;
 	    break;
 	case 'S':
 	    opt_store_doublecheck = 1;
-	    break;
-	case 'V':
-	    vhost_mode = 1;
 	    break;
 	case 'X':
 	    /* force full debugging */
@@ -144,9 +171,6 @@ mainParseOptions(int argc, char *argv[])
 	    break;
 	case 'Y':
 	    opt_reload_hit_only = 1;
-	    break;
-	case 'a':
-	    httpPortNumOverride = atoi(optarg);
 	    break;
 	case 'd':
 	    opt_debug_stderr = atoi(optarg);
@@ -158,6 +182,11 @@ mainParseOptions(int argc, char *argv[])
 	case 'h':
 	    usage();
 	    break;
+#if defined(USE_WIN32_SERVICE) && defined(_SQUID_WIN32_)
+	case 'i':
+	    opt_install_service = TRUE;
+	    break;
+#endif
 	case 'k':
 	    if ((int) strlen(optarg) < 1)
 		usage();
@@ -205,6 +234,16 @@ mainParseOptions(int argc, char *argv[])
 		fatal("Need to configure --enable-xmalloc-debug-trace to use -m option");
 #endif
 	    }
+#if defined(USE_WIN32_SERVICE) && defined(_SQUID_WIN32_)
+	case 'n':
+	    xfree(WIN32_Service_name);
+	    WIN32_Service_name = xstrdup(optarg);
+	    opt_signal_service = TRUE;
+	    break;
+	case 'r':
+	    opt_remove_service = TRUE;
+	    break;
+#endif
 	case 'l':
 	    opt_syslog_facility = xstrdup(optarg);
 	case 's':
@@ -222,6 +261,9 @@ mainParseOptions(int argc, char *argv[])
 	    break;
 	case 'v':
 	    printf("Squid Cache: Version %s\nconfigure options: %s\n", version_string, SQUID_CONFIGURE_OPTIONS);
+#if defined(USE_WIN32_SERVICE) && defined(_SQUID_WIN32_)
+	    printf("Compiled as Windows System Service.\n");
+#endif
 	    exit(0);
 	    /* NOTREACHED */
 	case 'z':
@@ -236,35 +278,26 @@ mainParseOptions(int argc, char *argv[])
 }
 
 /* ARGSUSED */
-static void
+void
 rotate_logs(int sig)
 {
     do_rotate = 1;
+#ifndef _SQUID_MSWIN_
 #if !HAVE_SIGACTION
     signal(sig, rotate_logs);
 #endif
-}
-
-#if ALARM_UPDATES_TIME
-static void
-time_tick(int sig)
-{
-    getCurrentTime();
-    alarm(1);
-#if !HAVE_SIGACTION
-    signal(sig, time_tick);
 #endif
 }
-
-#endif
 
 /* ARGSUSED */
-static void
+void
 reconfigure(int sig)
 {
     do_reconfigure = 1;
+#ifndef _SQUID_MSWIN_
 #if !HAVE_SIGACTION
     signal(sig, reconfigure);
+#endif
 #endif
 }
 
@@ -272,6 +305,7 @@ void
 shut_down(int sig)
 {
     do_shutdown = sig == SIGINT ? -1 : 1;
+#ifndef _SQUID_MSWIN_
 #ifdef KILL_PARENT_OPT
     if (getppid() > 1) {
 	debug(1, 1) ("Killing RunCache, pid %ld\n", (long) getppid());
@@ -282,6 +316,7 @@ shut_down(int sig)
 #if SA_RESETHAND == 0
     signal(SIGTERM, SIG_DFL);
     signal(SIGINT, SIG_DFL);
+#endif
 #endif
 }
 
@@ -299,6 +334,9 @@ serverConnectionsOpen(void)
 #if USE_WCCP
     wccpConnectionOpen();
 #endif
+#if USE_WCCPv2
+    wccp2ConnectionOpen();
+#endif
     clientdbInit();
     icmpOpen();
     netdbInit();
@@ -307,6 +345,9 @@ serverConnectionsOpen(void)
 #if USE_CARP
     carpInit();
 #endif
+    peerSourceHashInit();
+    peerUserHashInit();
+    peerMonitorInit();
 }
 
 void
@@ -323,7 +364,10 @@ serverConnectionsClose(void)
     snmpConnectionShutdown();
 #endif
 #if USE_WCCP
-    wccpConnectionShutdown();
+    wccpConnectionClose();
+#endif
+#if USE_WCCPv2
+    wccp2ConnectionClose();
 #endif
     asnFreeMemory();
 }
@@ -342,15 +386,13 @@ mainReconfigure(void)
 #ifdef SQUID_SNMP
     snmpConnectionClose();
 #endif
-#if USE_WCCP
-    wccpConnectionClose();
-#endif
 #if USE_DNSSERVERS
     dnsShutdown();
 #else
     idnsShutdown();
 #endif
     redirectShutdown();
+    locationRewriteShutdown();
     authenticateShutdown();
     externalAclShutdown();
     storeDirCloseSwapLogs();
@@ -361,6 +403,7 @@ mainReconfigure(void)
     errorClean();
     enter_suid();		/* root to read config file */
     parseConfigFile(ConfigFile);
+    setUmask(Config.umask);
     setEffectiveUser();
     _db_init(Config.Log.log, Config.debugOptions);
     ipcache_restart();		/* clear stuck entries */
@@ -378,24 +421,31 @@ mainReconfigure(void)
     idnsInit();
 #endif
     redirectInit();
+    locationRewriteInit();
     authenticateInit(&Config.authConfig);
     externalAclInit();
 #if USE_WCCP
     wccpInit();
 #endif
+#if USE_WCCPv2
+    wccp2Init();
+#endif
     serverConnectionsOpen();
-    if (theOutIcpConnection >= 0) {
-	if (!Config2.Accel.on || Config.onoff.accel_with_proxy)
-	    neighbors_open(theOutIcpConnection);
-	else
-	    debug(1, 1) ("ICP port disabled in httpd_accelerator mode\n");
-    }
+    neighbors_init();
     storeDirOpenSwapLogs();
     mimeInit(Config.mimeTablePathname);
+    if (Config.onoff.announce) {
+	if (!eventFind(start_announce, NULL))
+	    eventAdd("start_announce", start_announce, NULL, 3600.0, 1);
+    } else {
+	if (eventFind(start_announce, NULL))
+	    eventDelete(start_announce, NULL);
+    }
     eventCleanup();
     writePidFile();		/* write PID file */
     debug(1, 1) ("Ready to serve requests.\n");
     reconfiguring = 0;
+    peerMonitorInit();
 }
 
 static void
@@ -406,10 +456,12 @@ mainRotate(void)
     dnsShutdown();
 #endif
     redirectShutdown();
+    locationRewriteShutdown();
     authenticateShutdown();
     externalAclShutdown();
     _db_rotate_log();		/* cache.log */
     storeDirWriteCleanLogs(1);
+    storeDirSync();		/* Flush pending I/O ops */
     storeLogRotate();		/* store.log */
     accessLogRotate();		/* access.log */
     useragentRotateLog();	/* useragent.log */
@@ -422,6 +474,7 @@ mainRotate(void)
     dnsInit();
 #endif
     redirectInit();
+    locationRewriteInit();
     authenticateInit(&Config.authConfig);
     externalAclInit();
 }
@@ -429,6 +482,7 @@ mainRotate(void)
 static void
 setEffectiveUser(void)
 {
+    keepCapabilities();
     leave_suid();		/* Run as non privilegied user */
 #ifdef _SQUID_OS2_
     return;
@@ -479,9 +533,6 @@ mainInitialize(void)
     squid_signal(SIGCHLD, sig_child, SA_NODEFER | SA_RESTART);
 
     setEffectiveUser();
-    assert(Config.Sockaddr.http);
-    if (httpPortNumOverride != 1)
-	Config.Sockaddr.http->s.sin_port = htons(httpPortNumOverride);
     if (icpPortNumOverride != 1)
 	Config.Port.icp = (u_short) icpPortNumOverride;
 
@@ -493,9 +544,22 @@ mainInitialize(void)
     debug(1, 0) ("Starting Squid Cache version %s for %s...\n",
 	version_string,
 	CONFIG_HOST_TYPE);
+#ifdef _SQUID_WIN32_
+    if (WIN32_run_mode == _WIN_SQUID_RUN_MODE_SERVICE) {
+	debug(1, 0) ("Running as %s Windows System Service on %s\n", WIN32_Service_name, WIN32_OS_string);
+	debug(1, 0) ("Service command line is: %s\n", WIN32_Service_Command_Line);
+    } else
+	debug(1, 0) ("Running on %s\n", WIN32_OS_string);
+#endif
     debug(1, 1) ("Process ID %d\n", (int) getpid());
     debug(1, 1) ("With %d file descriptors available\n", Squid_MaxFD);
+#ifdef _SQUID_MSWIN_
+    debug(1, 1) ("With %d CRT stdio descriptors available\n", _getmaxstdio());
+    if (WIN32_Socks_initialized)
+	debug(1, 1) ("Windows sockets initialized\n");
+#endif
 
+    comm_select_postinit();
     if (!configured_once)
 	disk_init();		/* disk_init must go before ipcache_init() */
     ipcache_init();
@@ -507,6 +571,8 @@ mainInitialize(void)
     idnsInit();
 #endif
     redirectInit();
+    locationRewriteInit();
+    errorMapInit();
     authenticateInit(&Config.authConfig);
     externalAclInit();
     useragentOpenLog();
@@ -547,13 +613,11 @@ mainInitialize(void)
 #if USE_WCCP
     wccpInit();
 #endif
+#if USE_WCCPv2
+    wccp2Init();
+#endif
     serverConnectionsOpen();
-    if (theOutIcpConnection >= 0) {
-	if (!Config2.Accel.on || Config.onoff.accel_with_proxy)
-	    neighbors_open(theOutIcpConnection);
-	else
-	    debug(1, 1) ("ICP port disabled in httpd_accelerator mode\n");
-    }
+    neighbors_init();
     if (Config.chroot_dir)
 	no_suid();
     if (!configured_once)
@@ -569,10 +633,6 @@ mainInitialize(void)
     squid_signal(SIGHUP, reconfigure, SA_RESTART);
     squid_signal(SIGTERM, shut_down, SA_NODEFER | SA_RESETHAND | SA_RESTART);
     squid_signal(SIGINT, shut_down, SA_NODEFER | SA_RESETHAND | SA_RESTART);
-#if ALARM_UPDATES_TIME
-    squid_signal(SIGALRM, time_tick, SA_RESTART);
-    alarm(1);
-#endif
     memCheckInit();
     debug(1, 1) ("Ready to serve requests.\n");
     if (!configured_once) {
@@ -585,13 +645,24 @@ mainInitialize(void)
     configured_once = 1;
 }
 
+#if USE_WIN32_SERVICE
+/* When USE_WIN32_SERVICE is defined, the main function is placed in win32.c */
+void WINAPI
+SquidWinSvcMain(int argc, char **argv)
+{
+    SquidMain(argc, argv);
+}
+
+int
+SquidMain(int argc, char **argv)
+#else
 int
 main(int argc, char **argv)
+#endif
 {
     int errcount = 0;
     int loop_delay;
-    mode_t oldmask;
-#if defined(_SQUID_MSWIN_) || defined(_SQUID_CYGWIN_)
+#ifdef _SQUID_WIN32_
     int WIN32_init_err;
 #endif
 
@@ -600,11 +671,9 @@ main(int argc, char **argv)
 #endif
 
     debug_log = stderr;
-    if (FD_SETSIZE < Squid_MaxFD)
-	Squid_MaxFD = FD_SETSIZE;
 
-#if defined(_SQUID_MSWIN_) || defined(_SQUID_CYGWIN_)
-    if ((WIN32_init_err = WIN32_Subsystem_Init()))
+#ifdef _SQUID_WIN32_
+    if ((WIN32_init_err = WIN32_Subsystem_Init(&argc, &argv)))
 	return WIN32_init_err;
 #endif
 
@@ -624,16 +693,6 @@ main(int argc, char **argv)
 #endif
 #endif /* HAVE_MALLOPT */
 
-    /*
-     * The plan here is to set the umask to 007 (deny others for
-     * read,write,execute), but only if the umask is not already
-     * set.  Unfortunately, there is no way to get the current
-     * umask value without setting it.
-     */
-    oldmask = umask(S_IRWXO);
-    if (oldmask)
-	umask(oldmask);
-
     memset(&local_addr, '\0', sizeof(struct in_addr));
     safe_inet_addr(localhost, &local_addr);
     memset(&any_addr, '\0', sizeof(struct in_addr));
@@ -646,7 +705,25 @@ main(int argc, char **argv)
     squid_start = current_time;
     failure_notify = fatal_dump;
 
+#if defined(USE_WIN32_SERVICE) && defined(_SQUID_WIN32_)
+    WIN32_svcstatusupdate(SERVICE_START_PENDING, 10000);
+#endif
     mainParseOptions(argc, argv);
+
+#if defined(USE_WIN32_SERVICE) && defined(_SQUID_WIN32_)
+    if (opt_install_service) {
+	WIN32_InstallService();
+	return 0;
+    }
+    if (opt_remove_service) {
+	WIN32_RemoveService();
+	return 0;
+    }
+    if (opt_command_line) {
+	WIN32_SetServiceCommandLine();
+	return 0;
+    }
+#endif
 
     /* parse configuration file
      * note: in "normal" case this used to be called from mainInitialize() */
@@ -668,9 +745,13 @@ main(int argc, char **argv)
 	if (opt_parse_cfg_only)
 	    return parse_err;
     }
+    setUmask(Config.umask);
     if (-1 == opt_send_signal)
 	if (checkRunningPid())
 	    exit(1);
+
+    /* Make sure the OS allows core dumps if enabled in squid.conf */
+    enableCoredumps();
 
 #if TEST_ACCESS
     comm_init();
@@ -717,7 +798,14 @@ main(int argc, char **argv)
 	fd_open(1, FD_LOG, "stdout");
 	fd_open(2, FD_LOG, "stderr");
     }
+#if defined(USE_WIN32_SERVICE) && defined(_SQUID_WIN32_)
+    WIN32_svcstatusupdate(SERVICE_START_PENDING, 10000);
+#endif
     mainInitialize();
+
+#if defined(USE_WIN32_SERVICE) && defined(_SQUID_WIN32_)
+    WIN32_svcstatusupdate(SERVICE_RUNNING, 0);
+#endif
 
     /* main loop */
     for (;;) {
@@ -735,17 +823,18 @@ main(int argc, char **argv)
 		(int) wait);
 	    do_shutdown = 0;
 	    shutting_down = 1;
+#if defined(USE_WIN32_SERVICE) && defined(_SQUID_WIN32_)
+	    WIN32_svcstatusupdate(SERVICE_STOP_PENDING, (wait + 1) * 1000);
+#endif
 	    serverConnectionsClose();
 	    eventAdd("SquidShutdown", SquidShutdown, NULL, (double) (wait + 1), 1);
 	}
 	eventRun();
 	if ((loop_delay = eventNextTime()) < 0)
 	    loop_delay = 0;
-#if HAVE_POLL
-	switch (comm_poll(loop_delay)) {
-#else
+	if (debug_log_flush() && loop_delay > 1000)
+	    loop_delay = 1000;
 	switch (comm_select(loop_delay)) {
-#endif
 	case COMM_OK:
 	    errcount = 0;	/* reset if successful */
 	    break;
@@ -776,14 +865,28 @@ sendSignal(void)
     debug_log = stderr;
     pid = readPidFile();
     if (pid > 1) {
-	if (kill(pid, opt_send_signal) &&
-	/* ignore permissions if just running check */
-	    !(opt_send_signal == 0 && errno == EPERM)) {
+#if defined(USE_WIN32_SERVICE) && defined(_SQUID_WIN32_)
+	if (opt_signal_service)
+	    WIN32_sendSignal(opt_send_signal);
+	else {
+#endif
+#if defined(_SQUID_MSWIN_) && defined(USE_WIN32_SERVICE)
 	    fprintf(stderr, "%s: ERROR: Could not send ", appname);
-	    fprintf(stderr, "signal %d to process %d: %s\n",
-		opt_send_signal, (int) pid, xstrerror());
-	    exit(1);
+	    fprintf(stderr, "signal to Squid Service:\n");
+	    fprintf(stderr, "missing -n command line switch.\n");
+#else
+	    if (kill(pid, opt_send_signal) &&
+	    /* ignore permissions if just running check */
+		!(opt_send_signal == 0 && errno == EPERM)) {
+		fprintf(stderr, "%s: ERROR: Could not send ", appname);
+		fprintf(stderr, "signal %d to process %d: %s\n",
+		    opt_send_signal, (int) pid, xstrerror());
+#endif
+		exit(1);
+	    }
+#if defined(USE_WIN32_SERVICE) && defined(_SQUID_CYGWIN_)
 	}
+#endif
     } else {
 	fprintf(stderr, "%s: ERROR: No running copy\n", appname);
 	exit(1);
@@ -792,6 +895,7 @@ sendSignal(void)
     exit(0);
 }
 
+#ifndef _SQUID_MSWIN_
 /*
  * This function is run when Squid is in daemon mode, just
  * before the parent forks and starts up the child process.
@@ -828,6 +932,7 @@ mainStartScript(const char *prog)
 	} while (rpid != cpid);
     }
 }
+#endif
 
 static int
 checkRunningPid(void)
@@ -850,6 +955,7 @@ checkRunningPid(void)
 static void
 watch_child(char *argv[])
 {
+#ifndef _SQUID_MSWIN_
     char *prog;
     int failcount = 0;
     time_t start;
@@ -888,14 +994,16 @@ watch_child(char *argv[])
      * 1.1.3.  execvp had a bit overflow error in a loop..
      */
     /* Connect stdio to /dev/null in daemon mode */
-    nullfd = open("/dev/null", O_RDWR | O_TEXT);
+    nullfd = open(_PATH_DEVNULL, O_RDWR | O_TEXT);
     if (nullfd < 0)
-	fatalf("/dev/null: %s\n", xstrerror());
+	fatalf(_PATH_DEVNULL " %s\n", xstrerror());
     dup2(nullfd, 0);
     if (opt_debug_stderr < 0) {
 	dup2(nullfd, 1);
 	dup2(nullfd, 2);
     }
+    if (nullfd > 2)
+	close(nullfd);
     for (;;) {
 	mainStartScript(argv[0]);
 	if ((pid = fork()) == 0) {
@@ -952,11 +1060,15 @@ watch_child(char *argv[])
 	sleep(3);
     }
     /* NOTREACHED */
+#endif
 }
 
 static void
 SquidShutdown(void *unused)
 {
+#if defined(USE_WIN32_SERVICE) && defined(_SQUID_WIN32_)
+    WIN32_svcstatusupdate(SERVICE_STOP_PENDING, 10000);
+#endif
     debug(1, 1) ("Shutting down...\n");
 #if USE_DNSSERVERS
     dnsShutdown();
@@ -965,6 +1077,7 @@ SquidShutdown(void *unused)
 #endif
     redirectShutdown();
     externalAclShutdown();
+    locationRewriteShutdown();
     icpConnectionClose();
 #if USE_HTCP
     htcpSocketClose();
@@ -975,11 +1088,17 @@ SquidShutdown(void *unused)
 #if USE_WCCP
     wccpConnectionClose();
 #endif
+#if USE_WCCPv2
+    wccp2ConnectionClose();
+#endif
     releaseServerSockets();
     commCloseAllSockets();
     authenticateShutdown();
 #if USE_UNLINKD
     unlinkdClose();
+#endif
+#if defined(USE_WIN32_SERVICE) && defined(_SQUID_WIN32_)
+    WIN32_svcstatusupdate(SERVICE_STOP_PENDING, 10000);
 #endif
     storeDirSync();		/* Flush pending object writes/unlinks */
     storeDirWriteCleanLogs(0);
@@ -995,7 +1114,7 @@ SquidShutdown(void *unused)
 #endif
     storeDirSync();		/* Flush log close */
     storeFsDone();
-#if PURIFY || XMALLOC_TRACE
+#if LEAK_CHECK_MODE
     configFreeMemory();
     storeFreeMemory();
     /*stmemFreeMemory(); */
@@ -1017,6 +1136,7 @@ SquidShutdown(void *unused)
 	fd_close(2);
     }
 #endif
+    comm_select_shutdown();
     fdDumpOpen();
     fdFreeMemory();
     memClean();

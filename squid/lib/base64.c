@@ -1,5 +1,5 @@
 /*
- * $Id: base64.c,v 1.19 2001/06/29 20:20:01 wessels Exp $
+ * $Id: base64.c,v 1.21 2005/05/17 16:56:36 hno Exp $
  */
 
 #include "config.h"

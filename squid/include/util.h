@@ -1,5 +1,5 @@
 /*
- * $Id: util.h,v 1.62 2001/10/17 01:36:07 hno Exp $
+ * $Id: util.h,v 1.67 2006/09/18 22:54:38 hno Exp $
  *
  * AUTHOR: Harvest Derived
  *
@@ -45,16 +45,7 @@
 #endif
 
 #if !defined(SQUIDHOSTNAMELEN)
-#include <sys/param.h>
-#ifndef _SQUID_NETDB_H_		/* need protection on NEXTSTEP */
-#define _SQUID_NETDB_H_
-#include <netdb.h>
-#endif
-#if !defined(MAXHOSTNAMELEN) || (MAXHOSTNAMELEN < 128)
-#define SQUIDHOSTNAMELEN 128
-#else
-#define SQUIDHOSTNAMELEN MAXHOSTNAMELEN
-#endif
+#define SQUIDHOSTNAMELEN 256
 #endif
 
 #if defined(_SQUID_FREEBSD_)
@@ -68,7 +59,6 @@ extern char *uudecode(const char *);
 extern char *xstrdup(const char *);
 extern char *xstrndup(const char *, size_t);
 extern const char *xstrerror(void);
-extern const char *xbstrerror(int);
 extern int tvSubMsec(struct timeval, struct timeval);
 extern int tvSubUsec(struct timeval, struct timeval);
 extern double tvSubDsec(struct timeval, struct timeval);
@@ -130,6 +120,35 @@ double drand48(void);
 /*
  * Returns the amount of known allocated memory
  */
-int statMemoryAccounted(void);
+extern size_t statMemoryAccounted(void);
+
+/* Cygwin & Windows NT Port */
+/* win32lib.c */
+#ifdef _SQUID_MSWIN_
+#if defined(_MSC_VER)		/* Microsoft C Compiler ONLY */
+extern int64_t WIN32_strtoll(const char *nptr, char **endptr, int base);
+#endif
+extern int chroot(const char *);
+extern int ftruncate(int, off_t);
+extern int gettimeofday(struct timeval *, struct timezone *);
+extern int inet_aton(const char *, struct in_addr *);
+extern int kill(pid_t, int);
+extern int statfs(const char *, struct statfs *);
+extern int truncate(const char *, off_t);
+extern const char *wsastrerror(int);
+extern struct passwd *getpwnam(char *);
+extern struct group *getgrnam(char *);
+extern uid_t geteuid(void);
+extern uid_t getuid(void);
+extern int setuid(uid_t);
+extern int seteuid(uid_t);
+extern gid_t getgid(void);
+extern gid_t getegid(void);
+extern int setgid(gid_t);
+extern int setegid(gid_t);
+extern const char *WIN32_strerror(int);
+extern void WIN32_maperror(unsigned long);
+extern int WIN32_Close_FD_Socket(int);
+#endif
 
 #endif /* SQUID_UTIL_H */

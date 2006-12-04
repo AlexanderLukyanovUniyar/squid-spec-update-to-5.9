@@ -1,6 +1,6 @@
 
 /*
- * $Id: icp_v2.c,v 1.66 2001/05/04 13:37:42 hno Exp $
+ * $Id: icp_v2.c,v 1.72 2006/06/25 15:53:14 serassio Exp $
  *
  * DEBUG: section 12    Internet Cache Protocol
  * AUTHOR: Duane Wessels
@@ -63,7 +63,7 @@ icpLogIcp(struct in_addr caddr, log_type logcode, int len, const char *url, int 
     al.cache.size = len;
     al.cache.code = logcode;
     al.cache.msec = delay;
-    accessLogLog(&al);
+    accessLogLog(&al, NULL);
 }
 
 void
@@ -367,7 +367,7 @@ icpHandleUdp(int sock, void *data)
 	    /* or maybe an EHOSTUNREACH "No route to host" message */
 	    if (errno != ECONNREFUSED && errno != EHOSTUNREACH)
 #endif
-		debug(50, 1) ("icpHandleUdp: FD %d recvfrom: %s\n",
+		debug(12, 1) ("icpHandleUdp: FD %d recvfrom: %s\n",
 		    sock, xstrerror());
 	    break;
 	}
@@ -407,13 +407,11 @@ icpConnectionsOpen(void)
     int x;
     socklen_t len;
     wordlist *s;
-    if (Config2.Accel.on && !Config.onoff.accel_with_proxy)
-	return;
     if ((port = Config.Port.icp) <= 0)
 	return;
     enter_suid();
     theInIcpConnection = comm_open(SOCK_DGRAM,
-	0,
+	IPPROTO_UDP,
 	Config.Addrs.udp_incoming,
 	port,
 	COMM_NONBLOCKING,
@@ -434,7 +432,7 @@ icpConnectionsOpen(void)
     if ((addr = Config.Addrs.udp_outgoing).s_addr != no_addr.s_addr) {
 	enter_suid();
 	theOutIcpConnection = comm_open(SOCK_DGRAM,
-	    0,
+	    IPPROTO_UDP,
 	    addr,
 	    port,
 	    COMM_NONBLOCKING,
@@ -460,7 +458,7 @@ icpConnectionsOpen(void)
     x = getsockname(theOutIcpConnection,
 	(struct sockaddr *) &xaddr, &len);
     if (x < 0)
-	debug(50, 1) ("theOutIcpConnection FD %d: getsockname: %s\n",
+	debug(12, 1) ("theOutIcpConnection FD %d: getsockname: %s\n",
 	    theOutIcpConnection, xstrerror());
     else
 	theOutICPAddr = xaddr.sin_addr;

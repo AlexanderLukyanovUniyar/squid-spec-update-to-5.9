@@ -1,6 +1,6 @@
 
 /*
- * $Id: ipcache.c,v 1.236.2.7 2005/09/28 21:47:58 hno Exp $
+ * $Id: ipcache.c,v 1.245 2006/08/16 00:27:20 hno Exp $
  *
  * DEBUG: section 14    IP Cache
  * AUTHOR: Harvest Derived
@@ -60,9 +60,6 @@ static struct {
     int hits;
     int misses;
     int negative_hits;
-    int errors;
-    int ghbn_calls;		/* # calls to blocking gethostbyname() */
-    int release_locked;
 } IpcacheStats;
 
 static dlink_list lru_list;
@@ -105,7 +102,6 @@ ipcache_testname(void)
     if ((w = Config.dns_testname_list) == NULL)
 	return 1;
     for (; w; w = w->next) {
-	IpcacheStats.ghbn_calls++;
 	if (gethostbyname(w->key) != NULL)
 	    return 1;
     }
@@ -367,7 +363,10 @@ ipcacheParse(ipcache_entry * i, rfc1035_rr * answers, int nr, const char *error_
 	if (ttl == 0 || ttl > answers[k].ttl)
 	    ttl = answers[k].ttl;
     }
-    i->addrs.count = (unsigned char) na;
+    if (na < 256)
+	i->addrs.count = (unsigned char) na;
+    else
+	i->addrs.count = 255;
     if (ttl == 0 || ttl > Config.positiveDnsTtl)
 	ttl = Config.positiveDnsTtl;
     if (ttl < Config.negativeDnsTtl)
@@ -559,10 +558,6 @@ stat_ipcache_get(StoreEntry * sentry)
 	IpcacheStats.negative_hits);
     storeAppendPrintf(sentry, "IPcache Misses: %d\n",
 	IpcacheStats.misses);
-    storeAppendPrintf(sentry, "Blocking calls to gethostbyname(): %d\n",
-	IpcacheStats.ghbn_calls);
-    storeAppendPrintf(sentry, "Attempts to release locked entries: %d\n",
-	IpcacheStats.release_locked);
     storeAppendPrintf(sentry, "\n\n");
     storeAppendPrintf(sentry, "IP Cache Contents:\n\n");
     storeAppendPrintf(sentry, " %-29.29s %3s %6s %6s %1s\n",
@@ -826,7 +821,7 @@ snmp_netIpFn(variable_list * Var, snint * ErrP)
 	break;
     case IP_PENDHIT:
 	Answer = snmp_var_new_integer(Var->name, Var->name_length,
-	    0,
+	    0,			/* deprecated */
 	    SMI_GAUGE32);
 	break;
     case IP_NEGHIT:
@@ -841,12 +836,12 @@ snmp_netIpFn(variable_list * Var, snint * ErrP)
 	break;
     case IP_GHBN:
 	Answer = snmp_var_new_integer(Var->name, Var->name_length,
-	    IpcacheStats.ghbn_calls,
+	    0,			/* deprecated */
 	    SMI_COUNTER32);
 	break;
     case IP_LOC:
 	Answer = snmp_var_new_integer(Var->name, Var->name_length,
-	    IpcacheStats.release_locked,
+	    0,			/* deprecated */
 	    SMI_COUNTER32);
 	break;
     default:

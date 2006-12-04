@@ -1,6 +1,6 @@
 
 /*
- * $Id: debug.c,v 1.84.2.1 2005/04/05 23:02:08 hno Exp $
+ * $Id: debug.c,v 1.93 2006/09/09 12:45:06 serassio Exp $
  *
  * DEBUG: section 0     Debug Routines
  * AUTHOR: Harvest Derived
@@ -48,6 +48,17 @@ static void _db_print_syslog(const char *format, va_list args);
 static void _db_print_stderr(const char *format, va_list args);
 static void _db_print_file(const char *format, va_list args);
 
+#ifdef _SQUID_MSWIN_
+extern LPCRITICAL_SECTION dbg_mutex;
+#endif
+
+#ifdef _SQUID_LINUX_
+/* Workaround for crappy glic header files */
+extern int backtrace(void *, int);
+extern void backtrace_symbols_fd(void *, int, int);
+extern int setresuid(uid_t, uid_t, uid_t);
+#endif /* _SQUID_LINUX */
+
 void
 #if STDC_HEADERS
 _db_print(const char *format,...)
@@ -67,6 +78,33 @@ _db_print(va_alist)
 #define args2 args1
 #define args3 args1
 #endif
+#ifdef _SQUID_MSWIN_
+    /* Multiple WIN32 threads may call this simultaneously */
+    if (!dbg_mutex) {
+	HMODULE krnl_lib = GetModuleHandle("Kernel32");
+	BOOL(FAR WINAPI * InitializeCriticalSectionAndSpinCount)
+	    (LPCRITICAL_SECTION, DWORD) = NULL;
+	if (krnl_lib)
+	    InitializeCriticalSectionAndSpinCount =
+		GetProcAddress(krnl_lib,
+		"InitializeCriticalSectionAndSpinCount");
+	dbg_mutex = xcalloc(1, sizeof(CRITICAL_SECTION));
+
+	if (InitializeCriticalSectionAndSpinCount) {
+	    /* let multiprocessor systems EnterCriticalSection() fast */
+	    if (!InitializeCriticalSectionAndSpinCount(dbg_mutex, 4000)) {
+		if (debug_log) {
+		    fprintf(debug_log, "FATAL: _db_print: can't initialize critical section\n");
+		    fflush(debug_log);
+		}
+		fprintf(stderr, "FATAL: _db_print: can't initialize critical section\n");
+		abort();
+	    } else
+		InitializeCriticalSection(dbg_mutex);
+	}
+    }
+    EnterCriticalSection(dbg_mutex);
+#endif
     /* give a chance to context-based debugging to print current context */
     if (!Ctx_Lock)
 	ctx_print();
@@ -85,11 +123,29 @@ _db_print(va_alist)
 #if HAVE_SYSLOG
     _db_print_syslog(format, args3);
 #endif
+#ifdef _SQUID_MSWIN_
+    LeaveCriticalSection(dbg_mutex);
+#endif
     va_end(args1);
 #if STDC_HEADERS
     va_end(args2);
     va_end(args3);
 #endif
+}
+
+static int debug_log_dirty = 0;
+int
+debug_log_flush(void)
+{
+    static time_t last_flush = 0;
+    if (!debug_log_dirty)
+	return 0;
+    if (last_flush != squid_curtime) {
+	fflush(debug_log);
+	last_flush = squid_curtime;
+	debug_log_dirty = 0;
+    }
+    return debug_log_dirty;
 }
 
 static void
@@ -103,6 +159,8 @@ _db_print_file(const char *format, va_list args)
     vfprintf(debug_log, format, args);
     if (!Config.onoff.buffered_logs)
 	fflush(debug_log);
+    else
+	debug_log_dirty++;
 }
 
 static void
@@ -167,8 +225,7 @@ debugOpenLog(const char *logfile)
 	debug_log = stderr;
 	return;
     }
-    if (debug_log_file)
-	xfree(debug_log_file);
+    safe_free(debug_log_file);
     debug_log_file = xstrdup(logfile);	/* keep a static copy */
     if (debug_log && debug_log != stderr)
 	fclose(debug_log);
@@ -180,7 +237,7 @@ debugOpenLog(const char *logfile)
 	fflush(stderr);
 	debug_log = stderr;
     }
-#if defined(_SQUID_CYGWIN_)
+#ifdef _SQUID_WIN32_
     setmode(fileno(debug_log), O_TEXT);
 #endif
 }
@@ -380,11 +437,25 @@ _db_rotate_log(void)
 	i--;
 	snprintf(from, MAXPATHLEN, "%s.%d", debug_log_file, i - 1);
 	snprintf(to, MAXPATHLEN, "%s.%d", debug_log_file, i);
+#ifdef _SQUID_MSWIN_
+	remove(to);
+#endif
 	rename(from, to);
     }
+/*
+ * You can't rename open files on Microsoft "operating systems"
+ * so we close before renaming.
+ */
+#ifdef _SQUID_MSWIN_
+    if (debug_log != stderr)
+	fclose(debug_log);
+#endif
     /* Rotate the current log to .0 */
     if (Config.Log.rotateNumber > 0) {
 	snprintf(to, MAXPATHLEN, "%s.%d", debug_log_file, 0);
+#ifdef _SQUID_MSWIN_
+	remove(to);
+#endif
 	rename(debug_log_file, to);
     }
     /* Close and reopen the log.  It may have been renamed "manually"
@@ -411,6 +482,34 @@ void
 xassert(const char *msg, const char *file, int line)
 {
     debug(0, 0) ("assertion failed: %s:%d: \"%s\"\n", file, line, msg);
+#ifdef PRINT_STACK_TRACE
+#ifdef _SQUID_HPUX_
+    {
+	extern void U_STACK_TRACE(void);	/* link with -lcl */
+	fflush(debug_log);
+	dup2(fileno(debug_log), 2);
+	U_STACK_TRACE();
+    }
+#endif /* _SQUID_HPUX_ */
+#ifdef _SQUID_SOLARIS_
+    {				/* get ftp://opcom.sun.ca/pub/tars/opcom_stack.tar.gz and */
+	extern void opcom_stack_trace(void);	/* link with -lopcom_stack */
+	fflush(debug_log);
+	dup2(fileno(debug_log), fileno(stdout));
+	opcom_stack_trace();
+	fflush(stdout);
+    }
+#endif /* _SQUID_SOLARIS_ */
+#if HAVE_BACKTRACE_SYMBOLS_FD
+    {
+	static void *(callarray[8192]);
+	int n;
+	n = backtrace(callarray, 8192);
+	backtrace_symbols_fd(callarray, n, fileno(debug_log));
+    }
+#endif
+#endif /* PRINT_STACK_TRACE */
+
     if (!shutting_down)
 	abort();
 }

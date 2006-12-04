@@ -1,6 +1,6 @@
 
 /*
- * $Id: squid.h,v 1.216.2.9 2006/03/10 22:43:37 hno Exp $
+ * $Id: squid.h,v 1.244 2006/09/08 19:41:24 serassio Exp $
  *
  * AUTHOR: Duane Wessels
  *
@@ -94,8 +94,14 @@
 #endif
 
 #if PURIFY
-#define assert(EX) ((void)0)
-#elif defined(NODEBUG)
+#define LEAK_CHECK_MODE 1
+#elif WITH_VALGRIND
+#define LEAK_CHECK_MODE 1
+#elif XMALLOC_TRACE
+#define LEAK_CHECK_MODE 1
+#endif
+
+#if defined(NODEBUG)
 #define assert(EX) ((void)0)
 #elif STDC_HEADERS
 #define assert(EX)  ((EX)?((void)0):xassert( # EX , __FILE__, __LINE__))
@@ -135,7 +141,7 @@
 #endif
 #if HAVE_GNUMALLOC_H
 #include <gnumalloc.h>
-#elif HAVE_MALLOC_H && !defined(_SQUID_FREEBSD_) && !defined(_SQUID_NEXT_)
+#elif HAVE_MALLOC_H
 #include <malloc.h>
 #endif
 #if HAVE_MEMORY_H
@@ -147,6 +153,9 @@
 #include <netinet/in_systm.h>
 #endif
 #include <netdb.h>
+#endif
+#if HAVE_PATHS_H
+#include <paths.h>
 #endif
 #if HAVE_PWD_H
 #include <pwd.h>
@@ -199,16 +208,13 @@
 #if HAVE_BSTRING_H
 #include <bstring.h>
 #endif
-#if HAVE_SYS_SELECT_H
-#include <sys/select.h>
-#endif
 #if HAVE_GETOPT_H
 #include <getopt.h>
 #endif
 #if HAVE_LIMITS_H
 #include <limits.h>
 #endif
-#if defined(_SQUID_CYGWIN_)
+#ifdef _SQUID_WIN32_
 #include <io.h>
 #endif
 
@@ -236,21 +242,6 @@
 #if HAVE_SYS_MOUNT_H
 #include <sys/mount.h>
 #endif
-
-/*
- * We require poll.h before using poll().  If the symbols used
- * by poll() are defined elsewhere, we will need to make this
- * a more sophisticated test.
- *  -- Oskar Pearson <oskar@is.co.za>
- *  -- Stewart Forster <slf@connect.com.au>
- */
-#if HAVE_POLL
-#if HAVE_POLL_H
-#include <poll.h>
-#else /* HAVE_POLL_H */
-#undef HAVE_POLL
-#endif /* HAVE_POLL_H */
-#endif /* HAVE_POLL */
 
 #if defined(HAVE_STDARG_H)
 #include <stdarg.h>
@@ -339,7 +330,7 @@ struct rusage {
 #define SA_RESETHAND SA_ONESHOT
 #endif
 
-#if PURIFY
+#if LEAK_CHECK_MODE
 #define LOCAL_ARRAY(type,name,size) \
         static type *local_##name=NULL; \
         type *name = local_##name ? local_##name : \
@@ -368,6 +359,31 @@ struct rusage {
 #define S_ISDIR(mode) (((mode) & (_S_IFMT)) == (_S_IFDIR))
 #endif
 
+/* 
+ * ISO C99 Standard printf() macros for 64 bit integers
+ * On some 64 bit platform, HP Tru64 is one, for printf must be used
+ * "%lx" instead of "%llx" 
+ */
+#ifndef PRId64
+#ifdef _SQUID_MSWIN_		/* Windows native port using MSVCRT */
+#define PRId64 "I64d"
+#elif SIZEOF_INT64_T > SIZEOF_LONG
+#define PRId64 "lld"
+#else
+#define PRId64 "ld"
+#endif
+#endif
+
+#ifndef PRIu64
+#ifdef _SQUID_MSWIN_		/* Windows native port using MSVCRT */
+#define PRIu64 "I64u"
+#elif SIZEOF_INT64_T > SIZEOF_LONG
+#define PRIu64 "llu"
+#else
+#define PRIu64 "lu"
+#endif
+#endif
+
 #ifdef USE_GNUREGEX
 #include "GNUregex.h"
 #elif HAVE_REGEX_H
@@ -383,7 +399,7 @@ struct rusage {
 #include "Stack.h"
 
 /* Needed for poll() on Linux at least */
-#if HAVE_POLL
+#if USE_POLL
 #ifndef POLLRDNORM
 #define POLLRDNORM POLLIN
 #endif
@@ -414,6 +430,10 @@ struct rusage {
 
 #if !HAVE_SNPRINTF
 #include "snprintf.h"
+#endif
+
+#if !HAVE_STRSEP
+#include "strsep.h"
 #endif
 
 #if !HAVE_INITGROUPS
@@ -477,6 +497,25 @@ struct rusage {
 #define FD_READ_METHOD(fd, buf, len) (*fd_table[fd].read_method)(fd, buf, len)
 #define FD_WRITE_METHOD(fd, buf, len) (*fd_table[fd].write_method)(fd, buf, len)
 
+#ifndef IPPROTO_UDP
+#define IPPROTO_UDP 0
+#endif
+
+#ifndef IPPROTO_TCP
+#define IPPROTO_TCP 0
+#endif
+
+
+#if defined(_SQUID_MSWIN_)
+/* Windows lacks getpagesize() prototype */
+#ifndef getpagesize
+extern size_t getpagesize(void);
+#endif
+#if defined(_MSC_VER)		/* Microsoft C Compiler ONLY */
+#define strtoll WIN32_strtoll
+#endif
+#endif /* _SQUID_MSWIN_ */
+
 /*
  * Trap attempts to build large file cache support without support for
  * large objects
@@ -484,5 +523,21 @@ struct rusage {
 #if LARGE_CACHE_FILES && SIZEOF_SQUID_OFF_T <= 4
 #error Your platform does not support large integers. Can not build with --enable-large-cache-files
 #endif
+
+/*
+ * valgrind debug support
+ */
+#if WITH_VALGRIND
+#include <valgrind/memcheck.h>
+#else
+#define VALGRIND_MAKE_NOACCESS(a,b) (0)
+#define VALGRIND_MAKE_WRITABLE(a,b) (0)
+#define VALGRIND_MAKE_READABLE(a,b) (0)
+#define VALGRIND_CHECK_WRITABLE(a,b) (0)
+#define VALGRIND_CHECK_READABLE(a,b) (0)
+#define VALGRIND_MALLOCLIKE_BLOCK(a,b,c,d)
+#define VALGRIND_FREELIKE_BLOCK(a,b)
+#define RUNNING_ON_VALGRIND 0
+#endif /* WITH_VALGRIND */
 
 #endif /* SQUID_H */

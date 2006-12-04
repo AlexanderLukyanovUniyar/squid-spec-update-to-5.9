@@ -1,5 +1,5 @@
 /*
- * $Id: rfc1035.h,v 1.6.2.4 2006/03/10 22:43:37 hno Exp $
+ * $Id: rfc1035.h,v 1.10 2006/04/28 10:17:18 hno Exp $
  *
  * AUTHOR: Duane Wessels
  *

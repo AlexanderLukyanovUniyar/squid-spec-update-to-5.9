@@ -1,6 +1,6 @@
 
 /*
- * $Id: errorpage.c,v 1.167.2.14 2006/03/10 22:54:38 hno Exp $
+ * $Id: errorpage.c,v 1.188 2006/08/25 12:26:07 serassio Exp $
  *
  * DEBUG: section 4     Error Generation
  * AUTHOR: Duane Wessels
@@ -177,19 +177,22 @@ errorTryLoadText(const char *page_name, const char *dir)
     char *text;
 
     snprintf(path, sizeof(path), "%s/%s", dir, page_name);
+#ifdef _SQUID_MSWIN_
+    fd = file_open(path, O_RDONLY | O_BINARY);
+#else
     fd = file_open(path, O_RDONLY | O_TEXT);
+#endif
     if (fd < 0 || fstat(fd, &sb) < 0) {
 	debug(4, 0) ("errorTryLoadText: '%s': %s\n", path, xstrerror());
 	if (fd >= 0)
 	    file_close(fd);
 	return NULL;
     }
-    text = xcalloc(sb.st_size + 2 + 1, 1);	/* 2 == space for %S */
-    if (FD_READ_METHOD(fd, text, sb.st_size) != sb.st_size) {
+    text = xcalloc((size_t) sb.st_size + 2 + 1, 1);	/* 2 == space for %S */
+    if (FD_READ_METHOD(fd, text, (int) sb.st_size) != sb.st_size) {
 	debug(4, 0) ("errorTryLoadText: failed to fully read: '%s': %s\n",
 	    path, xstrerror());
-	xfree(text);
-	text = NULL;
+	safe_free(text);
     }
     file_close(fd);
     if (text && strstr(text, "%s") == NULL)
@@ -214,7 +217,7 @@ errorDynamicPageInfoDestroy(ErrorDynamicPageInfo * info)
     xfree(info);
 }
 
-static int
+int
 errorPageId(const char *page_name)
 {
     int i;
@@ -248,8 +251,7 @@ errorPageName(int pageId)
     if (pageId >= ERR_NONE && pageId < ERR_MAX)		/* common case */
 	return err_type_str[pageId];
     if (pageId >= ERR_MAX && pageId - ERR_MAX < ErrorDynamicPages.count)
-	return ((ErrorDynamicPageInfo *) ErrorDynamicPages.
-	    items[pageId - ERR_MAX])->page_name;
+	return ((ErrorDynamicPageInfo *) ErrorDynamicPages.items[pageId - ERR_MAX])->page_name;
     return "ERR_UNKNOWN";	/* should not happen */
 }
 
@@ -259,13 +261,17 @@ errorPageName(int pageId)
  * Abstract:  This function creates a ErrorState object.
  */
 ErrorState *
-errorCon(err_type type, http_status status)
+errorCon(err_type type, http_status status, request_t * request)
 {
     ErrorState *err;
     err = cbdataAlloc(ErrorState);
     err->page_id = type;	/* has to be reset manually if needed */
     err->type = type;
     err->http_status = status;
+    if (request != NULL) {
+	err->request = requestLink(request);
+	err->src_addr = request->client_addr;
+    }
     return err;
 }
 
@@ -317,7 +323,6 @@ errorAppendEntry(StoreEntry * entry, ErrorState * err)
      */
     authenticateFixHeader(rep, err->auth_user_request, err->request, 0, 1);
     httpReplySwapOut(rep, entry);
-    httpReplyAbsorb(mem->reply, rep);
     EBIT_CLR(entry->flags, ENTRY_FWD_HDR_WAIT);
     storeBufferFlush(entry);
     storeComplete(entry);
@@ -426,6 +431,7 @@ errorStateFree(ErrorState * err)
  * L - HREF link for more info/contact          x
  * M - Request Method                           x
  * m - Error message returned by external Auth. x 
+ * o - Error message returned by external ACL   x
  * p - URL port #                               x
  * P - Protocol                                 x
  * R - Full HTTP Request                        x
@@ -450,7 +456,7 @@ errorConvert(char token, ErrorState * err)
     memBufReset(&mb);
     switch (token) {
     case 'a':
-	if (r->auth_user_request)
+	if (r && r->auth_user_request)
 	    p = authenticateUserRequestUsername(r->auth_user_request);
 	if (!p)
 	    p = "-";
@@ -522,6 +528,11 @@ errorConvert(char token, ErrorState * err)
     case 'M':
 	p = r ? RequestMethodStr[r->method] : "[unkown method]";
 	break;
+    case 'o':
+	p = external_acl_message;
+	if (!p)
+	    p = "[not available]";
+	break;
     case 'p':
 	if (r) {
 	    memBufPrintf(&mb, "%d", (int) r->port);
@@ -549,7 +560,7 @@ errorConvert(char token, ErrorState * err)
 	}
 	break;
     case 's':
-	p = full_appname_string;
+	p = visible_appname_string;
 	break;
     case 'S':
 	/* signature may contain %-escapes, recursion */

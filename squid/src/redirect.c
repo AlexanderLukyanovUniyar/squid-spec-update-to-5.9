@@ -1,6 +1,6 @@
 
 /*
- * $Id: redirect.c,v 1.88.2.3 2003/12/14 13:40:47 hno Exp $
+ * $Id: redirect.c,v 1.96 2006/07/08 16:01:12 serassio Exp $
  *
  * DEBUG: section 61    Redirector
  * AUTHOR: Duane Wessels
@@ -96,6 +96,7 @@ redirectStart(clientHttpRequest * http, RH * handler, void *data)
     ConnStateData *conn = http->conn;
     redirectStateData *r = NULL;
     const char *fqdn;
+    char *urlgroup = conn->port->urlgroup;
     char buf[8192];
     assert(http);
     assert(handler);
@@ -109,25 +110,33 @@ redirectStart(clientHttpRequest * http, RH * handler, void *data)
     r = cbdataAlloc(redirectStateData);
     r->orig_url = xstrdup(http->uri);
     r->client_addr = conn->log_addr;
+    r->client_ident = NULL;
     if (http->request->auth_user_request)
 	r->client_ident = authenticateUserRequestUsername(http->request->auth_user_request);
-    else if (conn->rfc931[0]) {
-	r->client_ident = conn->rfc931;
-    } else {
-	r->client_ident = dash_str;
+    else if (http->request->extacl_user) {
+	r->client_ident = http->request->extacl_user;
     }
+    if (!r->client_ident && conn->rfc931[0])
+	r->client_ident = conn->rfc931;
+#if USE_SSL
+    if (!r->client_ident)
+	r->client_ident = sslGetUserEmail(fd_table[conn->fd].ssl);
+#endif
+    if (!r->client_ident)
+	r->client_ident = dash_str;
     r->method_s = RequestMethodStr[http->request->method];
     r->handler = handler;
     r->data = data;
     cbdataLock(r->data);
     if ((fqdn = fqdncache_gethostbyaddr(r->client_addr, 0)) == NULL)
 	fqdn = dash_str;
-    snprintf(buf, 8192, "%s %s/%s %s %s\n",
+    snprintf(buf, 8192, "%s %s/%s %s %s %s\n",
 	r->orig_url,
 	inet_ntoa(r->client_addr),
 	fqdn,
 	r->client_ident[0] ? rfc1738_escape(r->client_ident) : dash_str,
-	r->method_s);
+	r->method_s,
+	urlgroup ? urlgroup : "-");
     helperSubmit(redirectors, buf, redirectHandleReply, r);
 }
 
@@ -135,17 +144,18 @@ void
 redirectInit(void)
 {
     static int init = 0;
-    if (!Config.Program.redirect)
+    if (!Config.Program.url_rewrite.command)
 	return;
     if (redirectors == NULL)
-	redirectors = helperCreate("redirector");
-    redirectors->cmdline = Config.Program.redirect;
-    redirectors->n_to_start = Config.redirectChildren;
-    redirectors->ipc_type = IPC_TCP_SOCKET;
+	redirectors = helperCreate("url_rewriter");
+    redirectors->cmdline = Config.Program.url_rewrite.command;
+    redirectors->n_to_start = Config.Program.url_rewrite.children;
+    redirectors->concurrency = Config.Program.url_rewrite.concurrency;
+    redirectors->ipc_type = IPC_STREAM;
     helperOpenServers(redirectors);
     if (!init) {
-	cachemgrRegister("redirector",
-	    "URL Redirector Stats",
+	cachemgrRegister("url_rewriter",
+	    "URL Rewriter Stats",
 	    redirectStats, 0, 1);
 	init = 1;
 	CBDATA_INIT_TYPE(redirectStateData);

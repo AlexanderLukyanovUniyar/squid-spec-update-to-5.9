@@ -1,6 +1,6 @@
 
 /*
- * $Id: mime.c,v 1.102.2.5 2005/03/26 02:50:53 hno Exp $
+ * $Id: mime.c,v 1.108 2006/05/28 22:24:51 hno Exp $
  *
  * DEBUG: section 25    MIME Parsing
  * AUTHOR: Harvest Derived
@@ -302,7 +302,7 @@ mimeInit(char *filename)
 	debug(25, 1) ("mimeInit: %s: %s\n", filename, xstrerror());
 	return;
     }
-#if defined (_SQUID_CYGWIN_)
+#ifdef _SQUID_WIN32_
     setmode(fileno(fp), O_TEXT);
 #endif
     mimeFreeMemory();
@@ -410,7 +410,7 @@ mimeLoadIconFile(const char *icon)
     request_t *r;
     if (type == NULL)
 	fatal("Unknown icon format while reading mime.conf\n");
-    buf = internalLocalUri("/squid-internal-static/icons/", icon);
+    buf = internalStoreUri("/squid-internal-static/icons/", icon);
     xstrncpy(url, buf, MAX_URL);
     if (storeGetPublic(url, METHOD_GET))
 	return;

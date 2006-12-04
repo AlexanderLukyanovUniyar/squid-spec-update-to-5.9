@@ -1,6 +1,6 @@
 
 /*
- * $Id: url.c,v 1.133.2.7 2006/03/10 22:43:37 hno Exp $
+ * $Id: url.c,v 1.144 2006/06/17 23:31:03 hno Exp $
  *
  * DEBUG: section 23    URL Parsing
  * AUTHOR: Duane Wessels
@@ -107,18 +107,14 @@ const char *ProtocolStr[] =
 };
 
 static request_t *urnParse(method_t method, char *urn);
-#if CHECK_HOSTNAMES
-static const char *const valid_hostname_chars =
-#if ALLOW_HOSTNAME_UNDERSCORES
+static const char valid_hostname_chars_u[] =
 "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 "abcdefghijklmnopqrstuvwxyz"
 "0123456789-._";
-#else
+static const char valid_hostname_chars[] =
 "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 "abcdefghijklmnopqrstuvwxyz"
 "0123456789-.";
-#endif
-#endif /* CHECK_HOSTNAMES */
 
 /* convert %xx in url string to a character 
  * Allocate a new string and return a pointer to converted string */
@@ -307,12 +303,10 @@ urlParse(method_t method, char *url)
 	    *q = '\0';
 	}
     }
-#if CHECK_HOSTNAMES
-    if (strspn(host, valid_hostname_chars) != strlen(host)) {
+    if (Config.onoff.check_hostnames && strspn(host, Config.onoff.allow_underscore ? valid_hostname_chars_u : valid_hostname_chars) != strlen(host)) {
 	debug(23, 1) ("urlParse: Illegal character in hostname '%s'\n", host);
 	return NULL;
     }
-#endif
     if (Config.appendDomain && !strchr(host, '.'))
 	strncat(host, Config.appendDomain, SQUIDHOSTNAMELEN - strlen(host) - 1);
     /* remove trailing dots from hostnames */
@@ -548,6 +542,7 @@ urlCheckRequest(const request_t * r)
     switch (r->protocol) {
     case PROTO_URN:
     case PROTO_HTTP:
+    case PROTO_INTERNAL:
     case PROTO_CACHEOBJ:
 	rc = 1;
 	break;
@@ -623,6 +618,8 @@ urlExtMethodAdd(const char *mstr)
 	if (0 != strncmp("%EXT", RequestMethodStr[method], 4))
 	    continue;
 	/* Don't free statically allocated "%EXTnn" string */
+	if (0 == strncmp("%EXT_", RequestMethodStr[method], 5))
+	    safe_free(RequestMethodStr[method]);
 	RequestMethodStr[method] = xstrdup(mstr);
 	debug(23, 1) ("Extension method '%s' added, enum=%d\n", mstr, (int) method);
 	return;
@@ -631,14 +628,37 @@ urlExtMethodAdd(const char *mstr)
 }
 
 void
-urlExtMethodConfigure(void)
+parse_extension_method(const char *(*_methods)[])
 {
-    wordlist *w = Config.ext_methods;
-    while (w) {
-	char *s;
-	for (s = w->key; *s; s++)
-	    *s = xtoupper(*s);
-	urlExtMethodAdd(w->key);
-	w = w->next;
+    char *token;
+    char *t = strtok(NULL, "");
+    while ((token = strwordtok(NULL, &t))) {
+	urlExtMethodAdd(token);
+    }
+}
+
+void
+free_extension_method(const char *(*_methods)[])
+{
+    method_t method;
+    char **methods = (char **) _methods;
+    for (method = METHOD_EXT00; method < METHOD_ENUM_END; method++) {
+	if (*methods[method] != '%') {
+	    char buf[32];
+	    snprintf(buf, sizeof(buf), "%%EXT_%02d", method - METHOD_EXT00);
+	    safe_free(methods[method]);
+	    methods[method] = xstrdup(buf);
+	}
+    }
+}
+
+void
+dump_extension_method(StoreEntry * entry, const char *name, const char **methods)
+{
+    method_t method;
+    for (method = METHOD_EXT00; method < METHOD_ENUM_END; method++) {
+	if (*methods[method] != '%') {
+	    storeAppendPrintf(entry, "%s %s\n", name, methods[method]);
+	}
     }
 }

@@ -1,5 +1,5 @@
 /*
- * $Id: cache_snmp.h,v 1.26 2001/10/08 16:55:25 hno Exp $
+ * $Id: cache_snmp.h,v 1.29 2006/09/22 02:49:24 hno Exp $
  */
 
 #ifndef SQUID_CACHE_SNMP_H
@@ -79,6 +79,7 @@ enum {
     CONF_VERSION_ID,
     CONF_LOG_FAC,
     CONF_STORAGE,
+    CONF_UNIQNAME,
     CONF_END
 };
 
@@ -123,6 +124,8 @@ enum {				/* cachePeerTable */
     MESH_PTBL_IGN,
     MESH_PTBL_KEEPAL_S,
     MESH_PTBL_KEEPAL_R,
+    MESH_PTBL_INDEX,
+    MESH_PTBL_HOST,
     MESH_PTBL_END
 };
 
@@ -209,6 +212,8 @@ enum {
     PERF_SYS_CURUNLREQ,
     PERF_SYS_CURUNUSED_FD,
     PERF_SYS_CURRESERVED_FD,
+    PERF_SYS_CURUSED_FD,
+    PERF_SYS_CURMAX_FD,
     PERF_SYS_END
 };
 
@@ -251,6 +256,7 @@ enum {
     PERF_MEDIAN_DNS,
     PERF_MEDIAN_RHR,
     PERF_MEDIAN_BHR,
+    PERF_MEDIAN_HTTP_NH,
     PERF_MEDIAN_END
 };
 

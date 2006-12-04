@@ -1,6 +1,6 @@
 
 /*
- * $Id: mem.c,v 1.59 2001/09/07 18:02:45 adrian Exp $
+ * $Id: mem.c,v 1.73 2006/05/20 21:51:49 hno Exp $
  *
  * DEBUG: section 13    High Level Memory Pool Management
  * AUTHOR: Harvest Derived
@@ -62,6 +62,8 @@ static struct {
 static MemMeter StrCountMeter;
 static MemMeter StrVolumeMeter;
 
+static MemMeter HugeBufCountMeter;
+static MemMeter HugeBufVolumeMeter;
 
 /* local routines */
 
@@ -92,6 +94,15 @@ memStringStats(StoreEntry * sentry)
 	"Other Strings",
 	xpercentInt(StrCountMeter.level - pooled_count, StrCountMeter.level),
 	xpercentInt(StrVolumeMeter.level - pooled_volume, StrVolumeMeter.level));
+    storeAppendPrintf(sentry, "\n");
+}
+
+static void
+memBufStats(StoreEntry * sentry)
+{
+    storeAppendPrintf(sentry, "Large buffers: %d (%d KB)\n",
+	(int) HugeBufCountMeter.level,
+	(int) HugeBufVolumeMeter.level / 1024);
 }
 
 static void
@@ -100,7 +111,23 @@ memStats(StoreEntry * sentry)
     storeBuffer(sentry);
     memReport(sentry);
     memStringStats(sentry);
+    memBufStats(sentry);
     storeBufferFlush(sentry);
+#if WITH_VALGRIND
+    if (RUNNING_ON_VALGRIND) {
+	long int leaked = 0, dubious = 0, reachable = 0, suppressed = 0;
+	storeAppendPrintf(sentry, "Valgrind Report:\n");
+	storeAppendPrintf(sentry, "Type\tAmount\n");
+	debug(13, 1) ("Asking valgrind for memleaks\n");
+	VALGRIND_DO_LEAK_CHECK;
+	debug(13, 1) ("Getting valgrind statistics\n");
+	VALGRIND_COUNT_LEAKS(leaked, dubious, reachable, suppressed);
+	storeAppendPrintf(sentry, "Leaked\t%ld\n", leaked);
+	storeAppendPrintf(sentry, "Dubious\t%ld\n", dubious);
+	storeAppendPrintf(sentry, "Reachable\t%ld\n", reachable);
+	storeAppendPrintf(sentry, "Suppressed\t%ld\n", suppressed);
+    }
+#endif
 }
 
 
@@ -136,7 +163,7 @@ memFree(void *p, int type)
 
 /* allocate a variable size buffer using best-fit pool */
 void *
-memAllocBuf(size_t net_size, size_t * gross_size)
+memAllocString(size_t net_size, size_t * gross_size)
 {
     int i;
     MemPool *pool = NULL;
@@ -154,9 +181,9 @@ memAllocBuf(size_t net_size, size_t * gross_size)
     return pool ? memPoolAlloc(pool) : xcalloc(1, net_size);
 }
 
-/* free buffer allocated with memAllocBuf() */
+/* free buffer allocated with memAllocString() */
 void
-memFreeBuf(size_t size, void *buf)
+memFreeString(size_t size, void *buf)
 {
     int i;
     MemPool *pool = NULL;
@@ -172,6 +199,86 @@ memFreeBuf(size_t size, void *buf)
     memMeterDel(StrVolumeMeter, size);
     pool ? memPoolFree(pool, buf) : xfree(buf);
 }
+
+/* Find the best fit MEM_X_BUF type */
+static mem_type
+memFindBufSizeType(size_t net_size, size_t * gross_size)
+{
+    mem_type type;
+    size_t size;
+    if (net_size <= 2 * 1024) {
+	type = MEM_2K_BUF;
+	size = 2 * 1024;
+    } else if (net_size <= 4 * 1024) {
+	type = MEM_4K_BUF;
+	size = 4 * 1024;
+    } else if (net_size <= 8 * 1024) {
+	type = MEM_8K_BUF;
+	size = 8 * 1024;
+    } else if (net_size <= 16 * 1024) {
+	type = MEM_16K_BUF;
+	size = 16 * 1024;
+    } else if (net_size <= 32 * 1024) {
+	type = MEM_32K_BUF;
+	size = 32 * 1024;
+    } else if (net_size <= 64 * 1024) {
+	type = MEM_64K_BUF;
+	size = 64 * 1024;
+    } else {
+	type = MEM_NONE;
+	size = net_size;
+    }
+    if (gross_size)
+	*gross_size = size;
+    return type;
+}
+
+/* allocate a variable size buffer using best-fit pool */
+void *
+memAllocBuf(size_t net_size, size_t * gross_size)
+{
+    mem_type type = memFindBufSizeType(net_size, gross_size);
+    if (type != MEM_NONE)
+	return memAllocate(type);
+    else {
+	memMeterInc(HugeBufCountMeter);
+	memMeterAdd(HugeBufVolumeMeter, *gross_size);
+	return xcalloc(1, net_size);
+    }
+}
+
+/* resize a variable sized buffer using best-fit pool */
+void *
+memReallocBuf(void *oldbuf, size_t net_size, size_t * gross_size)
+{
+    /* XXX This can be optimized on very large buffers to use realloc() */
+    size_t new_gross_size;
+    void *newbuf = memAllocBuf(net_size, &new_gross_size);
+    if (oldbuf) {
+	int data_size = *gross_size;
+	if (data_size > net_size)
+	    data_size = net_size;
+	memcpy(newbuf, oldbuf, data_size);
+	memFreeBuf(*gross_size, oldbuf);
+    }
+    *gross_size = new_gross_size;
+    return newbuf;
+}
+
+/* free buffer allocated with memAllocBuf() */
+void
+memFreeBuf(size_t size, void *buf)
+{
+    mem_type type = memFindBufSizeType(size, NULL);
+    if (type != MEM_NONE)
+	memFree(buf, type);
+    else {
+	xfree(buf);
+	memMeterDec(HugeBufCountMeter);
+	memMeterDel(HugeBufVolumeMeter, size);
+    }
+}
+
 
 void
 memInit(void)
@@ -199,7 +306,11 @@ memInit(void)
     memDataInit(MEM_ACL_IP_DATA, "acl_ip_data", sizeof(acl_ip_data), 0);
     memDataInit(MEM_ACL_LIST, "acl_list", sizeof(acl_list), 0);
     memDataInit(MEM_ACL_NAME_LIST, "acl_name_list", sizeof(acl_name_list), 0);
+#if USE_SSL
+    memDataInit(MEM_ACL_CERT_DATA, "acl_cert_data", sizeof(acl_cert_data), 0);
+#endif
     memDataInit(MEM_ACL_TIME_DATA, "acl_time_data", sizeof(acl_time_data), 0);
+    memDataInit(MEM_ACL_REQUEST_TYPE, "acl_request_type", sizeof(acl_request_type), 0);
     memDataInit(MEM_AUTH_USER_T, "auth_user_t",
 	sizeof(auth_user_t), 0);
     memDataInit(MEM_AUTH_USER_HASH, "auth_user_hash_pointer",
@@ -240,7 +351,6 @@ memInit(void)
     memDataInit(MEM_HELPER_STATEFUL_REQUEST, "helper_stateful_request",
 	sizeof(helper_stateful_request), 0);
     memDataInit(MEM_TLV, "storeSwapTLV", sizeof(tlv), 0);
-    memDataInit(MEM_CLIENT_REQ_BUF, "clientRequestBuffer", CLIENT_REQ_BUF_SZ, 0);
     memDataInit(MEM_SWAP_LOG_DATA, "storeSwapLogData", sizeof(storeSwapLogData), 0);
 
     /* init string pools */
@@ -284,7 +394,7 @@ memInUse(mem_type type)
 
 /* ick */
 
-void
+static void
 memFree2K(void *p)
 {
     memFree(p, MEM_2K_BUF);
@@ -302,20 +412,43 @@ memFree8K(void *p)
     memFree(p, MEM_8K_BUF);
 }
 
-void
+static void
 memFree16K(void *p)
 {
     memFree(p, MEM_16K_BUF);
 }
 
-void
+static void
 memFree32K(void *p)
 {
     memFree(p, MEM_32K_BUF);
 }
 
-void
+static void
 memFree64K(void *p)
 {
     memFree(p, MEM_64K_BUF);
+}
+
+FREE *
+memFreeBufFunc(size_t size)
+{
+    switch (size) {
+    case 2 * 1024:
+	return memFree2K;
+    case 4 * 1024:
+	return memFree4K;
+    case 8 * 1024:
+	return memFree8K;
+    case 16 * 1024:
+	return memFree16K;
+    case 32 * 1024:
+	return memFree32K;
+    case 64 * 1024:
+	return memFree64K;
+    default:
+	memMeterDec(HugeBufCountMeter);
+	memMeterDel(HugeBufVolumeMeter, size);
+	return xfree;
+    }
 }

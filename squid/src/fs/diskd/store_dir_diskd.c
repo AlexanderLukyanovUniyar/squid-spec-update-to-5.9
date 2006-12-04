@@ -1,6 +1,6 @@
 
 /*
- * $Id: store_dir_diskd.c,v 1.58.2.12 2005/05/01 10:48:07 serassio Exp $
+ * $Id: store_dir_diskd.c,v 1.85 2006/09/22 00:51:43 adrian Exp $
  *
  * DEBUG: section 47    Store Directory Routines
  * AUTHOR: Duane Wessels
@@ -99,6 +99,7 @@ static void storeDiskdDirCloseTmpSwapLog(SwapDir * sd);
 static FILE *storeDiskdDirOpenTmpSwapLog(SwapDir *, int *, int *);
 static STLOGOPEN storeDiskdDirOpenSwapLog;
 static STINIT storeDiskdDirInit;
+static STCHECKCONFIG storeDiskdCheckConfig;
 static STFREE storeDiskdDirFree;
 static STLOGCLEANSTART storeDiskdDirWriteCleanStart;
 static STLOGCLEANNEXTENTRY storeDiskdDirCleanLogNextEntry;
@@ -110,6 +111,7 @@ static STNEWFS storeDiskdDirNewfs;
 static STDUMP storeDiskdDirDump;
 static STMAINTAINFS storeDiskdDirMaintain;
 static STCHECKOBJ storeDiskdDirCheckObj;
+static STCHECKLOADAV storeDiskdDirCheckLoadAv;
 static STREFOBJ storeDiskdDirRefObj;
 static STUNREFOBJ storeDiskdDirUnrefObj;
 static QS rev_int_sort;
@@ -326,7 +328,7 @@ storeDiskdDirOpenSwapLog(SwapDir * sd)
     char *path;
     int fd;
     path = storeDiskdDirSwapLogFile(sd, NULL);
-    fd = file_open(path, O_WRONLY | O_CREAT);
+    fd = file_open(path, O_WRONLY | O_CREAT | O_BINARY);
     if (fd < 0) {
 	debug(50, 1) ("%s: %s\n", path, xstrerror());
 	fatal("storeDiskdDirOpenSwapLog: Failed to open swap log.");
@@ -356,12 +358,25 @@ storeDiskdDirCloseSwapLog(SwapDir * sd)
 }
 
 static void
+storeDiskdCheckConfig(SwapDir * sd)
+{
+    requirePathnameExists("diskd_program", Config.Program.diskd);
+    if (!opt_create_swap_dirs)
+	requirePathnameExists("cache_dir", sd->path);
+}
+
+static void
+diskdExited(int fd, void *unused)
+{
+    fatal("diskd exited unexpectedly");
+}
+
+static void
 storeDiskdDirInit(SwapDir * sd)
 {
     static int started_clean_event = 0;
-    int x;
+    pid_t pid;
     int i;
-    int rfd;
     int ikey;
     const char *args[5];
     char skey1[32];
@@ -385,8 +400,9 @@ storeDiskdDirInit(SwapDir * sd)
 	debug(50, 0) ("storeDiskdInit: msgget: %s\n", xstrerror());
 	fatal("msgget failed");
     }
+    diskdinfo->shm.nbufs = diskdinfo->magic2 * 1.3;
     diskdinfo->shm.id = shmget((key_t) (ikey + 2),
-	SHMBUFS * SHMBUF_BLKSZ, 0600 | IPC_CREAT);
+	diskdinfo->shm.nbufs * SHMBUF_BLKSZ, 0600 | IPC_CREAT);
     if (diskdinfo->shm.id < 0) {
 	debug(50, 0) ("storeDiskdInit: shmget: %s\n", xstrerror());
 	fatal("shmget failed");
@@ -396,9 +412,9 @@ storeDiskdDirInit(SwapDir * sd)
 	debug(50, 0) ("storeDiskdInit: shmat: %s\n", xstrerror());
 	fatal("shmat failed");
     }
-    diskdinfo->shm.inuse_map = xcalloc((SHMBUFS + 7) / 8, 1);
-    diskd_stats.shmbuf_count += SHMBUFS;
-    for (i = 0; i < SHMBUFS; i++) {
+    diskdinfo->shm.inuse_map = xcalloc((diskdinfo->shm.nbufs + 7) / 8, 1);
+    diskd_stats.shmbuf_count += diskdinfo->shm.nbufs;
+    for (i = 0; i < diskdinfo->shm.nbufs; i++) {
 	CBIT_SET(diskdinfo->shm.inuse_map, i);
 	storeDiskdShmPut(sd, i * SHMBUF_BLKSZ);
     }
@@ -410,24 +426,18 @@ storeDiskdDirInit(SwapDir * sd)
     args[2] = skey2;
     args[3] = skey3;
     args[4] = NULL;
-#if HAVE_POLL && defined(_SQUID_OSF_)
-    /* pipes and poll() don't get along on DUNIX -DW */
-    x = ipcCreate(IPC_TCP_SOCKET,
-#else
-    x = ipcCreate(IPC_FIFO,
-#endif
+    pid = ipcCreate(IPC_STREAM,
 	Config.Program.diskd,
 	args,
 	"diskd",
-	&rfd,
-	&diskdinfo->wfd);
-    if (x < 0)
+	&diskdinfo->rfd,
+	&diskdinfo->wfd,
+	&diskdinfo->hIpc);
+    if (pid < 0)
 	fatalf("execl: %s", Config.Program.diskd);
-    if (rfd != diskdinfo->wfd)
-	comm_close(rfd);
-    fd_note(diskdinfo->wfd, "squid -> diskd");
-    commSetTimeout(diskdinfo->wfd, -1, NULL, NULL);
-    commSetNonBlocking(diskdinfo->wfd);
+    fd_note(diskdinfo->rfd, "diskd -> squid health monitor");
+    fd_note(diskdinfo->wfd, "squid -> diskd health monitor");
+    commSetSelect(diskdinfo->rfd, COMM_SELECT_READ, diskdExited, NULL, 0);
     storeDiskdDirInitBitmap(sd);
     if (storeDiskdDirVerifyCacheDirs(sd) < 0)
 	fatal(errmsg);
@@ -788,15 +798,7 @@ storeDiskdDirRebuildFromSwapLog(void *data)
 		 * because adding to store_swap_size happens in
 		 * the cleanup procedure.
 		 */
-		storeExpireNow(e);
-		storeReleaseRequest(e);
-		if (e->swap_filen > -1) {
-		    storeDiskdDirReplRemove(e);
-		    storeDiskdDirMapBitReset(SD, e->swap_filen);
-		    e->swap_filen = -1;
-		    e->swap_dirn = -1;
-		}
-		storeRelease(e);
+		storeRecycle(e);
 		rb->counts.objcount--;
 		rb->counts.cancelcount++;
 	    }
@@ -876,16 +878,7 @@ storeDiskdDirRebuildFromSwapLog(void *data)
 	} else if (e) {
 	    /* key already exists, this swapfile not being used */
 	    /* junk old, load new */
-	    storeExpireNow(e);
-	    storeReleaseRequest(e);
-	    if (e->swap_filen > -1) {
-		storeDiskdDirReplRemove(e);
-		/* Make sure we don't actually unlink the file */
-		storeDiskdDirMapBitReset(SD, e->swap_filen);
-		e->swap_filen = -1;
-		e->swap_dirn = -1;
-	    }
-	    storeRelease(e);
+	    storeRecycle(e);
 	    rb->counts.dupcount++;
 	} else {
 	    /* URL doesnt exist, swapfile not in use */
@@ -981,15 +974,7 @@ storeDiskdDirRebuildFromSwapLogOld(void *data)
 		 * because adding to store_swap_size happens in
 		 * the cleanup procedure.
 		 */
-		storeExpireNow(e);
-		storeReleaseRequest(e);
-		if (e->swap_filen > -1) {
-		    storeDiskdDirReplRemove(e);
-		    storeDiskdDirMapBitReset(SD, e->swap_filen);
-		    e->swap_filen = -1;
-		    e->swap_dirn = -1;
-		}
-		storeRelease(e);
+		storeRecycle(e);
 		rb->counts.objcount--;
 		rb->counts.cancelcount++;
 	    }
@@ -1069,16 +1054,7 @@ storeDiskdDirRebuildFromSwapLogOld(void *data)
 	} else if (e) {
 	    /* key already exists, this swapfile not being used */
 	    /* junk old, load new */
-	    storeExpireNow(e);
-	    storeReleaseRequest(e);
-	    if (e->swap_filen > -1) {
-		storeDiskdDirReplRemove(e);
-		/* Make sure we don't actually unlink the file */
-		storeDiskdDirMapBitReset(SD, e->swap_filen);
-		e->swap_filen = -1;
-		e->swap_dirn = -1;
-	    }
-	    storeRelease(e);
+	    storeRecycle(e);
 	    rb->counts.dupcount++;
 	} else {
 	    /* URL doesnt exist, swapfile not in use */
@@ -1208,7 +1184,7 @@ storeDiskdDirGetNextFile(RebuildState * rb, sfileno * filn_p, int *size)
 	    snprintf(rb->fullfilename, SQUID_MAXPATHLEN, "%s/%s",
 		rb->fullpath, rb->entry->d_name);
 	    debug(20, 3) ("storeDiskdDirGetNextFile: Opening %s\n", rb->fullfilename);
-	    fd = file_open(rb->fullfilename, O_RDONLY);
+	    fd = file_open(rb->fullfilename, O_RDONLY | O_BINARY);
 	    if (fd < 0)
 		debug(50, 1) ("storeDiskdDirGetNextFile: %s: %s\n", rb->fullfilename, xstrerror());
 	    else
@@ -1323,7 +1299,7 @@ storeDiskdDirCloseTmpSwapLog(SwapDir * sd)
     if (xrename(new_path, swaplog_path) < 0) {
 	fatal("storeDiskdDirCloseTmpSwapLog: rename failed");
     }
-    fd = file_open(swaplog_path, O_WRONLY | O_CREAT);
+    fd = file_open(swaplog_path, O_WRONLY | O_CREAT | O_BINARY);
     if (fd < 0) {
 	debug(50, 1) ("%s: %s\n", swaplog_path, xstrerror());
 	fatal("storeDiskdDirCloseTmpSwapLog: Failed to open swap log.");
@@ -1382,7 +1358,7 @@ storeDiskdDirOpenTmpSwapLog(SwapDir * sd, int *clean_flag, int *zero_flag)
     if (diskdinfo->swaplog_fd >= 0)
 	file_close(diskdinfo->swaplog_fd);
     /* open a write-only FD for the new log */
-    fd = file_open(new_path, O_WRONLY | O_CREAT | O_TRUNC);
+    fd = file_open(new_path, O_WRONLY | O_CREAT | O_TRUNC | O_BINARY);
     if (fd < 0) {
 	debug(50, 1) ("%s: %s\n", new_path, xstrerror());
 	fatal("storeDirOpenTmpSwapLog: Failed to open swap log.");
@@ -1390,7 +1366,7 @@ storeDiskdDirOpenTmpSwapLog(SwapDir * sd, int *clean_flag, int *zero_flag)
     diskdinfo->swaplog_fd = fd;
     storeDiskdWriteSwapLogheader(fd);
     /* open a read-only stream of the old log */
-    fp = fopen(swaplog_path, "r");
+    fp = fopen(swaplog_path, "rb");
     if (fp == NULL) {
 	debug(50, 0) ("%s: %s\n", swaplog_path, xstrerror());
 	fatal("Failed to open swap log for reading");
@@ -1441,7 +1417,7 @@ storeDiskdDirWriteCleanStart(SwapDir * sd)
     state->outbuf_offset = 0;
     state->walker = sd->repl->WalkInit(sd->repl);
     unlink(state->cln);
-    state->fd = file_open(state->new, O_WRONLY | O_CREAT | O_TRUNC);
+    state->fd = file_open(state->new, O_WRONLY | O_CREAT | O_TRUNC | O_BINARY);
     if (state->fd < 0) {
 	xfree(state->new);
 	xfree(state->cur);
@@ -1552,7 +1528,7 @@ storeDiskdDirWriteCleanDone(SwapDir * sd)
     else if (state->fd < 0)
 	(void) 0;
     else
-	file_close(file_open(state->cln, O_WRONLY | O_CREAT | O_TRUNC));
+	file_close(file_open(state->cln, O_WRONLY | O_CREAT | O_TRUNC | O_BINARY));
     /* close */
     safe_free(state->cur);
     safe_free(state->new);
@@ -1776,6 +1752,7 @@ storeDiskdDirValidFileno(SwapDir * SD, sfileno filn, int flag)
 void
 storeDiskdDirMaintain(SwapDir * SD)
 {
+    diskdinfo_t *diskdinfo = SD->fsdata;
     StoreEntry *e = NULL;
     int removed = 0;
     int max_scan;
@@ -1797,7 +1774,7 @@ storeDiskdDirMaintain(SwapDir * SD)
     debug(20, 3) ("storeMaintainSwapSpace: f=%f, max_scan=%d, max_remove=%d\n", f, max_scan, max_remove);
     walker = SD->repl->PurgeInit(SD->repl, max_scan);
     while (1) {
-	if (SD->cur_size < SD->low_size)
+	if (SD->cur_size < SD->low_size && diskdinfo->map->n_files_in_map < FILEMAP_MAX)
 	    break;
 	if (removed >= max_remove)
 	    break;
@@ -1825,10 +1802,19 @@ storeDiskdDirCheckObj(SwapDir * SD, const StoreEntry * e)
     diskdinfo_t *diskdinfo = SD->fsdata;
     /* Check the queue length */
     if (diskdinfo->away >= diskdinfo->magic1)
-	return -1;
+	return 0;
+    return 1;
+}
+
+int
+storeDiskdDirCheckLoadAv(SwapDir * SD, store_op_t op)
+{
+    diskdinfo_t *diskdinfo = SD->fsdata;
     /* Calculate the storedir load relative to magic2 on a scale of 0 .. 1000 */
-    /* the parse function guarantees magic2 is positivie */
-    return diskdinfo->away * 1000 / diskdinfo->magic2;
+    /* the parse function guarantees magic2 is positive */
+    if (diskdinfo->away >= diskdinfo->magic1)
+	return -1;
+    return DISKD_LOAD_BASE + (diskdinfo->away * DISKD_LOAD_QUEUE_WEIGHT / diskdinfo->magic2);
 }
 
 /*
@@ -1919,7 +1905,7 @@ storeDiskdShmGet(SwapDir * sd, int *shm_offset)
     char *buf = NULL;
     diskdinfo_t *diskdinfo = sd->fsdata;
     int i;
-    for (i = 0; i < SHMBUFS; i++) {
+    for (i = 0; i < diskdinfo->shm.nbufs; i++) {
 	if (CBIT_TEST(diskdinfo->shm.inuse_map, i))
 	    continue;
 	CBIT_SET(diskdinfo->shm.inuse_map, i);
@@ -1929,7 +1915,7 @@ storeDiskdShmGet(SwapDir * sd, int *shm_offset)
     }
     assert(buf);
     assert(buf >= diskdinfo->shm.buf);
-    assert(buf < diskdinfo->shm.buf + (SHMBUFS * SHMBUF_BLKSZ));
+    assert(buf < diskdinfo->shm.buf + (diskdinfo->shm.nbufs * SHMBUF_BLKSZ));
     diskd_stats.shmbuf_count++;
     if (diskd_stats.max_shmuse < diskd_stats.shmbuf_count)
 	diskd_stats.max_shmuse = diskd_stats.shmbuf_count;
@@ -1942,9 +1928,9 @@ storeDiskdShmPut(SwapDir * sd, int offset)
     int i;
     diskdinfo_t *diskdinfo = sd->fsdata;
     assert(offset >= 0);
-    assert(offset < SHMBUFS * SHMBUF_BLKSZ);
+    assert(offset < diskdinfo->shm.nbufs * SHMBUF_BLKSZ);
     i = offset / SHMBUF_BLKSZ;
-    assert(i < SHMBUFS);
+    assert(i < diskdinfo->shm.nbufs);
     assert(CBIT_TEST(diskdinfo->shm.inuse_map, i));
     CBIT_CLR(diskdinfo->shm.inuse_map, i);
     diskd_stats.shmbuf_count--;
@@ -1959,10 +1945,17 @@ void
 storeDiskdDirStats(SwapDir * SD, StoreEntry * sentry)
 {
     diskdinfo_t *diskdinfo = SD->fsdata;
+#ifdef HAVE_STATVFS
+    fsblkcnt_t totl_kb = 0;
+    fsblkcnt_t free_kb = 0;
+    fsfilcnt_t totl_in = 0;
+    fsfilcnt_t free_in = 0;
+#else
     int totl_kb = 0;
     int free_kb = 0;
     int totl_in = 0;
     int free_in = 0;
+#endif
     int x;
     storeAppendPrintf(sentry, "First level subdirectories: %d\n", diskdinfo->l1);
     storeAppendPrintf(sentry, "Second level subdirectories: %d\n", diskdinfo->l2);
@@ -1970,11 +1963,22 @@ storeDiskdDirStats(SwapDir * SD, StoreEntry * sentry)
     storeAppendPrintf(sentry, "Current Size: %d KB\n", SD->cur_size);
     storeAppendPrintf(sentry, "Percent Used: %0.2f%%\n",
 	100.0 * SD->cur_size / SD->max_size);
+    storeAppendPrintf(sentry, "Current load metric: %d / %d\n", storeDiskdDirCheckLoadAv(SD, ST_OP_CREATE), MAX_LOAD_VALUE);
     storeAppendPrintf(sentry, "Filemap bits in use: %d of %d (%d%%)\n",
 	diskdinfo->map->n_files_in_map, diskdinfo->map->max_n_files,
 	percent(diskdinfo->map->n_files_in_map, diskdinfo->map->max_n_files));
     x = storeDirGetUFSStats(SD->path, &totl_kb, &free_kb, &totl_in, &free_in);
     if (0 == x) {
+#ifdef HAVE_STATVFS
+	storeAppendPrintf(sentry, "Filesystem Space in use: %" PRIu64 "/%" PRIu64 " KB (%.0f%%)\n",
+	    (uint64_t) (totl_kb - free_kb),
+	    (uint64_t) totl_kb,
+	    dpercent(totl_kb - free_kb, totl_kb));
+	storeAppendPrintf(sentry, "Filesystem Inodes in use: %" PRIu64 "/%" PRIu64 " (%.0f%%)\n",
+	    (uint64_t) (totl_in - free_in),
+	    (uint64_t) totl_in,
+	    dpercent(totl_in - free_in, totl_in));
+#else
 	storeAppendPrintf(sentry, "Filesystem Space in use: %d/%d KB (%d%%)\n",
 	    totl_kb - free_kb,
 	    totl_kb,
@@ -1983,6 +1987,7 @@ storeDiskdDirStats(SwapDir * SD, StoreEntry * sentry)
 	    totl_in - free_in,
 	    totl_in,
 	    percent(totl_in - free_in, totl_in));
+#endif
     }
     storeAppendPrintf(sentry, "Flags:");
     if (SD->flags.selected)
@@ -1999,7 +2004,21 @@ storeDiskdDirParseQ1(SwapDir * sd, const char *name, const char *value, int reco
     diskdinfo_t *diskdinfo = sd->fsdata;
     int old_magic1 = diskdinfo->magic1;
     diskdinfo->magic1 = atoi(value);
-    if (reconfiguring && old_magic1 != diskdinfo->magic1)
+    if (!reconfiguring)
+	return;
+    if (old_magic1 < diskdinfo->magic1) {
+	/*
+	 * This is because shm.nbufs is computed at startup, when
+	 * we call shmget().  We can't increase the Q1/Q2 parameters
+	 * beyond their initial values because then we might have
+	 * more "Q2 messages" than shared memory chunks, and this
+	 * will cause an assertion in storeDiskdShmGet().
+	 */
+	debug(3, 1) ("WARNING: cannot increase cache_dir '%s' Q1 value while Squid is running.\n", sd->path);
+	diskdinfo->magic1 = old_magic1;
+	return;
+    }
+    if (old_magic1 != diskdinfo->magic1)
 	debug(3, 1) ("cache_dir '%s' new Q1 value '%d'\n",
 	    sd->path, diskdinfo->magic1);
 }
@@ -2017,7 +2036,15 @@ storeDiskdDirParseQ2(SwapDir * sd, const char *name, const char *value, int reco
     diskdinfo_t *diskdinfo = sd->fsdata;
     int old_magic2 = diskdinfo->magic2;
     diskdinfo->magic2 = atoi(value);
-    if (reconfiguring && old_magic2 != diskdinfo->magic2)
+    if (!reconfiguring)
+	return;
+    if (old_magic2 < diskdinfo->magic2) {
+	/* See comments in Q1 function above */
+	debug(3, 1) ("WARNING: cannot increase cache_dir '%s' Q2 value while Squid is running.\n", sd->path);
+	diskdinfo->magic2 = old_magic2;
+	return;
+    }
+    if (old_magic2 != diskdinfo->magic2)
 	debug(3, 1) ("cache_dir '%s' new Q2 value '%d'\n",
 	    sd->path, diskdinfo->magic2);
 }
@@ -2191,6 +2218,7 @@ storeDiskdDirParse(SwapDir * sd, int index, char *path)
     diskdinfo->suggest = 0;
     diskdinfo->magic1 = 64;
     diskdinfo->magic2 = 72;
+    sd->checkconfig = storeDiskdCheckConfig;
     sd->init = storeDiskdDirInit;
     sd->newfs = storeDiskdDirNewfs;
     sd->dump = storeDiskdDirDump;
@@ -2199,6 +2227,7 @@ storeDiskdDirParse(SwapDir * sd, int index, char *path)
     sd->statfs = storeDiskdDirStats;
     sd->maintainfs = storeDiskdDirMaintain;
     sd->checkobj = storeDiskdDirCheckObj;
+    sd->checkload = storeDiskdDirCheckLoadAv;
     sd->refobj = storeDiskdDirRefObj;
     sd->unrefobj = storeDiskdDirUnrefObj;
     sd->callback = storeDiskdDirCallback;
@@ -2209,6 +2238,7 @@ storeDiskdDirParse(SwapDir * sd, int index, char *path)
     sd->obj.read = storeDiskdRead;
     sd->obj.write = storeDiskdWrite;
     sd->obj.unlink = storeDiskdUnlink;
+    sd->obj.recycle = storeDiskdRecycle;
     sd->log.open = storeDiskdDirOpenSwapLog;
     sd->log.close = storeDiskdDirCloseSwapLog;
     sd->log.write = storeDiskdDirSwapLog;

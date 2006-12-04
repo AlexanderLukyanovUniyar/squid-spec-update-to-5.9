@@ -1,6 +1,6 @@
 
 /*
- * $Id: cache_manager.c,v 1.26.2.2 2005/09/01 22:42:03 hno Exp $
+ * $Id: cache_manager.c,v 1.30 2006/08/25 12:26:07 serassio Exp $
  *
  * DEBUG: section 16    Cache Manager Objects
  * AUTHOR: Duane Wessels
@@ -120,7 +120,9 @@ cachemgrParseUrl(const char *url)
     } else if (request[0] == '\0') {
 	xstrncpy(request, "menu", MAX_URL);
 #endif
-    } else if ((a = cachemgrFindAction(request)) == NULL) {
+    }
+    request[strcspn(request, "/")] = '\0';
+    if ((a = cachemgrFindAction(request)) == NULL) {
 	debug(16, 1) ("cachemgrParseUrl: action '%s' not found\n", request);
 	return NULL;
     } else {
@@ -199,9 +201,8 @@ cachemgrStart(int fd, request_t * request, StoreEntry * entry)
     action_table *a;
     debug(16, 3) ("objectcacheStart: '%s'\n", storeUrl(entry));
     if ((mgr = cachemgrParseUrl(storeUrl(entry))) == NULL) {
-	err = errorCon(ERR_INVALID_URL, HTTP_NOT_FOUND);
+	err = errorCon(ERR_INVALID_URL, HTTP_NOT_FOUND, request);
 	err->url = xstrdup(storeUrl(entry));
-	err->request = requestLink(request);
 	errorAppendEntry(entry, err);
 	entry->expires = squid_curtime;
 	return;
@@ -218,7 +219,7 @@ cachemgrStart(int fd, request_t * request, StoreEntry * entry)
 	/* build error message */
 	ErrorState *err;
 	HttpReply *rep;
-	err = errorCon(ERR_CACHE_MGR_ACCESS_DENIED, HTTP_UNAUTHORIZED);
+	err = errorCon(ERR_CACHE_MGR_ACCESS_DENIED, HTTP_UNAUTHORIZED, request);
 	/* warn if user specified incorrect password */
 	if (mgr->passwd)
 	    debug(16, 1) ("CACHEMGR: %s@%s: incorrect password for '%s'\n",
@@ -228,7 +229,6 @@ cachemgrStart(int fd, request_t * request, StoreEntry * entry)
 	    debug(16, 1) ("CACHEMGR: %s@%s: password needed for '%s'\n",
 		mgr->user_name ? mgr->user_name : "<unknown>",
 		fd_table[fd].ipaddr, mgr->action);
-	err->request = requestLink(request);
 	rep = errorBuildReply(err);
 	errorStateFree(err);
 	/*
@@ -236,10 +236,8 @@ cachemgrStart(int fd, request_t * request, StoreEntry * entry)
 	 * password depends on action
 	 */
 	httpHeaderPutAuth(&rep->header, "Basic", mgr->action);
-	/* move info to the mem_obj->reply */
-	httpReplyAbsorb(entry->mem_obj->reply, rep);
 	/* store the reply */
-	httpReplySwapOut(entry->mem_obj->reply, entry);
+	httpReplySwapOut(rep, entry);
 	entry->expires = squid_curtime;
 	storeComplete(entry);
 	cachemgrStateFree(mgr);

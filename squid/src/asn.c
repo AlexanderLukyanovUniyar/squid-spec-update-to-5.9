@@ -1,6 +1,6 @@
 
 /*
- * $Id: asn.c,v 1.78.2.2 2005/03/26 02:50:51 hno Exp $
+ * $Id: asn.c,v 1.84 2006/06/05 22:47:01 hno Exp $
  *
  * DEBUG: section 53    AS Number handling
  * AUTHOR: Duane Wessels, Kostas Anagnostakis
@@ -204,11 +204,11 @@ asnCacheStart(int as)
     asState->request = requestLink(req);
     if ((e = storeGetPublic(asres, METHOD_GET)) == NULL) {
 	e = storeCreateEntry(asres, asres, null_request_flags, METHOD_GET);
-	asState->sc = storeClientListAdd(e, asState);
+	asState->sc = storeClientRegister(e, asState);
 	fwdStart(-1, e, asState->request);
     } else {
 	storeLockObject(e);
-	asState->sc = storeClientListAdd(e, asState);
+	asState->sc = storeClientRegister(e, asState);
     }
     asState->entry = e;
     asState->seen = 0;
@@ -305,7 +305,7 @@ asStateFree(void *data)
 {
     ASState *asState = data;
     debug(53, 3) ("asnStateFree: %s\n", storeUrl(asState->entry));
-    storeUnregister(asState->sc, asState->entry, asState);
+    storeClientUnregister(asState->sc, asState->entry, asState);
     storeUnlockObject(asState->entry);
     requestUnlink(asState->request);
     cbdataFree(asState);
@@ -318,7 +318,7 @@ asStateFree(void *data)
 static int
 asnAddNet(char *as_string, int as_number)
 {
-    rtentry *e = xmalloc(sizeof(rtentry));
+    rtentry *e;
     struct squid_radix_node *rn;
     char dbg1[32], dbg2[32];
     intlist **Tail = NULL;
@@ -350,6 +350,7 @@ asnAddNet(char *as_string, int as_number)
     addr = ntohl(addr);
     /*mask = ntohl(mask); */
     debug(53, 3) ("asnAddNet: called for %s/%s\n", dbg1, dbg2);
+    e = xmalloc(sizeof(rtentry));
     memset(e, '\0', sizeof(rtentry));
     store_m_int(addr, e->e_addr);
     store_m_int(mask, e->e_mask);
@@ -376,11 +377,13 @@ asnAddNet(char *as_string, int as_number)
 	rn = squid_rn_match(e->e_addr, AS_tree_head);
 	assert(rn != NULL);
 	e->e_info = asinfo;
-    }
-    if (rn == 0) {
-	xfree(e);
-	debug(53, 3) ("asnAddNet: Could not add entry.\n");
-	return 0;
+	if (rn == 0) {		/* assert might expand to nothing */
+	    xfree(asinfo);
+	    xfree(q);
+	    xfree(e);
+	    debug(53, 3) ("asnAddNet: Could not add entry.\n");
+	    return 0;
+	}
     }
     e->e_info = asinfo;
     return 1;

@@ -1,6 +1,6 @@
 
 /*
- * $Id: auth_digest.c,v 1.10.2.14 2005/04/22 20:29:31 hno Exp $
+ * $Id: auth_digest.c,v 1.21 2006/07/30 23:27:04 hno Exp $
  *
  * DEBUG: section 29    Authenticator
  * AUTHOR: Robert Collins
@@ -73,6 +73,7 @@ static AUTHSFREE authenticateDigestUserFree;
 static AUTHSFREECONFIG authDigestFreeConfig;
 static AUTHSINIT authDigestInit;
 static AUTHSPARSE authDigestParse;
+static AUTHSCHECKCONFIG authDigestCheckConfig;
 static AUTHSREQFREE authDigestAURequestFree;
 static AUTHSSTART authenticateDigestStart;
 static AUTHSSTATS authenticateDigestStats;
@@ -592,12 +593,12 @@ authDigestCfgDump(StoreEntry * entry, const char *name, authScheme * scheme)
 	storeAppendPrintf(entry, " %s", list->key);
 	list = list->next;
     }
-    storeAppendPrintf(entry, "\n%s %s realm %s\n%s %s children %d\n%s %s nonce_max_count %d\n%s %s nonce_max_duration %d seconds\n%s %s nonce_garbage_interval %d seconds\n",
-	name, "digest", config->digestAuthRealm,
-	name, "digest", config->authenticateChildren,
-	name, "digest", config->noncemaxuses,
-	name, "digest", (int) config->noncemaxduration,
-	name, "digest", (int) config->nonceGCInterval);
+    storeAppendPrintf(entry, "\n%s %s realm %s\n", name, "digest", config->digestAuthRealm);
+    storeAppendPrintf(entry, "%s %s children %d\n", name, "digest", config->authenticateChildren);
+    storeAppendPrintf(entry, "%s %s concurrency %d\n", name, "digest", config->authenticateConcurrency);
+    storeAppendPrintf(entry, "%s %s nonce_max_count %d\n", name, "digest", config->noncemaxuses);
+    storeAppendPrintf(entry, "%s %s nonce_max_duration %d seconds\n", name, "digest", (int) config->noncemaxduration);
+    storeAppendPrintf(entry, "%s %s nonce_garbage_interval %d seconds\n", name, "digest", (int) config->nonceGCInterval);
 }
 
 void
@@ -607,6 +608,7 @@ authSchemeSetup_digest(authscheme_entry_t * authscheme)
     authscheme->Active = authenticateDigestActive;
     authscheme->configured = authDigestConfigured;
     authscheme->parse = authDigestParse;
+    authscheme->checkconfig = authDigestCheckConfig;
     authscheme->freeconfig = authDigestFreeConfig;
     authscheme->dump = authDigestCfgDump;
     authscheme->init = authDigestInit;
@@ -938,7 +940,8 @@ authDigestInit(authScheme * scheme)
 	    digestauthenticators = helperCreate("digestauthenticator");
 	digestauthenticators->cmdline = digestConfig->authenticate;
 	digestauthenticators->n_to_start = digestConfig->authenticateChildren;
-	digestauthenticators->ipc_type = IPC_TCP_SOCKET;
+	digestauthenticators->concurrency = digestConfig->authenticateConcurrency;
+	digestauthenticators->ipc_type = IPC_STREAM;
 	helperOpenServers(digestauthenticators);
 	if (!init) {
 	    cachemgrRegister("digestauthenticator",
@@ -994,9 +997,10 @@ authDigestParse(authScheme * scheme, int n_configured, char *param_str)
 	if (digestConfig->authenticate)
 	    wordlistDestroy(&digestConfig->authenticate);
 	parse_wordlist(&digestConfig->authenticate);
-	requirePathnameExists("authparam digest program", digestConfig->authenticate->key);
     } else if (strcasecmp(param_str, "children") == 0) {
 	parse_int(&digestConfig->authenticateChildren);
+    } else if (strcasecmp(param_str, "concurrency") == 0) {
+	parse_int(&digestConfig->authenticateConcurrency);
     } else if (strcasecmp(param_str, "realm") == 0) {
 	parse_eol(&digestConfig->digestAuthRealm);
     } else if (strcasecmp(param_str, "nonce_garbage_interval") == 0) {
@@ -1012,10 +1016,16 @@ authDigestParse(authScheme * scheme, int n_configured, char *param_str)
     } else if (strcasecmp(param_str, "post_workaround") == 0) {
 	parse_onoff(&digestConfig->PostWorkaround);
     } else {
-	debug(28, 0) ("unrecognised digest auth scheme parameter '%s'\n", param_str);
+	debug(29, 0) ("unrecognised digest auth scheme parameter '%s'\n", param_str);
     }
 }
 
+static void
+authDigestCheckConfig(authScheme * scheme)
+{
+    auth_digest_config *config = scheme->scheme_data;
+    requirePathnameExists("authparam digest program", config->authenticate->key);
+}
 
 static void
 authenticateDigestStats(StoreEntry * sentry)

@@ -1,7 +1,7 @@
 #
 #  Makefile for the Squid Object Cache server
 #
-#  $Id: Makefile.am,v 1.16.2.12 2005/09/28 20:50:25 hno Exp $
+#  $Id: Makefile.am,v 1.56 2006/10/30 00:07:33 hno Exp $
 #
 #  Uncomment and customize the following to suit your needs:
 #
@@ -62,6 +62,33 @@ else
 WIN32SOURCE = 
 endif
 
+if ENABLE_MINGW32SPECIFIC
+MINGWEXLIB = -lmingwex
+IPC_SOURCE = ipc_win32.c
+else
+MINGWEXLIB =
+IPC_SOURCE = ipc.c
+endif
+
+if USE_POLL
+COMMLOOP_SOURCE = comm_poll.c
+endif
+if USE_EPOLL
+COMMLOOP_SOURCE = comm_epoll.c
+endif
+if USE_SELECT
+COMMLOOP_SOURCE = comm_select.c
+endif
+if USE_SELECT_SIMPLE
+COMMLOOP_SOURCE = comm_select_simple.c
+endif
+if USE_SELECT_WIN32
+COMMLOOP_SOURCE = comm_select_win32.c
+endif
+if USE_KQUEUE
+COMMLOOP_SOURCE = comm_kqueue.c
+endif
+
 SUBDIRS		= fs repl auth
 
 INCLUDES        = -I. -I$(srcdir) -I$(top_builddir)/include -I$(top_srcdir)/include
@@ -77,21 +104,15 @@ noinst_PROGRAMS = \
 sbin_PROGRAMS = \
 	squid
 
-bin_PROGRAMS = \
-	squidclient
-
 libexec_PROGRAMS = \
 	$(PINGER) \
 	$(DNSSERVER) \
-	$(UNLINKD) \
-	cachemgr$(CGIEXT)
+	$(UNLINKD)
 
-cf_gen_SOURCES = cf_gen.c defines.h
+cf_gen_SOURCES = cf_gen.c defines.h debug.c
+nodist_cf_gen_SOURCES = globals.c
 nodist_cf_gen_HEADER = cf_gen_defines.h
 cf_gen.$(OBJEXT): cf_gen_defines.h
-squidclient_SOURCES = client.c
-cachemgr__CGIEXT__SOURCES = cachemgr.c
-cachemgr__CGIEXT__CFLAGS = -DDEFAULT_CACHEMGR_CONFIG=\"$(DEFAULT_CACHEMGR_CONFIG)\" $(AM_CFLAGS)
 
 EXTRA_squid_SOURCES = \
 	delay_pools.c \
@@ -105,6 +126,15 @@ EXTRA_squid_SOURCES = \
 	unlinkd.c \
 	ssl_support.c \
 	ssl_support.h \
+	comm_epoll.c \
+	comm_poll.c \
+	comm_select.c \
+	comm_select_win32.c \
+	comm_select_simple.c \
+	comm_kqueue.c \
+	comm_generic.c \
+	ipc.c \
+	ipc_win32.c \
 	win32.c
 
 squid_SOURCES = \
@@ -120,7 +150,7 @@ squid_SOURCES = \
 	client_db.c \
 	client_side.c \
 	comm.c \
-	comm_select.c \
+	$(COMMLOOP_SOURCE) \
 	debug.c \
 	defines.h \
 	$(DELAY_POOL_SOURCE) \
@@ -128,8 +158,8 @@ squid_SOURCES = \
 	$(DNSSOURCE) \
 	enums.h \
 	errorpage.c \
-	ETag.c \
 	event.c \
+	errormap.c \
 	external_acl.c \
 	fd.c \
 	filemap.c \
@@ -156,9 +186,10 @@ squid_SOURCES = \
 	icp_v3.c \
 	ident.c \
 	internal.c \
-	ipc.c \
+	$(IPC_SOURCE) \
 	ipcache.c \
 	$(LEAKFINDERSOURCE) \
+	locrewrite.c \
 	logfile.c \
 	main.c \
 	mem.c \
@@ -171,7 +202,10 @@ squid_SOURCES = \
 	Packer.c \
 	pconn.c \
 	peer_digest.c \
+	peer_monitor.c \
 	peer_select.c \
+	peer_sourcehash.c \
+	peer_userhash.c \
 	protos.h \
 	redirect.c \
 	referer.c \
@@ -205,6 +239,7 @@ squid_SOURCES = \
 	useragent.c \
 	wais.c \
 	wccp.c \
+	wccp2.c \
 	whois.c \
 	$(WIN32SOURCE)
 
@@ -227,8 +262,10 @@ squid_LDADD = \
 	@SNMPLIB@ \
 	@LIB_MALLOC@ \
 	@SSLLIB@ \
+	@LIB_EPOLL@ \
 	-lmiscutil \
-	@XTRA_LIBS@
+	@XTRA_LIBS@ \
+	$(MINGWEXLIB)
 
 unlinkd_SOURCES = 
 unlinkd_LDADD = unlinkd-daemon.o
@@ -269,14 +306,12 @@ EXTRA_DIST = \
 	store_modules.sh \
 	repl_modules.sh \
 	mib.txt \
-	cachemgr.conf \
 	mime.conf.default
 
 DEFAULT_HTTP_PORT	= @CACHE_HTTP_PORT@
 DEFAULT_ICP_PORT	= @CACHE_ICP_PORT@
 DEFAULT_PREFIX		= $(prefix)
 DEFAULT_CONFIG_FILE     = $(sysconfdir)/squid.conf
-DEFAULT_CACHEMGR_CONFIG = $(sysconfdir)/cachemgr.conf
 DEFAULT_MIME_TABLE	= $(sysconfdir)/mime.conf
 DEFAULT_DNSSERVER       = $(libexecdir)/`echo dnsserver | sed '$(transform);s/$$/$(EXEEXT)/'`
 DEFAULT_LOG_PREFIX	= $(localstatedir)/logs
@@ -287,10 +322,11 @@ DEFAULT_PID_FILE        = $(DEFAULT_LOG_PREFIX)/squid.pid
 DEFAULT_SWAP_DIR        = $(localstatedir)/cache
 DEFAULT_PINGER		= $(libexecdir)/`echo pinger | sed '$(transform);s/$$/$(EXEEXT)/'`
 DEFAULT_UNLINKD		= $(libexecdir)/`echo unlinkd | sed '$(transform);s/$$/$(EXEEXT)/'`
-DEFAULT_DISKD		= $(libexecdir)/`echo diskd | sed '$(transform);s/$$/$(EXEEXT)/'`
+DEFAULT_DISKD		= $(libexecdir)/`echo diskd-daemon | sed '$(transform);s/$$/$(EXEEXT)/'`
 DEFAULT_ICON_DIR	= $(datadir)/icons
 DEFAULT_ERROR_DIR	= $(datadir)/errors/@ERR_DEFAULT_LANGUAGE@
 DEFAULT_MIB_PATH	= $(datadir)/mib.txt
+DEFAULT_HOSTS		= @OPT_DEFAULT_HOSTS@
 
 DEFS = @DEFS@ -DDEFAULT_CONFIG_FILE=\"$(DEFAULT_CONFIG_FILE)\"
 
@@ -342,7 +378,9 @@ cf.data: cf.data.pre Makefile
 	s%@DEFAULT_ICON_DIR@%$(DEFAULT_ICON_DIR)%g;\
 	s%@DEFAULT_MIB_PATH@%$(DEFAULT_MIB_PATH)%g;\
 	s%@DEFAULT_ERROR_DIR@%$(DEFAULT_ERROR_DIR)%g;\
-	s%@DEFAULT_PREFIX@%$(DEFAULT_PREFIX)%g;"\
+	s%@DEFAULT_PREFIX@%$(DEFAULT_PREFIX)%g;\
+	s%@DEFAULT_HOSTS@%$(DEFAULT_HOSTS)%g;\
+	s%@[V]ERSION@%$(VERSION)%g;"\
 	< $(srcdir)/cf.data.pre >$@
 
 store_modules.c: store_modules.sh Makefile
@@ -366,12 +404,6 @@ install-data-local: install-sysconfDATA install-dataDATA
 	else \
 	        echo "$(INSTALL_DATA) squid.conf.default $(DESTDIR)$(DEFAULT_CONFIG_FILE)"; \
 	        $(INSTALL_DATA) squid.conf.default $(DESTDIR)$(DEFAULT_CONFIG_FILE); \
-	fi
-	@if test -f $(DESTDIR)$(DEFAULT_CACHEMGR_CONFIG) ; then \
-	        echo "$@ will not overwrite existing $(DESTDIR)$(DEFAULT_CACHEMGR_CONFIG)" ; \
-	else \
-	        echo "$(INSTALL_DATA) $(srcdir)/cachemgr.conf $(DESTDIR)$(DEFAULT_CACHEMGR_CONFIG)"; \
-	        $(INSTALL_DATA) $(srcdir)/cachemgr.conf $(DESTDIR)$(DEFAULT_CACHEMGR_CONFIG); \
 	fi
 	$(mkinstalldirs) $(DESTDIR)$(DEFAULT_LOG_PREFIX)
 

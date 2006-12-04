@@ -1,6 +1,6 @@
 
 /*
- * $Id: internal.c,v 1.23.2.2 2006/03/10 22:43:37 hno Exp $
+ * $Id: internal.c,v 1.32 2006/08/25 12:26:07 serassio Exp $
  *
  * DEBUG: section 76    Internal Squid Object handling
  * AUTHOR: Duane, Alex, Henrik
@@ -70,8 +70,7 @@ internalStart(request_t * request, StoreEntry * entry)
     } else {
 	debugObj(76, 1, "internalStart: unknown request:\n",
 	    request, (ObjPackMethod) & httpRequestPackDebug);
-	err = errorCon(ERR_INVALID_REQ, HTTP_NOT_FOUND);
-	err->request = requestLink(request);
+	err = errorCon(ERR_INVALID_REQ, HTTP_NOT_FOUND, request);
 	errorAppendEntry(entry, err);
     }
 }
@@ -96,7 +95,7 @@ internalRemoteUri(const char *host, u_short port, const char *dir, const char *n
 {
     static MemBuf mb = MemBufNULL;
     static char lc_host[SQUIDHOSTNAMELEN];
-    assert(host && port && name);
+    assert(host && name);
     /* convert host name to lower case */
     xstrncpy(lc_host, host, SQUIDHOSTNAMELEN);
     Tolower(lc_host);
@@ -111,7 +110,7 @@ internalRemoteUri(const char *host, u_short port, const char *dir, const char *n
     memBufReset(&mb);
     memBufPrintf(&mb, "http://%s", lc_host);
     /* append port if not default */
-    if (port != urlDefaultPort(PROTO_HTTP))
+    if (port && port != urlDefaultPort(PROTO_HTTP))
 	memBufPrintf(&mb, ":%d", port);
     if (dir)
 	memBufPrintf(&mb, "%s", dir);
@@ -126,8 +125,32 @@ internalRemoteUri(const char *host, u_short port, const char *dir, const char *n
 char *
 internalLocalUri(const char *dir, const char *name)
 {
-    return internalRemoteUri(getMyHostname(),
-	ntohs(Config.Sockaddr.http->s.sin_port), dir, name);
+    return internalRemoteUri(internalHostname(),
+	getMyPort(), dir, name);
+}
+
+static const char *
+internalUniqueHostname(void)
+{
+    LOCAL_ARRAY(char, host, SQUIDHOSTNAMELEN + 1);
+    xstrncpy(host, uniqueHostname(), SQUIDHOSTNAMELEN);
+    if (Config.appendDomain && !strchr(host, '.'))
+	strncat(host, Config.appendDomain, SQUIDHOSTNAMELEN -
+	    strlen(host) - 1);
+    Tolower(host);
+    return host;
+}
+
+/*
+ * makes internal url for store
+ */
+char *
+internalStoreUri(const char *dir, const char *name)
+{
+    static MemBuf mb = MemBufNULL;
+    memBufReset(&mb);
+    memBufPrintf(&mb, "internal://%s%s%s", internalUniqueHostname(), dir ? dir : "", name);
+    return mb.buf;
 }
 
 const char *
@@ -135,6 +158,9 @@ internalHostname(void)
 {
     LOCAL_ARRAY(char, host, SQUIDHOSTNAMELEN + 1);
     xstrncpy(host, getMyHostname(), SQUIDHOSTNAMELEN);
+    if (Config.appendDomain && !strchr(host, '.'))
+	strncat(host, Config.appendDomain, SQUIDHOSTNAMELEN -
+	    strlen(host) - 1);
     Tolower(host);
     return host;
 }
@@ -144,6 +170,8 @@ internalHostnameIs(const char *arg)
 {
     wordlist *w;
     if (0 == strcmp(arg, internalHostname()))
+	return 1;
+    if (Config.uniqueHostname && 0 == strcmp(arg, internalUniqueHostname()))
 	return 1;
     for (w = Config.hostnameAliases; w; w = w->next)
 	if (0 == strcmp(arg, w->key))

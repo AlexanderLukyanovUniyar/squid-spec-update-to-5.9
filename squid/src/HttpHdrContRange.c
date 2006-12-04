@@ -1,6 +1,6 @@
 
 /*
- * $Id: HttpHdrContRange.c,v 1.14.2.1 2005/03/26 02:50:50 hno Exp $
+ * $Id: HttpHdrContRange.c,v 1.15 2005/05/17 16:56:37 hno Exp $
  *
  * DEBUG: section 68    HTTP Content-Range Header
  * AUTHOR: Alex Rousskov

@@ -1,6 +1,6 @@
 
 /*
- * $Id: unlinkd.c,v 1.44.2.2 2003/07/21 22:34:50 wessels Exp $
+ * $Id: unlinkd.c,v 1.53 2006/09/08 19:41:24 serassio Exp $
  *
  * DEBUG: section 2     Unlink Daemon
  * AUTHOR: Duane Wessels
@@ -50,7 +50,7 @@ main(int argc, char *argv[])
     setbuf(stdin, NULL);
     setbuf(stdout, NULL);
     close(2);
-    open("/dev/null", O_RDWR);
+    open(_PATH_DEVNULL, O_RDWR);
     while (fgets(buf, UNLINK_BUF_LEN, stdin)) {
 	if ((t = strchr(buf, '\n')))
 	    *t = '\0';
@@ -74,6 +74,9 @@ main(int argc, char *argv[])
 static int unlinkd_wfd = -1;
 static int unlinkd_rfd = -1;
 
+static void *hIpc;
+static pid_t pid;
+
 #define UNLINKD_QUEUE_LIMIT 20
 
 void
@@ -90,19 +93,12 @@ unlinkdUnlink(const char *path)
     }
     /*
      * If the queue length is greater than our limit, then
-     * we pause for up to 100ms, hoping that unlinkd
+     * we pause for up to 10ms, hoping that unlinkd
      * has some feedback for us.  Maybe it just needs a slice
      * of the CPU's time.
      */
-    if (queuelen >= UNLINKD_QUEUE_LIMIT) {
-	struct timeval to;
-	fd_set R;
-	FD_ZERO(&R);
-	FD_SET(unlinkd_rfd, &R);
-	to.tv_sec = 0;
-	to.tv_usec = 100000;
-	select(unlinkd_rfd + 1, &R, NULL, NULL, &to);
-    }
+    if (queuelen >= UNLINKD_QUEUE_LIMIT)
+	xusleep(10000);
     /*
      * If there is at least one outstanding unlink request, then
      * try to read a response.  If there's nothing to read we'll
@@ -113,7 +109,11 @@ unlinkdUnlink(const char *path)
 	int x;
 	int i;
 	char rbuf[512];
+#ifdef _SQUID_MSWIN_
+	x = recv(unlinkd_rfd, rbuf, 511, 0);
+#else
 	x = read(unlinkd_rfd, rbuf, 511);
+#endif
 	if (x > 0) {
 	    rbuf[x] = '\0';
 	    for (i = 0; i < x; i++)
@@ -126,7 +126,11 @@ unlinkdUnlink(const char *path)
     assert(l < MAXPATHLEN);
     xstrncpy(buf, path, MAXPATHLEN);
     buf[l++] = '\n';
+#ifdef _SQUID_MSWIN_
+    x = send(unlinkd_wfd, buf, l, 0);
+#else
     x = write(unlinkd_wfd, buf, l);
+#endif
     if (x < 0) {
 	debug(2, 1) ("unlinkdUnlink: write FD %d failed: %s\n",
 	    unlinkd_wfd, xstrerror());
@@ -146,6 +150,28 @@ unlinkdUnlink(const char *path)
 void
 unlinkdClose(void)
 {
+#ifdef _SQUID_MSWIN_
+    if (unlinkd_wfd > -1) {
+	debug(2, 1) ("Closing unlinkd pipe on FD %d\n", unlinkd_wfd);
+	shutdown(unlinkd_wfd, SD_BOTH);
+	comm_close(unlinkd_wfd);
+	if (unlinkd_wfd != unlinkd_rfd)
+	    comm_close(unlinkd_rfd);
+	unlinkd_wfd = -1;
+	unlinkd_rfd = -1;
+    } else
+	debug(2, 0) ("unlinkdClose: WARNING: unlinkd_wfd is %d\n",
+	    unlinkd_wfd);
+    if (hIpc) {
+	if (WaitForSingleObject(hIpc, 5000) != WAIT_OBJECT_0) {
+	    getCurrentTime();
+	    debug(2, 1)
+		("unlinkdClose: WARNING: (unlinkd,%ld) didn't exit in 5 seconds\n",
+		pid);
+	}
+	CloseHandle(hIpc);
+    }
+#else
     if (unlinkd_wfd < 0)
 	return;
     debug(2, 1) ("Closing unlinkd pipe on FD %d\n", unlinkd_wfd);
@@ -154,28 +180,31 @@ unlinkdClose(void)
 	file_close(unlinkd_rfd);
     unlinkd_wfd = -1;
     unlinkd_rfd = -1;
+#endif
 }
 
 void
 unlinkdInit(void)
 {
-    int x;
     const char *args[2];
     struct timeval slp;
     args[0] = "(unlinkd)";
     args[1] = NULL;
-#if HAVE_POLL && defined(_SQUID_OSF_)
+#if (HAVE_POLL && defined(_SQUID_OSF_)) || defined(_SQUID_MSWIN_)
     /* pipes and poll() don't get along on DUNIX -DW */
-    x = ipcCreate(IPC_TCP_SOCKET,
+    /* On Windows select() will fail on a pipe */
+    pid = ipcCreate(IPC_STREAM,
 #else
-    x = ipcCreate(IPC_FIFO,
+    /* We currently need to use FIFO.. see below */
+    pid = ipcCreate(IPC_FIFO,
 #endif
 	Config.Program.unlinkd,
 	args,
 	"unlinkd",
 	&unlinkd_rfd,
-	&unlinkd_wfd);
-    if (x < 0)
+	&unlinkd_wfd,
+	&hIpc);
+    if (pid < 0)
 	fatal("Failed to create unlinkd subprocess");
     slp.tv_sec = 0;
     slp.tv_usec = 250000;

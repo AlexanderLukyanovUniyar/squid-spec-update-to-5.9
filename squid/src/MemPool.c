@@ -1,6 +1,6 @@
 
 /*
- * $Id: MemPool.c,v 1.28.2.2 2005/03/26 02:50:51 hno Exp $
+ * $Id: MemPool.c,v 1.39 2006/09/18 22:54:39 hno Exp $
  *
  * DEBUG: section 63    Low Level Memory Pool Management
  * AUTHOR: Alex Rousskov
@@ -83,9 +83,15 @@ memConfigure(void)
 {
     size_t new_pool_limit = mem_idle_limit;
     /* set to configured value first */
+#if LEAK_CHECK_MODE
 #if PURIFY
-    debug(63, 1) ("Disabling Memory pools under purify\n");
-    Config.onoff.mem_pools = 0;
+    if (1) {
+#else
+    if (RUNNING_ON_VALGRIND) {
+#endif
+	debug(63, 1) ("Disabling Memory pools for accurate leak checks\n");
+	Config.onoff.mem_pools = 0;
+    }
 #endif
     if (!Config.onoff.mem_pools)
 	new_pool_limit = 0;
@@ -139,7 +145,6 @@ memShrink(size_t new_limit)
 {
     size_t start_limit = TheMeter.idle.level;
     int i;
-    assert(start_limit >= 0 && new_limit >= 0);
     debug(63, 1) ("memShrink: started with %ld KB goal: %ld KB\n",
 	(long int) toKB(TheMeter.idle.level), (long int) toKB(new_limit));
     /* first phase: cut proportionally to the pool idle size */
@@ -209,6 +214,9 @@ memPoolCreate(const char *label, size_t obj_size)
     assert(label && obj_size);
     pool->label = label;
     pool->obj_size = obj_size;
+#if DEBUG_MEMPOOL
+    pool->real_obj_size = (obj_size & 7) ? (obj_size | 7) + 1 : obj_size;
+#endif
     stackInit(&pool->pstack);
     /* other members are set to 0 */
     stackPush(&Pools, pool);
@@ -230,9 +238,19 @@ memPoolDestroy(MemPool * pool)
     xfree(pool);
 }
 
+#if DEBUG_MEMPOOL
+#define MEMPOOL_COOKIE(p) ((void *)((unsigned long)(p) ^ 0xDEADBEEF))
+struct mempool_cookie {
+    MemPool *pool;
+    void *cookie;
+};
+
+#endif
+
 void *
 memPoolAlloc(MemPool * pool)
 {
+    void *obj;
     assert(pool);
     memMeterInc(pool->meter.inuse);
     gb_inc(&pool->meter.total, 1);
@@ -246,13 +264,38 @@ memPoolAlloc(MemPool * pool)
 	memMeterDel(TheMeter.idle, pool->obj_size);
 	gb_inc(&pool->meter.saved, 1);
 	gb_inc(&TheMeter.saved, pool->obj_size);
-	return stackPop(&pool->pstack);
+	obj = stackPop(&pool->pstack);
+#if DEBUG_MEMPOOL
+	(void) VALGRIND_MAKE_READABLE(obj, pool->real_obj_size + sizeof(struct mempool_cookie));
+#else
+	(void) VALGRIND_MAKE_READABLE(obj, pool->obj_size);
+#endif
+#if DEBUG_MEMPOOL
+	{
+	    struct mempool_cookie *cookie = (void *) (((unsigned char *) obj) + pool->real_obj_size);
+	    assert(cookie->cookie == MEMPOOL_COOKIE(obj));
+	    assert(cookie->pool == pool);
+	    (void) VALGRIND_MAKE_NOACCESS(cookie, sizeof(cookie));
+	}
+#endif
     } else {
 	assert(!pool->meter.idle.level);
 	memMeterInc(pool->meter.alloc);
 	memMeterAdd(TheMeter.alloc, pool->obj_size);
-	return xcalloc(1, pool->obj_size);
+#if DEBUG_MEMPOOL
+	{
+	    struct mempool_cookie *cookie;
+	    obj = xcalloc(1, pool->real_obj_size + sizeof(struct mempool_cookie));
+	    cookie = (struct mempool_cookie *) (((unsigned char *) obj) + pool->real_obj_size);
+	    cookie->cookie = MEMPOOL_COOKIE(obj);
+	    cookie->pool = pool;
+	    (void) VALGRIND_MAKE_NOACCESS(cookie, sizeof(cookie));
+	}
+#else
+	obj = xcalloc(1, pool->obj_size);
+#endif
     }
+    return obj;
 }
 
 void
@@ -262,10 +305,24 @@ memPoolFree(MemPool * pool, void *obj)
     memMeterDec(pool->meter.inuse);
     memMeterDel(TheMeter.inuse, pool->obj_size);
     mem_pool_free_calls++;
+    (void) VALGRIND_CHECK_WRITABLE(obj, pool->obj_size);
+#if DEBUG_MEMPOOL
+    {
+	struct mempool_cookie *cookie = (void *) (((unsigned char *) obj) + pool->real_obj_size);
+	(void) VALGRIND_MAKE_READABLE(cookie, sizeof(cookie));
+	assert(cookie->cookie == MEMPOOL_COOKIE(obj));
+	assert(cookie->pool == pool);
+    }
+#endif
     if (TheMeter.idle.level + pool->obj_size <= mem_idle_limit) {
 	memMeterInc(pool->meter.idle);
 	memMeterAdd(TheMeter.idle, pool->obj_size);
 	memset(obj, 0, pool->obj_size);
+#if DEBUG_MEMPOOL
+	(void) VALGRIND_MAKE_NOACCESS(obj, pool->real_obj_size + sizeof(struct mempool_cookie));
+#else
+	(void) VALGRIND_MAKE_NOACCESS(obj, pool->obj_size);
+#endif
 	stackPush(&pool->pstack, obj);
     } else {
 	memMeterDec(pool->meter.alloc);
@@ -279,7 +336,6 @@ static void
 memPoolShrink(MemPool * pool, size_t new_limit)
 {
     assert(pool);
-    assert(new_limit >= 0);
     while (pool->meter.idle.level > new_limit && pool->pstack.count > 0) {
 	memMeterDec(pool->meter.alloc);
 	memMeterDec(pool->meter.idle);
@@ -321,14 +377,32 @@ memPoolDescribe(const MemPool * pool)
 	(long int) toKB(memPoolInUseSize(pool)));
 }
 
-int
+size_t
 memTotalAllocated(void)
 {
     return TheMeter.alloc.level;
 }
 
-void
-memPoolReport(const MemPool * pool, StoreEntry * e)
+#if DEBUG_MEMPOOL
+static void
+memPoolDiffReport(const MemPool * pool, StoreEntry * e)
+{
+    assert(pool);
+    MemPoolMeter diff = pool->meter;
+    diff.alloc.level -= pool->diff_meter.alloc.level;
+    diff.inuse.level -= pool->diff_meter.inuse.level;
+    diff.idle.level -= pool->diff_meter.idle.level;
+    if (diff.alloc.level == 0 && diff.inuse.level == 0)
+	return;
+    storeAppendPrintf(e, " \t \t ");
+    memPoolMeterReport(&diff, pool->obj_size,
+	diff.alloc.level, pool->meter.inuse.level, pool->meter.idle.level,
+	e);
+}
+#endif
+
+static void
+memPoolReport(MemPool * pool, StoreEntry * e, int diff)
 {
     assert(pool);
     storeAppendPrintf(e, "%-20s\t %4d\t ",
@@ -336,6 +410,12 @@ memPoolReport(const MemPool * pool, StoreEntry * e)
     memPoolMeterReport(&pool->meter, pool->obj_size,
 	pool->meter.alloc.level, pool->meter.inuse.level, pool->meter.idle.level,
 	e);
+#if DEBUG_MEMPOOL
+    if (diff)
+	memPoolDiffReport(pool, e);
+    if (diff < 0)
+	pool->diff_meter = pool->meter;
+#endif
 }
 
 void
@@ -346,6 +426,19 @@ memReport(StoreEntry * e)
     int inuse_count = 0;
     int idle_count = 0;
     int i;
+    int diff = 0;
+#if DEBUG_MEMPOOL
+    char *arg = strrchr(e->mem_obj->url, '/');
+    if (arg) {
+	arg++;
+	if (strcmp(arg, "reset") == 0)
+	    diff = -1;
+	else if (strcmp(arg, "diff") == 0)
+	    diff = 1;
+    }
+    storeAppendPrintf(e, "action:mem/diff\tView diff\n");
+    storeAppendPrintf(e, "action:mem/reset\tReset diff\n");
+#endif
     /* caption */
     storeAppendPrintf(e, "Current memory usage:\n");
     /* heading */
@@ -361,9 +454,9 @@ memReport(StoreEntry * e)
 	"\n");
     /* main table */
     for (i = 0; i < Pools.count; i++) {
-	const MemPool *pool = Pools.items[i];
+	MemPool *pool = Pools.items[i];
 	if (memPoolWasUsed(pool)) {
-	    memPoolReport(pool, e);
+	    memPoolReport(pool, e, diff);
 	    alloc_count += pool->meter.alloc.level;
 	    inuse_count += pool->meter.inuse.level;
 	    idle_count += pool->meter.idle.level;

@@ -1,6 +1,6 @@
 
 /*
- * $Id: cf_gen.c,v 1.43.2.3 2005/06/30 18:50:56 serassio Exp $
+ * $Id: cf_gen.c,v 1.50 2006/05/22 18:55:23 serassio Exp $
  *
  * DEBUG: none          Generate squid.conf.default and cf_parser.h
  * AUTHOR: Max Okumoto
@@ -48,32 +48,8 @@
  *			 administrator.
  *****************************************************************************/
 
-#include "config.h"
+#include "squid.h"
 #include "cf_gen_defines.h"
-
-#if HAVE_STDIO_H
-#include <stdio.h>
-#endif
-#if HAVE_STRING_H
-#include <string.h>
-#endif
-#if HAVE_STDLIB_H
-#include <stdlib.h>
-#endif
-#if HAVE_CTYPE_H
-#include <ctype.h>
-#endif
-#if HAVE_ASSERT_H
-#include <assert.h>
-#endif
-#if defined(_SQUID_CYGWIN_)
-#include <io.h>
-#endif
-#if HAVE_FCNTL_H
-#include <fcntl.h>
-#endif
-
-#include "util.h"
 
 #define MAX_LINE	1024	/* longest configuration line */
 #define _PATH_PARSER		"cf_parser.h"
@@ -158,7 +134,7 @@ main(int argc, char *argv[])
 	perror(input_filename);
 	exit(1);
     }
-#if defined(_SQUID_CYGWIN_)
+#ifdef _SQUID_WIN32_
     setmode(fileno(fp), O_TEXT);
 #endif
     state = sSTART;
@@ -181,10 +157,10 @@ main(int argc, char *argv[])
 		    printf("Error in input file\n");
 		    exit(1);
 		}
-		curr = calloc(1, sizeof(Entry));
+		curr = xcalloc(1, sizeof(Entry));
 		curr->name = xstrdup(name);
 		while ((aliasname = strtok(NULL, WS)) != NULL) {
-		    EntryAlias *alias = calloc(1, sizeof(EntryAlias));
+		    EntryAlias *alias = xcalloc(1, sizeof(EntryAlias));
 		    alias->next = curr->alias;
 		    alias->name = xstrdup(aliasname);
 		    curr->alias = alias;
@@ -193,7 +169,7 @@ main(int argc, char *argv[])
 	    } else if (!strcmp(buff, "EOF")) {
 		state = sEXIT;
 	    } else if (!strcmp(buff, "COMMENT_START")) {
-		curr = calloc(1, sizeof(Entry));
+		curr = xcalloc(1, sizeof(Entry));
 		curr->name = xstrdup("comment");
 		curr->loc = xstrdup("none");
 		state = sDOC;
@@ -279,7 +255,7 @@ main(int argc, char *argv[])
 	    } else if (!strcmp(buff, "NOCOMMENT_START")) {
 		state = sNOCOMMENT;
 	    } else {
-		Line *line = calloc(1, sizeof(Line));
+		Line *line = xcalloc(1, sizeof(Line));
 		line->data = xstrdup(buff);
 		line->next = curr->doc;
 		curr->doc = line;
@@ -301,7 +277,7 @@ main(int argc, char *argv[])
 		curr->nocomment = head;
 		state = sDOC;
 	    } else {
-		Line *line = calloc(1, sizeof(Line));
+		Line *line = xcalloc(1, sizeof(Line));
 		line->data = xstrdup(buff);
 		line->next = curr->nocomment;
 		curr->nocomment = line;
@@ -345,7 +321,7 @@ main(int argc, char *argv[])
 	perror(output_filename);
 	exit(1);
     }
-#if defined(_SQUID_CYGWIN_)
+#ifdef _SQUID_WIN32_
     setmode(fileno(fp), O_TEXT);
 #endif
     fprintf(fp,
@@ -370,7 +346,7 @@ main(int argc, char *argv[])
 	perror(conf_filename);
 	exit(1);
     }
-#if defined(_SQUID_CYGWIN_)
+#ifdef _SQUID_WIN32_
     setmode(fileno(fp), O_TEXT);
 #endif
     gen_conf(entries, fp);
@@ -630,12 +606,12 @@ gen_conf(Entry * head, FILE * fp)
 	    fprintf(fp, "#%s\n", line->data);
 	}
 	if (entry->default_value && strcmp(entry->default_value, "none") != 0) {
-	    sprintf(buf, "%s %s", entry->name, entry->default_value);
+	    snprintf(buf, sizeof(buf), "%s %s", entry->name, entry->default_value);
 	    lineAdd(&def, buf);
 	}
 	if (entry->default_if_none) {
 	    for (line = entry->default_if_none; line; line = line->next) {
-		sprintf(buf, "%s %s", entry->name, line->data);
+		snprintf(buf, sizeof(buf), "%s %s", entry->name, line->data);
 		lineAdd(&def, buf);
 	    }
 	}

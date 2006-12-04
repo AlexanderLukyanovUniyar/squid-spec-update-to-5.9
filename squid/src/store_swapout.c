@@ -1,6 +1,6 @@
 
 /*
- * $Id: store_swapout.c,v 1.85.2.11 2005/05/10 22:30:33 hno Exp $
+ * $Id: store_swapout.c,v 1.96 2006/09/22 03:15:20 hno Exp $
  *
  * DEBUG: section 20    Storage Manager Swapout Functions
  * AUTHOR: Duane Wessels
@@ -78,7 +78,7 @@ storeSwapOutStart(StoreEntry * e)
     e->swap_dirn = mem->swapout.sio->swap_dirn;
     /* write out the swap metadata */
     cbdataLock(mem->swapout.sio);
-    storeWrite(mem->swapout.sio, buf, mem->swap_hdr_sz, 0, xfree);
+    storeWrite(mem->swapout.sio, buf, mem->swap_hdr_sz, xfree);
 }
 
 static void
@@ -143,9 +143,18 @@ storeSwapOutMaintainMemObject(StoreEntry * e)
     }
     if (new_mem_lo < mem->inmem_lo)
 	new_mem_lo = mem->inmem_lo;
-    if (mem->inmem_lo != new_mem_lo)
+    if (mem->inmem_lo != new_mem_lo) {
 	mem->inmem_lo = stmemFreeDataUpto(&mem->data_hdr, new_mem_lo);
 
+	/* If ENTRY_DEFER_READ is set, then the client side will continue to
+	 * flush until it has less than READ_AHEAD_GAP bytes in memory */
+	if (EBIT_TEST(e->flags, ENTRY_DEFER_READ)) {
+
+	    if (mem->inmem_hi - mem->inmem_lo <= Config.readAheadGap) {
+		storeResumeRead(e);
+	    }
+	}
+    }
     return swapout_able;
 }
 
@@ -229,13 +238,18 @@ storeSwapOut(StoreEntry * e)
 	    return;
     }
     /* Ok, we have stuff to swap out.  Is there a swapout.sio open? */
-    if (e->swap_status == SWAPOUT_NONE) {
+    if (e->swap_status == SWAPOUT_NONE && !EBIT_TEST(e->flags, ENTRY_FWD_HDR_WAIT)) {
 	assert(mem->swapout.sio == NULL);
 	assert(mem->inmem_lo == 0);
 	if (storeCheckCachable(e))
 	    storeSwapOutStart(e);
-	else
+	else {
+	    /* Now that we know the data is not cachable, free the memory
+	     * to make sure the forwarding code does not defer the connection
+	     */
+	    storeSwapOutMaintainMemObject(e);
 	    return;
+	}
 	/* ENTRY_CACHABLE will be cleared and we'll never get here again */
     }
     if (NULL == mem->swapout.sio)
@@ -270,7 +284,7 @@ storeSwapOut(StoreEntry * e)
 	debug(20, 3) ("storeSwapOut: swapping out %d bytes from %" PRINTF_OFF_T "\n",
 	    (int) swap_buf_len, mem->swapout.queue_offset);
 	mem->swapout.queue_offset += swap_buf_len;
-	storeWrite(mem->swapout.sio, stmemNodeGet(mem->swapout.memnode), swap_buf_len, -1, stmemNodeFree);
+	storeWrite(mem->swapout.sio, stmemNodeGet(mem->swapout.memnode), swap_buf_len, stmemNodeFree);
 	/* the storeWrite() call might generate an error */
 	if (e->swap_status != SWAPOUT_WRITING)
 	    break;

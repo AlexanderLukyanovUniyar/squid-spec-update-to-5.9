@@ -1,6 +1,6 @@
 
 /*
- * $Id: store_key_md5.c,v 1.26 2001/04/14 00:25:19 hno Exp $
+ * $Id: store_key_md5.c,v 1.29 2006/06/07 19:43:51 hno Exp $
  *
  * DEBUG: section 20    Storage Manager MD5 Cache Keys
  * AUTHOR: Duane Wessels
@@ -136,8 +136,18 @@ storeKeyPublicByRequestMethod(request_t * request, const method_t method)
     MD5Init(&M);
     MD5Update(&M, &m, sizeof(m));
     MD5Update(&M, (unsigned char *) url, strlen(url));
-    if (request->vary_headers)
+    if (request->vary_headers) {
+	MD5Update(&M, (unsigned char *) "\0V", 2);
 	MD5Update(&M, (unsigned char *) request->vary_headers, strlen(request->vary_headers));
+	if (strBuf(request->vary_encoding)) {
+	    MD5Update(&M, (unsigned char *) "\0E", 2);
+	    MD5Update(&M, (unsigned char *) strBuf(request->vary_encoding), strLen(request->vary_encoding));
+	}
+    }
+    if (request->urlgroup) {
+	MD5Update(&M, (unsigned char *) "\0G", 2);
+	MD5Update(&M, (unsigned char *) request->urlgroup, strlen(request->urlgroup));
+    }
     MD5Final(digest, &M);
     return digest;
 }

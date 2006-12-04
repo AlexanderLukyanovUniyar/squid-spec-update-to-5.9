@@ -1,5 +1,5 @@
 /*
- * $Id: aiops.c,v 1.12.2.12 2005/12/26 16:32:28 serassio Exp $
+ * $Id: aiops.c,v 1.31 2006/09/23 10:16:40 serassio Exp $
  *
  * DEBUG: section 43    AIOPS
  * AUTHOR: Stewart Forster <slf@connect.com.au>
@@ -37,7 +37,7 @@
 #endif
 
 #include "squid.h"
-#include "store_asyncufs.h"
+#include "async_io.h"
 
 #include	<stdio.h>
 #include	<sys/types.h>
@@ -129,7 +129,9 @@ static void squidaio_do_write(squidaio_request_t *);
 static void squidaio_do_close(squidaio_request_t *);
 static void squidaio_do_stat(squidaio_request_t *);
 static void squidaio_do_unlink(squidaio_request_t *);
+#if USE_TRUNCATE
 static void squidaio_do_truncate(squidaio_request_t *);
+#endif
 #if AIO_OPENDIR
 static void *squidaio_do_opendir(squidaio_request_t *);
 #endif
@@ -282,6 +284,9 @@ squidaio_init(void)
     pthread_attr_setschedparam(&globattr, &globsched);
 #endif
 
+    /* Give each thread a smaller 256KB stack, should be more than sufficient */
+    pthread_attr_setstacksize(&globattr, 256 * 1024);
+
     /* Initialize request queue */
     if (pthread_mutex_init(&(request_queue.mutex), NULL))
 	fatal("Failed to create mutex");
@@ -310,6 +315,8 @@ squidaio_init(void)
     fd_open(done_fd, FD_PIPE, "async-io completion event: threads");
     commSetNonBlocking(done_pipe[0]);
     commSetNonBlocking(done_pipe[1]);
+    commSetCloseOnExec(done_pipe[0]);
+    commSetCloseOnExec(done_pipe[1]);
     commSetSelect(done_pipe[0], COMM_SELECT_READ, squidaio_fdhandler, NULL, 0);
 
     /* Create threads and get them to sit in their wait loop */
@@ -322,7 +329,16 @@ squidaio_init(void)
 	    if (j < 4)
 		j = 4;
 	}
+#if USE_AUFSOPS
+	j = 6;
+	for (i = 0; i < n_coss_dirs; i++) {
+	    squidaio_nthreads += j;
+	    j = 3;
+	}
+#endif
     }
+    if (squidaio_nthreads == 0)
+	squidaio_nthreads = 16;
     squidaio_magic1 = squidaio_nthreads * MAGIC1_FACTOR;
     squidaio_magic2 = squidaio_nthreads * MAGIC2_FACTOR;
     for (i = 0; i < squidaio_nthreads; i++) {
@@ -361,10 +377,10 @@ squidaio_shutdown(void)
 	squidaio_poll_queues();
     } while (request_queue_len > 0);
 
-    close(done_fd);
-    close(done_fd_read);
     fd_close(done_fd);
     fd_close(done_fd_read);
+    close(done_fd);
+    close(done_fd_read);
 }
 
 
@@ -434,9 +450,11 @@ squidaio_thread_loop(void *ptr)
 	    case _AIO_OP_UNLINK:
 		squidaio_do_unlink(request);
 		break;
+#if USE_TRUNCATE
 	    case _AIO_OP_TRUNCATE:
 		squidaio_do_truncate(request);
 		break;
+#endif
 #if AIO_OPENDIR			/* Opendir not implemented yet */
 	    case _AIO_OP_OPENDIR:
 		squidaio_do_opendir(request);
@@ -640,6 +658,20 @@ squidaio_do_open(squidaio_request_t * requestp)
 {
     requestp->ret = open(requestp->path, requestp->oflag, requestp->mode);
     requestp->err = errno;
+#ifdef FD_CLOEXEC
+    if (requestp->ret >= 0) {
+	int fd = requestp->ret;
+	int flags;
+	int dummy = 0;
+	if ((flags = fcntl(fd, F_GETFL, dummy)) < 0) {
+	    debug(50, 0) ("FD %d: fcntl F_GETFL: %s\n", fd, xstrerror());
+	    return;
+	}
+	if (fcntl(fd, F_SETFD, flags | FD_CLOEXEC) < 0)
+	    debug(50, 0) ("FD %d: set close-on-exec failed: %s\n", fd, xstrerror());
+	fd_table[fd].flags.close_on_exec = 1;
+    }
+#endif
 }
 
 
@@ -666,8 +698,7 @@ squidaio_read(int fd, char *bufp, int bufs, off_t offset, int whence, squidaio_r
 static void
 squidaio_do_read(squidaio_request_t * requestp)
 {
-    lseek(requestp->fd, requestp->offset, requestp->whence);
-    requestp->ret = read(requestp->fd, requestp->bufferp, requestp->buflen);
+    requestp->ret = pread(requestp->fd, requestp->bufferp, requestp->buflen, requestp->offset);
     requestp->err = errno;
 }
 
@@ -695,7 +726,8 @@ squidaio_write(int fd, char *bufp, int bufs, off_t offset, int whence, squidaio_
 static void
 squidaio_do_write(squidaio_request_t * requestp)
 {
-    requestp->ret = write(requestp->fd, requestp->bufferp, requestp->buflen);
+    assert(requestp->offset >= 0);
+    requestp->ret = pwrite(requestp->fd, requestp->bufferp, requestp->buflen, requestp->offset);
     requestp->err = errno;
 }
 
@@ -773,6 +805,8 @@ squidaio_do_unlink(squidaio_request_t * requestp)
     requestp->err = errno;
 }
 
+
+#if USE_TRUNCATE
 int
 squidaio_truncate(const char *path, off_t length, squidaio_result_t * resultp)
 {
@@ -796,6 +830,8 @@ squidaio_do_truncate(squidaio_request_t * requestp)
     requestp->ret = truncate(requestp->path, requestp->offset);
     requestp->err = errno;
 }
+
+#endif
 
 
 #if AIO_OPENDIR

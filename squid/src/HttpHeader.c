@@ -1,6 +1,6 @@
 
 /*
- * $Id: HttpHeader.c,v 1.74.2.31 2006/02/25 23:07:49 hno Exp $
+ * $Id: HttpHeader.c,v 1.89 2006/07/19 16:05:11 hno Exp $
  *
  * DEBUG: section 55    HTTP Header
  * AUTHOR: Alex Rousskov
@@ -87,7 +87,7 @@ static const HttpHeaderFieldAttrs HeadersAttrs[] =
     {"Content-Type", HDR_CONTENT_TYPE, ftStr},
     {"Cookie", HDR_COOKIE, ftStr},
     {"Date", HDR_DATE, ftDate_1123},
-    {"ETag", HDR_ETAG, ftETag},
+    {"ETag", HDR_ETAG, ftStr},
     {"Expires", HDR_EXPIRES, ftDate_1123},
     {"From", HDR_FROM, ftStr},
     {"Host", HDR_HOST, ftStr},
@@ -105,6 +105,7 @@ static const HttpHeaderFieldAttrs HeadersAttrs[] =
     {"Proxy-Authentication-Info", HDR_PROXY_AUTHENTICATION_INFO, ftStr},
     {"Proxy-Authorization", HDR_PROXY_AUTHORIZATION, ftStr},
     {"Proxy-Connection", HDR_PROXY_CONNECTION, ftStr},
+    {"Proxy-support", HDR_PROXY_SUPPORT, ftStr},
     {"Public", HDR_PUBLIC, ftStr},
     {"Range", HDR_RANGE, ftPRange},
     {"Referer", HDR_REFERER, ftStr},
@@ -130,6 +131,10 @@ static const HttpHeaderFieldAttrs HeadersAttrs[] =
 #if X_ACCELERATOR_VARY
     {"X-Accelerator-Vary", HDR_X_ACCELERATOR_VARY, ftStr},
 #endif
+    {"X-Error-URL", HDR_X_ERROR_URL, ftStr},
+    {"X-Error-Status", HDR_X_ERROR_STATUS, ftInt},
+    {"Front-End-Https", HDR_FRONT_END_HTTPS, ftStr},
+    {"Keep-Alive", HDR_KEEP_ALIVE, ftStr},
     {"Other:", HDR_OTHER, ftStr}	/* ':' will not allow matches */
 };
 static HttpHeaderFieldInfo *Headers = NULL;
@@ -151,6 +156,7 @@ static http_hdr_type ListHeadersArr[] =
     HDR_IF_MATCH, HDR_IF_NONE_MATCH,
     HDR_LINK, HDR_PRAGMA,
     HDR_PROXY_CONNECTION,
+    HDR_PROXY_SUPPORT,
     HDR_TRANSFER_ENCODING,
     HDR_UPGRADE,
     HDR_VARY,
@@ -384,7 +390,10 @@ httpHeaderUpdate(HttpHeader * old, const HttpHeader * fresh, const HttpHeaderMas
 	/* deny bad guys (ok to check for HDR_OTHER) here */
 	if (denied_mask && CBIT_TEST(*denied_mask, e->id))
 	    continue;
-	httpHeaderDelByName(old, strBuf(e->name));
+	if (e->id != HDR_OTHER)
+	    httpHeaderDelById(old, e->id);
+	else
+	    httpHeaderDelByName(old, strBuf(e->name));
 	httpHeaderAddEntry(old, httpHeaderEntryClone(e));
     }
 }
@@ -645,6 +654,8 @@ httpHeaderDelById(HttpHeader * hdr, http_hdr_type id)
 /*
  * deletes an entry at pos and leaves a gap; leaving a gap makes it
  * possible to iterate(search) and delete fields at the same time
+ * WARNING: Doesn't update the header mask. Call httpHeaderRefreshMask
+ * when done with the delete operations.
  */
 void
 httpHeaderDelAt(HttpHeader * hdr, HttpHeaderPos pos)
@@ -658,6 +669,22 @@ httpHeaderDelAt(HttpHeader * hdr, HttpHeaderPos pos)
     assert(hdr->len >= 0);
     httpHeaderEntryDestroy(e);
 }
+
+/*
+ * Refreshes the header mask. Useful after httpHeaderDelAt constructs
+ */
+void
+httpHeaderRefreshMask(HttpHeader * hdr)
+{
+    HttpHeaderPos pos = HttpHeaderInitPos;
+    HttpHeaderEntry *e;
+    httpHeaderMaskInit(&hdr->mask, 0);
+    debug(55, 7) ("refreshing the mask in hdr %p\n", hdr);
+    while ((e = httpHeaderGetEntry(hdr, &pos))) {
+	CBIT_SET(hdr->mask, e->id);
+    }
+}
+
 
 
 /* appends an entry; 
@@ -798,6 +825,7 @@ httpHeaderGetByNameListMember(const HttpHeader * hdr, const char *name, const ch
 	    break;
 	}
     }
+    stringClean(&header);
     return result;
 }
 
@@ -1100,18 +1128,6 @@ httpHeaderGetAuth(const HttpHeader * hdr, http_hdr_type id, const char *auth_sch
     return base64_decode(field);
 }
 
-ETag
-httpHeaderGetETag(const HttpHeader * hdr, http_hdr_type id)
-{
-    ETag etag =
-    {NULL, -1};
-    HttpHeaderEntry *e;
-    assert(Headers[id].type == ftETag);		/* must be of an appropriate type */
-    if ((e = httpHeaderFindEntry(hdr, id)))
-	etagParseInit(&etag, strBuf(e->value));
-    return etag;
-}
-
 TimeOrTag
 httpHeaderGetTimeOrTag(const HttpHeader * hdr, http_hdr_type id)
 {
@@ -1122,17 +1138,20 @@ httpHeaderGetTimeOrTag(const HttpHeader * hdr, http_hdr_type id)
     if ((e = httpHeaderFindEntry(hdr, id))) {
 	const char *str = strBuf(e->value);
 	/* try as an ETag */
-	if (etagParseInit(&tot.tag, str)) {
-	    tot.valid = tot.tag.str != NULL;
+	if (*str == '"' || (str[0] == 'W' && str[1] == '/')) {
+	    tot.tag = str;
 	    tot.time = -1;
+	    tot.valid = 1;
 	} else {
 	    /* or maybe it is time? */
 	    tot.time = parse_rfc1123(str);
-	    tot.valid = tot.time >= 0;
-	    tot.tag.str = NULL;
+	    if (tot.time >= 0)
+		tot.valid = 1;
+	    tot.tag = NULL;
 	}
+    } else {
+	tot.time = -1;
     }
-    assert(tot.time < 0 || !tot.tag.str);	/* paranoid */
     return tot;
 }
 

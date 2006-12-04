@@ -1,6 +1,6 @@
 
 /*
- * $Id: store_io_ufs.c,v 1.9.2.6 2005/03/26 22:44:10 hno Exp $
+ * $Id: store_io_ufs.c,v 1.15 2006/07/05 06:52:14 adrian Exp $
  *
  * DEBUG: section 79    Storage Manager UFS Interface
  * AUTHOR: Duane Wessels
@@ -57,7 +57,7 @@ storeUfsOpen(SwapDir * SD, StoreEntry * e, STFNCB * file_callback,
     struct stat sb;
     int fd;
     debug(79, 3) ("storeUfsOpen: fileno %08X\n", f);
-    fd = file_open(path, O_RDONLY | O_BINARY);
+    fd = file_open(path, O_RDONLY | O_BINARY | O_NOATIME);
     if (fd < 0) {
 	debug(79, 3) ("storeUfsOpen: got failure (%d)\n", errno);
 	return NULL;
@@ -193,6 +193,23 @@ storeUfsUnlink(SwapDir * SD, StoreEntry * e)
     storeUfsDirReplRemove(e);
     storeUfsDirMapBitReset(SD, e->swap_filen);
     storeUfsDirUnlinkFile(SD, e->swap_filen);
+}
+
+void
+storeUfsRecycle(SwapDir * SD, StoreEntry * e)
+{
+    debug(79, 3) ("storeUfsUnlink: fileno %08X\n", e->swap_filen);
+
+    /* Release the object without releasing the underlying physical object */
+    storeExpireNow(e);
+    storeReleaseRequest(e);
+    if (e->swap_filen > -1) {
+	storeUfsDirReplRemove(e);
+	storeUfsDirMapBitReset(SD, e->swap_filen);
+	e->swap_filen = -1;
+	e->swap_dirn = -1;
+    }
+    storeRelease(e);
 }
 
 /*  === STATIC =========================================================== */

@@ -1,6 +1,6 @@
 
 /*
- * $Id: HttpReply.c,v 1.49.2.6 2006/02/25 23:07:50 hno Exp $
+ * $Id: HttpReply.c,v 1.56 2006/06/11 00:28:19 hno Exp $
  *
  * DEBUG: section 58    HTTP Reply (Response)
  * AUTHOR: Alex Rousskov
@@ -116,7 +116,7 @@ httpReplyReset(HttpReply * rep)
 }
 
 /* absorb: copy the contents of a new reply to the old one, destroy new one */
-void
+static void
 httpReplyAbsorb(HttpReply * rep, HttpReply * new_rep)
 {
     assert(rep && new_rep);
@@ -182,16 +182,21 @@ httpReplyPack(const HttpReply * rep)
     return mb;
 }
 
-/* swap: create swap-based packer, pack, destroy packer */
+/* swap: create swap-based packer, pack, destroy packer. Absorbs the reply */
 void
-httpReplySwapOut(const HttpReply * rep, StoreEntry * e)
+httpReplySwapOut(HttpReply * rep, StoreEntry * e)
 {
     Packer p;
     assert(rep && e);
 
+    if (rep != e->mem_obj->reply) {
+	httpReplyAbsorb(e->mem_obj->reply, rep);
+	rep = e->mem_obj->reply;
+    }
     packerToStoreInit(&p, e);
-    httpReplyPackInto(rep, &p);
+    httpReplyPackInto(e->mem_obj->reply, &p);
     packerClean(&p);
+    rep->hdr_sz = e->mem_obj->inmem_hi - rep->body.mb.size;
 }
 
 #if UNUSED_CODE
@@ -212,7 +217,7 @@ MemBuf
 httpPacked304Reply(const HttpReply * rep)
 {
     static const http_hdr_type ImsEntries[] =
-    {HDR_DATE, HDR_CONTENT_TYPE, HDR_EXPIRES, HDR_LAST_MODIFIED, /* eof */ HDR_OTHER};
+    {HDR_DATE, HDR_CONTENT_TYPE, HDR_EXPIRES, HDR_LAST_MODIFIED, HDR_ETAG, /* eof */ HDR_OTHER};
     int t;
     MemBuf mb;
     Packer p;
@@ -238,8 +243,7 @@ httpReplySetHeaders(HttpReply * reply, http_version_t ver, http_status status, c
     assert(reply);
     httpStatusLineSet(&reply->sline, ver, status, reason);
     hdr = &reply->header;
-    httpHeaderPutStr(hdr, HDR_SERVER, full_appname_string);
-    httpHeaderPutStr(hdr, HDR_MIME_VERSION, "1.0");
+    httpHeaderPutStr(hdr, HDR_SERVER, visible_appname_string);
     httpHeaderPutTime(hdr, HDR_DATE, squid_curtime);
     if (ctype) {
 	httpHeaderPutStr(hdr, HDR_CONTENT_TYPE, ctype);
@@ -256,6 +260,7 @@ httpReplySetHeaders(HttpReply * reply, http_version_t ver, http_status status, c
     reply->content_length = clen;
     reply->expires = expires;
     reply->last_modified = lmt;
+    reply->pstate = psParsed;
 }
 
 void
@@ -273,6 +278,7 @@ httpRedirectReply(HttpReply * reply, http_status status, const char *loc)
     httpHeaderPutStr(hdr, HDR_LOCATION, loc);
     reply->date = squid_curtime;
     reply->content_length = 0;
+    reply->pstate = psParsed;
 }
 
 void

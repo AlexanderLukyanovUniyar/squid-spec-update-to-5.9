@@ -1,6 +1,6 @@
 
 /*
- * $Id: hash.c,v 1.12.2.1 2005/06/30 18:50:56 serassio Exp $
+ * $Id: hash.c,v 1.17 2006/06/02 17:32:44 serassio Exp $
  *
  * DEBUG: section 0     Hash Tables
  * AUTHOR: Harvest Derived
@@ -49,7 +49,7 @@
 #endif
 #if HAVE_GNUMALLLOC_H
 #include <gnumalloc.h>
-#elif HAVE_MALLOC_H && !defined(_SQUID_FREEBSD_) && !defined(_SQUID_NEXT_)
+#elif HAVE_MALLOC_H
 #include <malloc.h>
 #endif
 #if HAVE_ASSERT_H
@@ -186,6 +186,9 @@ hash_lookup(hash_table * hid, const void *k)
     assert(k != NULL);
     b = hid->hash(k, hid->size);
     for (walker = hid->buckets[b]; walker != NULL; walker = walker->next) {
+        /* strcmp of NULL is a SEGV */
+        if (NULL == walker->key)
+            return NULL;
 	if ((hid->cmp) (k, walker->key) == 0)
 	    return (walker);
 	assert(walker != walker->next);

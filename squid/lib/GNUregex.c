@@ -1,5 +1,5 @@
 /*
- * $Id: GNUregex.c,v 1.12.2.3 2005/03/05 21:00:40 hno Exp $
+ * $Id: GNUregex.c,v 1.13 2005/05/17 16:56:36 hno Exp $
  */
 
 /* Extended regular expression matching and search library,

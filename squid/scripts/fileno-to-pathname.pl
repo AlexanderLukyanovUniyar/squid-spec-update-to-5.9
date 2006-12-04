@@ -1,6 +1,6 @@
 #!/usr/local/bin/perl
 
-# $Id: fileno-to-pathname.pl,v 1.2 1997/07/16 20:31:55 wessels Exp $
+# $Id: fileno-to-pathname.pl,v 1.4 2005/05/17 16:56:36 hno Exp $
 # Convert hexadecimal cache file numbers (from swap log) into full pathnames.  
 # Duane Wessels 6/30/97
 

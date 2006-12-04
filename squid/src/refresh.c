@@ -1,6 +1,6 @@
 
 /*
- * $Id: refresh.c,v 1.56.2.1 2002/07/18 09:22:17 hno Exp $
+ * $Id: refresh.c,v 1.62 2006/08/18 21:06:04 hno Exp $
  *
  * DEBUG: section 22    Refresh Calculation
  * AUTHOR: Harvest Derived
@@ -99,14 +99,13 @@ static struct RefreshCounts {
 #define REFRESH_DEFAULT_PCT	0.20
 #define REFRESH_DEFAULT_MAX	(time_t)259200
 
-static const refresh_t *refreshLimits(const char *);
 static const refresh_t *refreshUncompiledPattern(const char *);
 static OBJH refreshStats;
 static int refreshStaleness(const StoreEntry *, time_t, time_t, const refresh_t *, stale_flags *);
 
 static refresh_t DefaultRefresh;
 
-static const refresh_t *
+const refresh_t *
 refreshLimits(const char *url)
 {
     const refresh_t *R;
@@ -169,6 +168,13 @@ refreshStaleness(const StoreEntry * entry, time_t check_time, time_t age, const 
 	debug(22, 3) ("STALE: age %d > max %d \n", (int) age, (int) R->max);
 	sf->max = 1;
 	return (age - R->max);
+    }
+    if (check_time < entry->timestamp) {
+	debug(22, 1) ("STALE: Entry's timestamp greater than check time. Clock going backwards?\n");
+	debug(22, 1) ("\tcheck_time:\t%s\n", mkrfc1123(check_time));
+	debug(22, 1) ("\tentry->timestamp:\t%s\n", mkrfc1123(entry->timestamp));
+	debug(22, 1) ("\tstaleness:\t%ld\n", (long int) entry->timestamp - check_time);
+	return (entry->timestamp - check_time);
     }
     /*
      * Try the last-modified factor algorithm.
@@ -331,7 +337,7 @@ refreshIsCachable(const StoreEntry * entry)
      * 60 seconds delta, to avoid objects which expire almost
      * immediately, and which can't be refreshed.
      */
-    int reason = refreshCheck(entry, NULL, 60);
+    int reason = refreshCheck(entry, NULL, Config.minimum_expiry_time);
     refreshCounts[rcStore].total++;
     refreshCounts[rcStore].status[reason]++;
     if (reason < 200)
@@ -362,6 +368,13 @@ refreshCheckHTTP(const StoreEntry * entry, request_t * request)
     int reason = refreshCheck(entry, request, 0);
     refreshCounts[rcHTTP].total++;
     refreshCounts[rcHTTP].status[reason]++;
+    return (reason < 200) ? 0 : 1;
+}
+
+int
+refreshCheckHTTPStale(const StoreEntry * entry, request_t * request)
+{
+    int reason = refreshCheck(entry, request, -Config.refresh_stale_window);
     return (reason < 200) ? 0 : 1;
 }
 

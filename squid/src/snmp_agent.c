@@ -1,6 +1,6 @@
 
 /*
- * $Id: snmp_agent.c,v 1.83.2.3 2004/05/31 22:39:00 hno Exp $
+ * $Id: snmp_agent.c,v 1.88 2006/09/22 02:49:24 hno Exp $
  *
  * DEBUG: section 49     SNMP Interface
  * AUTHOR: Kostas Anagnostakis
@@ -108,7 +108,7 @@ snmp_confFn(variable_list * Var, snint * ErrP)
 	    break;
 	case CONF_ST_SWMAXSZ:
 	    Answer = snmp_var_new_integer(Var->name, Var->name_length,
-		(snint) Config.Swap.maxSize >> 10,
+		(snint) (Config.Swap.maxSize >> 10),
 		ASN_INTEGER);
 	    break;
 	case CONF_ST_SWHIWM:
@@ -134,6 +134,13 @@ snmp_confFn(variable_list * Var, snint * ErrP)
 	Answer->val_len = strlen(cp);
 	Answer->val.string = (u_char *) xstrdup(cp);
 	break;
+    case CONF_UNIQNAME:
+	Answer = snmp_var_new(Var->name, Var->name_length);
+	cp = uniqueHostname();
+	Answer->type = ASN_OCTET_STR;
+	Answer->val_len = strlen(cp);
+	Answer->val.string = (u_char *) xstrdup(cp);
+	break;
     default:
 	*ErrP = SNMP_ERR_NOSUCHNAME;
 	break;
@@ -146,21 +153,46 @@ snmp_meshPtblFn(variable_list * Var, snint * ErrP)
 {
     variable_list *Answer = NULL;
     struct in_addr *laddr;
+    int loop, index = 0;
     char *cp = NULL;
     peer *p = NULL;
     int cnt = 0;
     debug(49, 5) ("snmp_meshPtblFn: peer %d requested!\n", Var->name[LEN_SQ_MESH + 3]);
     *ErrP = SNMP_ERR_NOERROR;
-    laddr = oid2addr(&Var->name[LEN_SQ_MESH + 3]);
-    for (p = Config.peers; p != NULL; p = p->next, cnt++)
-	if (p->in_addr.sin_addr.s_addr == laddr->s_addr)
-	    break;
+    switch (Var->name[LEN_SQ_MESH + 1]) {
+    case 1:
+	laddr = oid2addr(&Var->name[LEN_SQ_MESH + 3]);
+	for (p = Config.peers; p != NULL; p = p->next, cnt++) {
+	    index++;
+	    if (p->in_addr.sin_addr.s_addr == laddr->s_addr)
+		break;
+	}
+	break;
+    case 2:
+	index = Var->name[LEN_SQ_MESH + 3];
+	loop = 1;
+	p = Config.peers;
+	while (loop != index && p != NULL) {
+	    loop++;
+	    p = p->next;
+	}
+	break;
+    default:
+	break;
+    }
     if (p == NULL) {
 	*ErrP = SNMP_ERR_NOSUCHNAME;
 	return NULL;
     }
     switch (Var->name[LEN_SQ_MESH + 2]) {
     case MESH_PTBL_NAME:
+	cp = p->name;
+	Answer = snmp_var_new(Var->name, Var->name_length);
+	Answer->type = ASN_OCTET_STR;
+	Answer->val_len = strlen(cp);
+	Answer->val.string = (u_char *) xstrdup(cp);
+	break;
+    case MESH_PTBL_HOST:
 	cp = p->host;
 	Answer = snmp_var_new(Var->name, Var->name_length);
 	Answer->type = ASN_OCTET_STR;
@@ -227,6 +259,11 @@ snmp_meshPtblFn(variable_list * Var, snint * ErrP)
 	    p->stats.n_keepalives_recv,
 	    SMI_COUNTER32);
 	break;
+    case MESH_PTBL_INDEX:
+	Answer = snmp_var_new_integer(Var->name, Var->name_length,
+	    index,
+	    ASN_INTEGER);
+	break;
     default:
 	*ErrP = SNMP_ERR_NOSUCHNAME;
 	break;
@@ -255,7 +292,7 @@ snmp_prfSysFn(variable_list * Var, snint * ErrP)
 	break;
     case PERF_SYS_MEMUSAGE:
 	Answer = snmp_var_new_integer(Var->name, Var->name_length,
-	    (snint) statMemoryAccounted() >> 10,
+	    (snint) (statMemoryAccounted() >> 10),
 	    ASN_INTEGER);
 	break;
     case PERF_SYS_CPUTIME:
@@ -289,12 +326,22 @@ snmp_prfSysFn(variable_list * Var, snint * ErrP)
 	break;
     case PERF_SYS_CURUNUSED_FD:
 	Answer = snmp_var_new_integer(Var->name, Var->name_length,
-	    (snint) Squid_MaxFD - Number_FD,
+	    (snint) fdNFree(),
 	    SMI_GAUGE32);
 	break;
     case PERF_SYS_CURRESERVED_FD:
 	Answer = snmp_var_new_integer(Var->name, Var->name_length,
 	    (snint) RESERVED_FD,
+	    SMI_GAUGE32);
+	break;
+    case PERF_SYS_CURUSED_FD:
+	Answer = snmp_var_new_integer(Var->name, Var->name_length,
+	    (snint) Number_FD,
+	    SMI_GAUGE32);
+	break;
+    case PERF_SYS_CURMAX_FD:
+	Answer = snmp_var_new_integer(Var->name, Var->name_length,
+	    (snint) Biggest_FD,
 	    SMI_GAUGE32);
 	break;
     case PERF_SYS_NUMOBJCNT:
@@ -448,6 +495,10 @@ snmp_prfProtoFn(variable_list * Var, snint * ErrP)
 	    break;
 	case PERF_MEDIAN_BHR:
 	    x = statByteHitRatio(minutes);
+	    break;
+	case PERF_MEDIAN_HTTP_NH:
+	    x = statHistDeltaMedian(&l->client_http.nh_svc_time,
+		&f->client_http.nm_svc_time);
 	    break;
 	default:
 	    *ErrP = SNMP_ERR_NOSUCHNAME;

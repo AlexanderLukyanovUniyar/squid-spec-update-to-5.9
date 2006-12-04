@@ -1,6 +1,6 @@
 
 /*
- * $Id: ipc.c,v 1.26.2.1 2006/02/25 23:03:17 hno Exp $
+ * $Id: ipc.c,v 1.39 2006/09/08 19:41:24 serassio Exp $
  *
  * DEBUG: section 54    Interprocess Communication
  * AUTHOR: Duane Wessels
@@ -55,8 +55,8 @@ ipcCloseAllFD(int prfd, int pwfd, int crfd, int cwfd)
     return -1;
 }
 
-int
-ipcCreate(int type, const char *prog, const char *const args[], const char *name, int *rfd, int *wfd)
+pid_t
+ipcCreate(int type, const char *prog, const char *const args[], const char *name, int *rfd, int *wfd, void **hIpc)
 {
     pid_t pid;
     struct sockaddr_in CS;
@@ -78,32 +78,37 @@ ipcCreate(int type, const char *prog, const char *const args[], const char *name
     assert(type != IPC_FIFO);
 #endif
 
+    requirePathnameExists(name, prog);
+
     if (rfd)
 	*rfd = -1;
     if (wfd)
 	*wfd = -1;
+    if (hIpc)
+	*hIpc = NULL;
+
     if (type == IPC_TCP_SOCKET) {
 	crfd = cwfd = comm_open(SOCK_STREAM,
-	    0,
+	    IPPROTO_TCP,
 	    local_addr,
 	    0,
 	    COMM_NOCLOEXEC,
 	    name);
 	prfd = pwfd = comm_open(SOCK_STREAM,
-	    0,			/* protocol */
+	    IPPROTO_TCP,	/* protocol */
 	    local_addr,
 	    0,			/* port */
 	    0,			/* blocking */
 	    name);
     } else if (type == IPC_UDP_SOCKET) {
 	crfd = cwfd = comm_open(SOCK_DGRAM,
-	    0,
+	    IPPROTO_UDP,
 	    local_addr,
 	    0,
 	    COMM_NOCLOEXEC,
 	    name);
 	prfd = pwfd = comm_open(SOCK_DGRAM,
-	    0,
+	    IPPROTO_UDP,
 	    local_addr,
 	    0,
 	    0,
@@ -112,17 +117,40 @@ ipcCreate(int type, const char *prog, const char *const args[], const char *name
 	int p2c[2];
 	int c2p[2];
 	if (pipe(p2c) < 0) {
-	    debug(50, 0) ("ipcCreate: pipe: %s\n", xstrerror());
+	    debug(54, 0) ("ipcCreate: pipe: %s\n", xstrerror());
 	    return -1;
 	}
 	if (pipe(c2p) < 0) {
-	    debug(50, 0) ("ipcCreate: pipe: %s\n", xstrerror());
+	    debug(54, 0) ("ipcCreate: pipe: %s\n", xstrerror());
 	    return -1;
 	}
 	fd_open(prfd = p2c[0], FD_PIPE, "IPC FIFO Parent Read");
 	fd_open(cwfd = p2c[1], FD_PIPE, "IPC FIFO Child Write");
 	fd_open(crfd = c2p[0], FD_PIPE, "IPC FIFO Child Read");
 	fd_open(pwfd = c2p[1], FD_PIPE, "IPC FIFO Parent Write");
+#if HAVE_SOCKETPAIR && defined(AF_UNIX)
+    } else if (type == IPC_UNIX_STREAM) {
+	int fds[2];
+	int buflen = 32768;
+	if (socketpair(AF_UNIX, SOCK_STREAM, 0, fds) < 0) {
+	    debug(54, 0) ("ipcCreate: socketpair: %s\n", xstrerror());
+	    return -1;
+	}
+	setsockopt(fds[0], SOL_SOCKET, SO_SNDBUF, (void *) &buflen, sizeof(buflen));
+	setsockopt(fds[0], SOL_SOCKET, SO_RCVBUF, (void *) &buflen, sizeof(buflen));
+	setsockopt(fds[1], SOL_SOCKET, SO_SNDBUF, (void *) &buflen, sizeof(buflen));
+	setsockopt(fds[1], SOL_SOCKET, SO_RCVBUF, (void *) &buflen, sizeof(buflen));
+	fd_open(prfd = pwfd = fds[0], FD_PIPE, "IPC UNIX STREAM Parent");
+	fd_open(crfd = cwfd = fds[1], FD_PIPE, "IPC UNIX STREAM Parent");
+    } else if (type == IPC_UNIX_DGRAM) {
+	int fds[2];
+	if (socketpair(AF_UNIX, SOCK_DGRAM, 0, fds) < 0) {
+	    debug(54, 0) ("ipcCreate: socketpair: %s\n", xstrerror());
+	    return -1;
+	}
+	fd_open(prfd = pwfd = fds[0], FD_PIPE, "IPC UNIX DGRAM Parent");
+	fd_open(crfd = cwfd = fds[1], FD_PIPE, "IPC UNIX DGRAM Parent");
+#endif
     } else {
 	assert(IPC_NONE);
     }
@@ -143,7 +171,7 @@ ipcCreate(int type, const char *prog, const char *const args[], const char *name
 	len = sizeof(PS);
 	memset(&PS, '\0', len);
 	if (getsockname(pwfd, (struct sockaddr *) &PS, &len) < 0) {
-	    debug(50, 0) ("ipcCreate: getsockname: %s\n", xstrerror());
+	    debug(54, 0) ("ipcCreate: getsockname: %s\n", xstrerror());
 	    return ipcCloseAllFD(prfd, pwfd, crfd, cwfd);
 	}
 	debug(54, 3) ("ipcCreate: FD %d sockaddr %s:%d\n",
@@ -151,7 +179,7 @@ ipcCreate(int type, const char *prog, const char *const args[], const char *name
 	len = sizeof(CS);
 	memset(&CS, '\0', len);
 	if (getsockname(crfd, (struct sockaddr *) &CS, &len) < 0) {
-	    debug(50, 0) ("ipcCreate: getsockname: %s\n", xstrerror());
+	    debug(54, 0) ("ipcCreate: getsockname: %s\n", xstrerror());
 	    return ipcCloseAllFD(prfd, pwfd, crfd, cwfd);
 	}
 	debug(54, 3) ("ipcCreate: FD %d sockaddr %s:%d\n",
@@ -159,7 +187,7 @@ ipcCreate(int type, const char *prog, const char *const args[], const char *name
     }
     if (type == IPC_TCP_SOCKET) {
 	if (listen(crfd, 1) < 0) {
-	    debug(50, 1) ("ipcCreate: listen FD %d: %s\n", crfd, xstrerror());
+	    debug(54, 1) ("ipcCreate: listen FD %d: %s\n", crfd, xstrerror());
 	    return ipcCloseAllFD(prfd, pwfd, crfd, cwfd);
 	}
 	debug(54, 3) ("ipcCreate: FD %d listening...\n", crfd);
@@ -167,7 +195,7 @@ ipcCreate(int type, const char *prog, const char *const args[], const char *name
     /* flush or else we get dup data if unbuffered_logs is set */
     logsFlush();
     if ((pid = fork()) < 0) {
-	debug(50, 1) ("ipcCreate: fork: %s\n", xstrerror());
+	debug(54, 1) ("ipcCreate: fork: %s\n", xstrerror());
 	return ipcCloseAllFD(prfd, pwfd, crfd, cwfd);
     }
     if (pid > 0) {		/* parent */
@@ -186,8 +214,8 @@ ipcCreate(int type, const char *prog, const char *const args[], const char *name
 	else
 	    x = read(prfd, hello_buf, HELLO_BUF_SZ - 1);
 	if (x < 0) {
-	    debug(50, 0) ("ipcCreate: PARENT: hello read test failed\n");
-	    debug(50, 0) ("--> read: %s\n", xstrerror());
+	    debug(54, 0) ("ipcCreate: PARENT: hello read test failed\n");
+	    debug(54, 0) ("--> read: %s\n", xstrerror());
 	    return ipcCloseAllFD(prfd, pwfd, crfd, cwfd);
 	} else if (strcmp(hello_buf, hello_string)) {
 	    debug(54, 0) ("ipcCreate: PARENT: hello read test failed\n");
@@ -198,19 +226,16 @@ ipcCreate(int type, const char *prog, const char *const args[], const char *name
 	commSetTimeout(prfd, -1, NULL, NULL);
 	commSetNonBlocking(prfd);
 	commSetNonBlocking(pwfd);
+	commSetCloseOnExec(prfd);
+	commSetCloseOnExec(pwfd);
 	if (rfd)
 	    *rfd = prfd;
 	if (wfd)
 	    *wfd = pwfd;
 	fd_table[prfd].flags.ipc = 1;
 	fd_table[pwfd].flags.ipc = 1;
-	if (Config.sleep_after_fork) {
-	    /* XXX emulation of usleep() */
-	    struct timeval sl;
-	    sl.tv_sec = Config.sleep_after_fork / 1000000;
-	    sl.tv_usec = Config.sleep_after_fork % 1000000;
-	    select(0, NULL, NULL, NULL, &sl);
-	}
+	if (Config.sleep_after_fork)
+	    xusleep(Config.sleep_after_fork);
 	return pid;
     }
     /* child */
@@ -224,7 +249,7 @@ ipcCreate(int type, const char *prog, const char *const args[], const char *name
     if (type == IPC_TCP_SOCKET) {
 	debug(54, 3) ("ipcCreate: calling accept on FD %d\n", crfd);
 	if ((fd = accept(crfd, NULL, NULL)) < 0) {
-	    debug(50, 0) ("ipcCreate: FD %d accept: %s\n", crfd, xstrerror());
+	    debug(54, 0) ("ipcCreate: FD %d accept: %s\n", crfd, xstrerror());
 	    _exit(1);
 	}
 	debug(54, 3) ("ipcCreate: CHILD accepted new FD %d\n", fd);
@@ -237,14 +262,14 @@ ipcCreate(int type, const char *prog, const char *const args[], const char *name
     if (type == IPC_UDP_SOCKET) {
 	x = send(cwfd, hello_string, strlen(hello_string) + 1, 0);
 	if (x < 0) {
-	    debug(50, 0) ("sendto FD %d: %s\n", cwfd, xstrerror());
-	    debug(50, 0) ("ipcCreate: CHILD: hello write test failed\n");
+	    debug(54, 0) ("sendto FD %d: %s\n", cwfd, xstrerror());
+	    debug(54, 0) ("ipcCreate: CHILD: hello write test failed\n");
 	    _exit(1);
 	}
     } else {
 	if (write(cwfd, hello_string, strlen(hello_string) + 1) < 0) {
-	    debug(50, 0) ("write FD %d: %s\n", cwfd, xstrerror());
-	    debug(50, 0) ("ipcCreate: CHILD: hello write test failed\n");
+	    debug(54, 0) ("write FD %d: %s\n", cwfd, xstrerror());
+	    debug(54, 0) ("ipcCreate: CHILD: hello write test failed\n");
 	    _exit(1);
 	}
     }
@@ -276,15 +301,17 @@ ipcCreate(int type, const char *prog, const char *const args[], const char *name
     close(t1);
     close(t2);
     close(t3);
+#if 0
     /* Make sure all other filedescriptors are closed */
-    for (x = 3; x < SQUID_MAXFD; x++)
+    for (x = 3; x < Squid_MaxFD; x++)
 	close(x);
+#endif
 #if HAVE_SETSID
     setsid();
 #endif
     execvp(prog, (char *const *) args);
     debug_log = fdopen(2, "a+");
-    debug(50, 0) ("ipcCreate: %s: %s\n", prog, xstrerror());
+    debug(54, 0) ("ipcCreate: %s: %s\n", prog, xstrerror());
     _exit(1);
     return 0;
 }

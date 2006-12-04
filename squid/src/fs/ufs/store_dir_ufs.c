@@ -1,6 +1,6 @@
 
 /*
- * $Id: store_dir_ufs.c,v 1.39.2.13 2005/03/26 23:27:11 serassio Exp $
+ * $Id: store_dir_ufs.c,v 1.61 2006/08/03 02:31:13 adrian Exp $
  *
  * DEBUG: section 47    Store Directory Routines
  * AUTHOR: Duane Wessels
@@ -104,6 +104,7 @@ static STNEWFS storeUfsDirNewfs;
 static STDUMP storeUfsDirDump;
 static STMAINTAINFS storeUfsDirMaintain;
 static STCHECKOBJ storeUfsDirCheckObj;
+static STCHECKLOADAV storeUfsDirCheckLoadAv;
 static STREFOBJ storeUfsDirRefObj;
 static STUNREFOBJ storeUfsDirUnrefObj;
 static QS rev_int_sort;
@@ -214,7 +215,11 @@ storeUfsDirCreateDirectory(const char *path, int should_exist)
 	} else {
 	    fatalf("Swap directory %s is not a directory.", path);
 	}
+#ifdef _SQUID_MSWIN_
+    } else if (0 == mkdir(path)) {
+#else
     } else if (0 == mkdir(path, 0755)) {
+#endif
 	debug(47, should_exist ? 1 : 3) ("%s created\n", path);
 	created = 1;
     } else {
@@ -350,6 +355,13 @@ storeUfsDirCloseSwapLog(SwapDir * sd)
     assert(n_ufs_dirs >= 0);
     if (0 == n_ufs_dirs)
 	safe_free(ufs_dir_index);
+}
+
+static void
+storeUfsCheckConfig(SwapDir * sd)
+{
+    if (!opt_create_swap_dirs)
+	requirePathnameExists("cache_dir", sd->path);
 }
 
 static void
@@ -600,15 +612,11 @@ storeUfsDirRebuildFromSwapLog(void *data)
 		 * because adding to store_swap_size happens in
 		 * the cleanup procedure.
 		 */
-		storeExpireNow(e);
-		storeReleaseRequest(e);
-		if (e->swap_filen > -1) {
-		    storeUfsDirReplRemove(e);
-		    storeUfsDirMapBitReset(SD, e->swap_filen);
-		    e->swap_filen = -1;
-		    e->swap_dirn = -1;
-		}
-		storeRelease(e);
+		storeRecycle(e);
+		/*
+		 * XXX considering we might've canceled an object from another store;
+		 * XXX what should happen with these stats?
+		 */
 		rb->counts.objcount--;
 		rb->counts.cancelcount++;
 	    }
@@ -688,16 +696,7 @@ storeUfsDirRebuildFromSwapLog(void *data)
 	} else if (e) {
 	    /* key already exists, this swapfile not being used */
 	    /* junk old, load new */
-	    storeExpireNow(e);
-	    storeReleaseRequest(e);
-	    if (e->swap_filen > -1) {
-		storeUfsDirReplRemove(e);
-		/* Make sure we don't actually unlink the file */
-		storeUfsDirMapBitReset(SD, e->swap_filen);
-		e->swap_filen = -1;
-		e->swap_dirn = -1;
-	    }
-	    storeRelease(e);
+	    storeRecycle(e);
 	    rb->counts.dupcount++;
 	} else {
 	    /* URL doesnt exist, swapfile not in use */
@@ -768,15 +767,8 @@ storeUfsDirRebuildFromSwapLogOld(void *data)
 		 * because adding to store_swap_size happens in
 		 * the cleanup procedure.
 		 */
-		storeExpireNow(e);
-		storeReleaseRequest(e);
-		if (e->swap_filen > -1) {
-		    storeUfsDirReplRemove(e);
-		    storeUfsDirMapBitReset(SD, e->swap_filen);
-		    e->swap_filen = -1;
-		    e->swap_dirn = -1;
-		}
-		storeRelease(e);
+		storeRecycle(e);
+		/* XXX are these counters valid since e could be from another swapfs? */
 		rb->counts.objcount--;
 		rb->counts.cancelcount++;
 	    }
@@ -856,16 +848,7 @@ storeUfsDirRebuildFromSwapLogOld(void *data)
 	} else if (e) {
 	    /* key already exists, this swapfile not being used */
 	    /* junk old, load new */
-	    storeExpireNow(e);
-	    storeReleaseRequest(e);
-	    if (e->swap_filen > -1) {
-		storeUfsDirReplRemove(e);
-		/* Make sure we don't actually unlink the file */
-		storeUfsDirMapBitReset(SD, e->swap_filen);
-		e->swap_filen = -1;
-		e->swap_dirn = -1;
-	    }
-	    storeRelease(e);
+	    storeRecycle(e);
 	    rb->counts.dupcount++;
 	} else {
 	    /* URL doesnt exist, swapfile not in use */
@@ -1176,14 +1159,11 @@ storeUfsDirOpenTmpSwapLog(SwapDir * sd, int *clean_flag, int *zero_flag)
     ufsinfo->swaplog_fd = fd;
     storeUfsWriteSwapLogheader(fd);
     /* open a read-only stream of the old log */
-    fp = fopen(swaplog_path, "r");
+    fp = fopen(swaplog_path, "rb");
     if (fp == NULL) {
 	debug(50, 0) ("%s: %s\n", swaplog_path, xstrerror());
 	fatal("Failed to open swap log for reading");
     }
-#if defined(_SQUID_CYGWIN_)
-    setmode(fileno(fp), O_BINARY);
-#endif
     memset(&clean_sb, '\0', sizeof(struct stat));
     if (stat(clean_path, &clean_sb) < 0)
 	*clean_flag = 0;
@@ -1334,7 +1314,7 @@ storeUfsDirWriteCleanDone(SwapDir * sd)
     fd = state->fd;
     /* rename */
     if (state->fd >= 0) {
-#if defined(_SQUID_OS2_) || defined(_SQUID_CYGWIN_) || defined(_SQUID_MSWIN_)
+#if defined(_SQUID_OS2_) || defined(_SQUID_WIN32_)
 	file_close(state->fd);
 	state->fd = -1;
 #endif
@@ -1433,7 +1413,11 @@ storeUfsDirClean(int swap_index)
     if (dp == NULL) {
 	if (errno == ENOENT) {
 	    debug(36, 0) ("storeDirClean: WARNING: Creating %s\n", p1);
+#ifdef _SQUID_MSWIN_
+	    if (mkdir(p1) == 0)
+#else
 	    if (mkdir(p1, 0777) == 0)
+#endif
 		return 0;
 	}
 	debug(50, 0) ("storeDirClean: %s: %s\n", p1, xstrerror());
@@ -1570,6 +1554,7 @@ storeUfsDirValidFileno(SwapDir * SD, sfileno filn, int flag)
 void
 storeUfsDirMaintain(SwapDir * SD)
 {
+    ufsinfo_t *ufsinfo = SD->fsdata;
     StoreEntry *e = NULL;
     int removed = 0;
     int max_scan;
@@ -1591,7 +1576,7 @@ storeUfsDirMaintain(SwapDir * SD)
     debug(47, 3) ("storeMaintainSwapSpace: f=%f, max_scan=%d, max_remove=%d\n", f, max_scan, max_remove);
     walker = SD->repl->PurgeInit(SD->repl, max_scan);
     while (1) {
-	if (SD->cur_size < SD->low_size)
+	if (SD->cur_size < SD->low_size && ufsinfo->map->n_files_in_map < FILEMAP_MAX)
 	    break;
 	if (removed >= max_remove)
 	    break;
@@ -1616,8 +1601,19 @@ storeUfsDirMaintain(SwapDir * SD)
 int
 storeUfsDirCheckObj(SwapDir * SD, const StoreEntry * e)
 {
+    return 1;
+}
+
+/*
+ * storeUfsDirCheckLoadAv
+ *
+ * Return load average from 0 to 1000.
+ */
+int
+storeUfsDirCheckLoadAv(SwapDir * SD, store_op_t op)
+{
     ufsinfo_t *ufsinfo = SD->fsdata;
-    return 500 + ufsinfo->open_files / 2;
+    return UFS_LOAD_BASE + ufsinfo->open_files / 2;
 }
 
 /*
@@ -1701,10 +1697,17 @@ void
 storeUfsDirStats(SwapDir * SD, StoreEntry * sentry)
 {
     ufsinfo_t *ufsinfo = SD->fsdata;
+#ifdef HAVE_STATVFS
+    fsblkcnt_t totl_kb = 0;
+    fsblkcnt_t free_kb = 0;
+    fsfilcnt_t totl_in = 0;
+    fsfilcnt_t free_in = 0;
+#else
     int totl_kb = 0;
     int free_kb = 0;
     int totl_in = 0;
     int free_in = 0;
+#endif
     int x;
     storeAppendPrintf(sentry, "First level subdirectories: %d\n", ufsinfo->l1);
     storeAppendPrintf(sentry, "Second level subdirectories: %d\n", ufsinfo->l2);
@@ -1712,11 +1715,22 @@ storeUfsDirStats(SwapDir * SD, StoreEntry * sentry)
     storeAppendPrintf(sentry, "Current Size: %d KB\n", SD->cur_size);
     storeAppendPrintf(sentry, "Percent Used: %0.2f%%\n",
 	100.0 * SD->cur_size / SD->max_size);
+    storeAppendPrintf(sentry, "Current load metric: %d / %d\n", storeUfsDirCheckLoadAv(SD, ST_OP_CREATE), MAX_LOAD_VALUE);
     storeAppendPrintf(sentry, "Filemap bits in use: %d of %d (%d%%)\n",
 	ufsinfo->map->n_files_in_map, ufsinfo->map->max_n_files,
 	percent(ufsinfo->map->n_files_in_map, ufsinfo->map->max_n_files));
     x = storeDirGetUFSStats(SD->path, &totl_kb, &free_kb, &totl_in, &free_in);
     if (0 == x) {
+#ifdef HAVE_STATVFS
+	storeAppendPrintf(sentry, "Filesystem Space in use: %" PRIu64 "/%" PRIu64 " KB (%.0f%%)\n",
+	    (uint64_t) (totl_kb - free_kb),
+	    (uint64_t) totl_kb,
+	    dpercent(totl_kb - free_kb, totl_kb));
+	storeAppendPrintf(sentry, "Filesystem Inodes in use: %" PRIu64 "/%" PRIu64 " (%.0f%%)\n",
+	    (uint64_t) (totl_in - free_in),
+	    (uint64_t) totl_in,
+	    dpercent(totl_in - free_in, totl_in));
+#else
 	storeAppendPrintf(sentry, "Filesystem Space in use: %d/%d KB (%d%%)\n",
 	    totl_kb - free_kb,
 	    totl_kb,
@@ -1725,6 +1739,7 @@ storeUfsDirStats(SwapDir * SD, StoreEntry * sentry)
 	    totl_in - free_in,
 	    totl_in,
 	    percent(totl_in - free_in, totl_in));
+#endif
     }
     storeAppendPrintf(sentry, "Flags:");
     if (SD->flags.selected)
@@ -1898,6 +1913,7 @@ storeUfsDirParse(SwapDir * sd, int index, char *path)
     ufsinfo->map = NULL;	/* Debugging purposes */
     ufsinfo->suggest = 0;
     ufsinfo->open_files = 0;
+    sd->checkconfig = storeUfsCheckConfig;
     sd->init = storeUfsDirInit;
     sd->newfs = storeUfsDirNewfs;
     sd->dump = storeUfsDirDump;
@@ -1906,6 +1922,7 @@ storeUfsDirParse(SwapDir * sd, int index, char *path)
     sd->statfs = storeUfsDirStats;
     sd->maintainfs = storeUfsDirMaintain;
     sd->checkobj = storeUfsDirCheckObj;
+    sd->checkload = storeUfsDirCheckLoadAv;
     sd->refobj = storeUfsDirRefObj;
     sd->unrefobj = storeUfsDirUnrefObj;
     sd->callback = NULL;
@@ -1916,6 +1933,7 @@ storeUfsDirParse(SwapDir * sd, int index, char *path)
     sd->obj.read = storeUfsRead;
     sd->obj.write = storeUfsWrite;
     sd->obj.unlink = storeUfsUnlink;
+    sd->obj.recycle = storeUfsRecycle;
     sd->log.open = storeUfsDirOpenSwapLog;
     sd->log.close = storeUfsDirCloseSwapLog;
     sd->log.write = storeUfsDirSwapLog;

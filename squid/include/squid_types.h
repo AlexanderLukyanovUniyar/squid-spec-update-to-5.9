@@ -1,5 +1,5 @@
 /*
- * $Id: squid_types.h,v 1.3.2.1 2002/06/21 14:35:13 hno Exp $
+ * $Id: squid_types.h,v 1.8 2006/05/23 14:51:36 hno Exp $
  *
  * * * * * * * * Legal stuff * * * * * * *
  *
@@ -53,7 +53,10 @@
 #ifndef SQUID_TYPES_H
 #define SQUID_TYPES_H
 
+#ifndef AUTOCONF_H
+#define AUTOCONF_H 1
 #include "autoconf.h"
+#endif
 
 /* This should be in synch with what we have in acinclude.m4 */
 #if STDC_HEADERS

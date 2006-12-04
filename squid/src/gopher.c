@@ -1,6 +1,6 @@
 
 /*
- * $Id: gopher.c,v 1.162.2.12 2006/03/10 22:54:38 hno Exp $
+ * $Id: gopher.c,v 1.178 2006/08/25 12:26:07 serassio Exp $
  *
  * DEBUG: section 10    Gopher
  * AUTHOR: Harvest Derived
@@ -257,7 +257,7 @@ gopherHTMLFooter(StoreEntry * e)
     storeAppendPrintf(e, "Generated %s by %s (%s)\n",
 	mkrfc1123(squid_curtime),
 	getMyHostname(),
-	full_appname_string);
+	visible_appname_string);
     storeAppendPrintf(e, "</ADDRESS></BODY></HTML>\n");
 }
 
@@ -604,7 +604,7 @@ gopherTimeout(int fd, void *data)
     StoreEntry *entry = gopherState->entry;
     debug(10, 4) ("gopherTimeout: FD %d: '%s'\n", fd, storeUrl(entry));
     fwdFail(gopherState->fwdState,
-	errorCon(ERR_READ_TIMEOUT, HTTP_GATEWAY_TIMEOUT));
+	errorCon(ERR_READ_TIMEOUT, HTTP_GATEWAY_TIMEOUT, gopherState->fwdState->request));
     comm_close(fd);
 }
 
@@ -658,13 +658,13 @@ gopherReadReply(int fd, void *data)
 	    commSetSelect(fd, COMM_SELECT_READ, gopherReadReply, data, 0);
 	} else {
 	    ErrorState *err;
-	    err = errorCon(ERR_READ_ERROR, HTTP_INTERNAL_SERVER_ERROR);
+	    err = errorCon(ERR_READ_ERROR, HTTP_INTERNAL_SERVER_ERROR, gopherState->fwdState->request);
 	    err->xerrno = errno;
 	    fwdFail(gopherState->fwdState, err);
 	    comm_close(fd);
 	}
     } else if (len == 0 && entry->mem_obj->inmem_hi == 0) {
-	fwdFail(gopherState->fwdState, errorCon(ERR_ZERO_SIZE_OBJECT, HTTP_SERVICE_UNAVAILABLE));
+	fwdFail(gopherState->fwdState, errorCon(ERR_ZERO_SIZE_OBJECT, HTTP_SERVICE_UNAVAILABLE, gopherState->fwdState->request));
 	comm_close(fd);
     } else if (len == 0) {
 	/* Connection closed; retrieval done. */
@@ -706,9 +706,8 @@ gopherSendComplete(int fd, char *buf, size_t size, int errflag, void *data)
     }
     if (errflag) {
 	ErrorState *err;
-	err = errorCon(ERR_WRITE_ERROR, HTTP_BAD_GATEWAY);
+	err = errorCon(ERR_WRITE_ERROR, HTTP_BAD_GATEWAY, gopherState->fwdState->request);
 	err->xerrno = errno;
-	err->port = gopherState->req->port;
 	err->url = xstrdup(storeUrl(entry));
 	fwdFail(gopherState->fwdState, err);
 	comm_close(fd);

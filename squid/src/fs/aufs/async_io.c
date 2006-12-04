@@ -1,6 +1,6 @@
 
 /*
- * $Id: async_io.c,v 1.10.2.9 2005/04/25 16:27:03 serassio Exp $
+ * $Id: async_io.c,v 1.22 2006/10/08 07:43:31 serassio Exp $
  *
  * DEBUG: section 32    Asynchronous Disk I/O
  * AUTHOR: Pete Bentley <pete@demon.net>
@@ -35,7 +35,7 @@
  */
 
 #include "squid.h"
-#include "store_asyncufs.h"
+#include "async_io.h"
 
 #define _AIO_OPEN	0
 #define _AIO_READ	1
@@ -77,12 +77,14 @@ typedef struct squidaio_unlinkq_t {
 
 static dlink_list used_list;
 static int initialised = 0;
+static int usage_count = 0;
 static OBJH aioStats;
 static MemPool *squidaio_ctrl_pool;
 
 void
 aioInit(void)
 {
+    usage_count++;
     if (initialised)
 	return;
     squidaio_ctrl_pool = memPoolCreate("aio_ctrl", sizeof(squidaio_ctrl_t));
@@ -94,6 +96,8 @@ aioInit(void)
 void
 aioDone(void)
 {
+    if (--usage_count > 0)
+	return;
     squidaio_shutdown();
     memPoolDestroy(squidaio_ctrl_pool);
     initialised = 0;
@@ -268,6 +272,7 @@ aioUnlink(const char *path, AIOCB * callback, void *callback_data)
     dlinkAdd(ctrlp, &ctrlp->node, &used_list);
 }				/* aioUnlink */
 
+#if USE_TRUNCATE
 void
 aioTruncate(const char *path, off_t length, AIOCB * callback, void *callback_data)
 {
@@ -285,6 +290,7 @@ aioTruncate(const char *path, off_t length, AIOCB * callback, void *callback_dat
     dlinkAdd(ctrlp, &ctrlp->node, &used_list);
 }				/* aioTruncate */
 
+#endif
 
 int
 aioCheckCallbacks(SwapDir * SD)

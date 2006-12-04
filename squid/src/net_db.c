@@ -1,6 +1,6 @@
 
 /*
- * $Id: net_db.c,v 1.158.2.11 2005/09/16 21:13:18 hno Exp $
+ * $Id: net_db.c,v 1.172 2006/06/05 22:47:01 hno Exp $
  *
  * DEBUG: section 38    Network Measurement Database
  * AUTHOR: Duane Wessels
@@ -435,15 +435,15 @@ netdbReloadState(void)
      * Solaris bugs, its a bad idea.  fopen can fail if more than
      * 256 FDs are open.
      */
-    fd = file_open(path, O_RDONLY | O_TEXT);
+    fd = file_open(path, O_RDONLY | O_BINARY);
     if (fd < 0)
 	return;
     if (fstat(fd, &sb) < 0) {
 	file_close(fd);
 	return;
     }
-    t = buf = xcalloc(1, sb.st_size + 1);
-    l = FD_READ_METHOD(fd, buf, sb.st_size);
+    t = buf = xcalloc(1, (size_t) sb.st_size + 1);
+    l = FD_READ_METHOD(fd, buf, (int) sb.st_size);
     file_close(fd);
     if (l <= 0)
 	return;
@@ -652,7 +652,7 @@ netdbExchangeDone(void *data)
     debug(38, 3) ("netdbExchangeDone: %s\n", storeUrl(ex->e));
     memFree(ex->buf, MEM_4K_BUF);
     requestUnlink(ex->r);
-    storeUnregister(ex->sc, ex->e, ex);
+    storeClientUnregister(ex->sc, ex->e, ex);
     storeUnlockObject(ex->e);
     cbdataUnlock(ex->p);
     cbdataFree(ex);
@@ -1012,7 +1012,7 @@ netdbExchangeStart(void *data)
     ex->buf_sz = 4096;
     ex->buf = memAllocate(MEM_4K_BUF);
     assert(NULL != ex->e);
-    ex->sc = storeClientListAdd(ex->e, ex);
+    ex->sc = storeClientRegister(ex->e, ex);
     storeClientCopy(ex->sc, ex->e, ex->seen, ex->used, ex->buf_sz,
 	ex->buf, netdbExchangeHandleReply, ex);
     ex->r->flags.loopdetect = 1;	/* cheat! -- force direct */

@@ -42,6 +42,7 @@
 
 #include "util.h"
 #include "hash.h"
+#include "crypt_md5.h"
 
 static hash_table *hash = NULL;
 static HASHFREE my_free;
@@ -72,6 +73,7 @@ read_passwd_file(const char *passwdfile)
     char *passwd;
     if (hash != NULL) {
 	hashFreeItems(hash, my_free);
+	hashFreeMemory(hash);
     }
     /* initial setup */
     hash = hash_create((HASHCMP *) strcmp, 7921, hash_string);
@@ -104,7 +106,7 @@ int
 main(int argc, char **argv)
 {
     struct stat sb;
-    time_t change_time = 0;
+    time_t change_time = -1;
     char buf[256];
     char *user, *passwd, *p;
     user_data *u;
@@ -136,14 +138,22 @@ main(int argc, char **argv)
 	}
 	rfc1738_unescape(user);
 	rfc1738_unescape(passwd);
-	u = hash_lookup(hash, user);
+	u = (user_data *)hash_lookup(hash, user);
 	if (u == NULL) {
 	    printf("ERR No such user\n");
-	} else if (strcmp(u->passwd, (char *) crypt(passwd, u->passwd))) {
-	    printf("ERR Wrong password\n");
-	} else {
+	} else if (strcmp(u->passwd, (char *) crypt(passwd, u->passwd)) == 0) {
 	    printf("OK\n");
+	} else if (strcmp(u->passwd, (char *) crypt_md5(passwd, u->passwd)) == 0) {
+	    printf("OK\n");
+	} else if (strcmp(u->passwd, (char *) md5sum(passwd)) == 0) { /* md5 without salt and magic strings - Added by Ramon de Carvalho and Rodrigo Rubira Branco */
+	    printf("OK\n");
+	} else {
+	    printf("ERR Wrong password\n");
 	}
+    }
+    if (hash != NULL) {
+	hashFreeItems(hash, my_free);
+	hashFreeMemory(hash);
     }
     exit(0);
 }

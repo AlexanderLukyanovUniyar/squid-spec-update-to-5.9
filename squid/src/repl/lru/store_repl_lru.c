@@ -1,6 +1,6 @@
 
 /*
- * $Id: store_repl_lru.c,v 1.10 2001/08/16 00:16:22 hno Exp $
+ * $Id: store_repl_lru.c,v 1.12 2005/05/17 16:56:44 hno Exp $
  *
  * DEBUG: section ?     LRU Removal policy
  * AUTHOR: Henrik Nordstrom

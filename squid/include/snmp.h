@@ -27,7 +27,7 @@
  * ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS
  * SOFTWARE.
  * 
- * $Id: snmp.h,v 1.14.2.1 2002/04/01 12:44:02 hno Exp $
+ * $Id: snmp.h,v 1.16 2005/05/17 16:56:35 hno Exp $
  * 
  **********************************************************************/
 

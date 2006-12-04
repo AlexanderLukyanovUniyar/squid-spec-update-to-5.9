@@ -1,6 +1,6 @@
 
 /*
- * $Id: defines.h,v 1.97.2.4 2005/03/26 02:50:52 hno Exp $
+ * $Id: defines.h,v 1.121 2006/08/19 12:40:31 serassio Exp $
  *
  *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/
@@ -41,6 +41,25 @@
 #define FALSE 0
 #endif
 
+/* Define load weights for cache_dir types */
+#define MAX_LOAD_VALUE 1000
+
+#define COSS_LOAD_BASE 0
+#define AUFS_LOAD_BASE 100
+#define DISKD_LOAD_BASE 100
+#define UFS_LOAD_BASE 500
+
+#define COSS_LOAD_STRIPE_WEIGHT (900 - COSS_LOAD_BASE)
+#define COSS_LOAD_QUEUE_WEIGHT (100 - COSS_LOAD_BASE)
+#if COSS_LOAD_QUEUE_WEIGHT < 0
+#undef COSS_LOAD_QUEUE_WEIGHT
+#define COSS_LOAD_QUEUE_WEIGHT 0
+#endif
+
+#define AUFS_LOAD_QUEUE_WEIGHT (MAX_LOAD_VALUE - AUFS_LOAD_BASE)
+
+#define DISKD_LOAD_QUEUE_WEIGHT (MAX_LOAD_VALUE - DISKD_LOAD_BASE)
+
 #define ACL_NAME_SZ 32
 #define BROWSERNAMELEN 128
 
@@ -75,8 +94,10 @@
 #define COMM_NOCLOEXEC		0x02
 #define COMM_REUSEADDR		0x04
 
+#define do_debug(SECTION, LEVEL) \
+	((_db_level = (LEVEL)) <= debugLevels[SECTION])
 #define debug(SECTION, LEVEL) \
-        ((_db_level = (LEVEL)) > debugLevels[SECTION]) ? (void) 0 : _db_print
+        !do_debug(SECTION, LEVEL) ? (void) 0 : _db_print
 
 #define safe_free(x)	if (x) { xxfree(x); x = NULL; }
 
@@ -156,7 +177,7 @@
 #define CBIT_BIN(mask, bit)     (mask)[(bit)>>3]
 #define CBIT_SET(mask, bit) 	((void)(CBIT_BIN(mask, bit) |= CBIT_BIT(bit)))
 #define CBIT_CLR(mask, bit) 	((void)(CBIT_BIN(mask, bit) &= ~CBIT_BIT(bit)))
-#define CBIT_TEST(mask, bit) 	(CBIT_BIN(mask, bit) & CBIT_BIT(bit))
+#define CBIT_TEST(mask, bit) 	((CBIT_BIN(mask, bit) & CBIT_BIT(bit)) != 0)
 
 #define MAX_FILES_PER_DIR (1<<20)
 
@@ -177,8 +198,6 @@
 #define ERROR_BUF_SZ (MAX_URL << 2)
 #endif
 
-#define READ_AHEAD_GAP		(1<<14)
-
 #if SQUID_SNMP
 #define VIEWINCLUDED    1
 #define VIEWEXCLUDED    2
@@ -192,6 +211,16 @@
 #define IPC_TCP_SOCKET 1
 #define IPC_UDP_SOCKET 2
 #define IPC_FIFO 3
+#define IPC_UNIX_STREAM 4
+#define IPC_UNIX_DGRAM 5
+
+#if HAVE_SOCKETPAIR && defined (AF_UNIX)
+#define IPC_STREAM IPC_UNIX_STREAM
+#define IPC_DGRAM IPC_UNIX_DGRAM
+#else
+#define IPC_STREAM IPC_TCP_SOCKET
+#define IPC_DGRAM IPC_UDP_SOCKET
+#endif
 
 #define STORE_META_KEY STORE_META_KEY_MD5
 
@@ -237,33 +266,21 @@
 #define countof(arr) (sizeof(arr)/sizeof(*arr))
 
 /* to initialize static variables (see also MemBufNull) */
-#define MemBufNULL { NULL, 0, 0, 0, NULL }
+#define MemBufNULL { NULL, 0, 0, 0, 0 }
 
 /*
  * Max number of ICP messages to receive per call to icpHandleUdp
  */
-#ifdef _SQUID_MSWIN_
-#define INCOMING_ICP_MAX 1
-#else
 #define INCOMING_ICP_MAX 15
-#endif
 /*
  * Max number of DNS messages to receive per call to DNS read handler
  */
-#ifdef _SQUID_MSWIN_
-#define INCOMING_DNS_MAX 1
-#else
 #define INCOMING_DNS_MAX 15
-#endif
 /*
  * Max number of HTTP connections to accept per call to httpAccept
  * and PER HTTP PORT
  */
-#ifdef _SQUID_MSWIN_
-#define INCOMING_HTTP_MAX 1
-#else
 #define INCOMING_HTTP_MAX 10
-#endif
 #define INCOMING_TOTAL_MAX (INCOMING_ICP_MAX+INCOMING_HTTP_MAX)
 
 /*
@@ -281,7 +298,11 @@
 #define URI_WHITESPACE_DENY 4
 
 #ifndef _PATH_DEVNULL
+#ifdef _SQUID_MSWIN_
+#define _PATH_DEVNULL "NUL"
+#else
 #define _PATH_DEVNULL "/dev/null"
+#endif
 #endif
 
 /* cbdata macros */
@@ -298,6 +319,24 @@
 #ifndef O_BINARY
 #define O_BINARY 0
 #endif
+#ifndef O_NOATIME
+#define O_NOATIME 0
+#endif
+
+/* Windows Port */
+#ifdef _SQUID_WIN32_
+#define _WIN_SQUID_SERVICE_CONTROL_STOP SERVICE_CONTROL_STOP
+#define _WIN_SQUID_SERVICE_CONTROL_SHUTDOWN SERVICE_CONTROL_SHUTDOWN
+#define _WIN_SQUID_SERVICE_CONTROL_INTERROGATE SERVICE_CONTROL_INTERROGATE
+#define _WIN_SQUID_SERVICE_CONTROL_ROTATE	128
+#define _WIN_SQUID_SERVICE_CONTROL_RECONFIGURE	129
+#define _WIN_SQUID_SERVICE_CONTROL_DEBUG	130
+#define _WIN_SQUID_SERVICE_CONTROL_INTERRUPT 	131
+#define _WIN_SQUID_DEFAULT_SERVICE_NAME		"Squid"
+#define _WIN_SQUID_SERVICE_OPTION		"--ntservice"
+#define _WIN_SQUID_RUN_MODE_INTERACTIVE		0
+#define _WIN_SQUID_RUN_MODE_SERVICE		1
+#endif
 
 /*
  * Macro to find file access mode
@@ -307,5 +346,9 @@
 #else
 #define FILE_MODE(x) ((x)&(O_RDONLY|O_WRONLY|O_RDWR))
 #endif
+
+/* swap_filen is 25 bits, signed */
+#define FILEMAP_MAX_SIZE (1<<24)
+#define FILEMAP_MAX (FILEMAP_MAX_SIZE - 65536)
 
 #endif /* SQUID_DEFINES_H */

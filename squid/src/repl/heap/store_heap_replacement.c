@@ -1,6 +1,6 @@
 
 /*
- * $Id: store_heap_replacement.c,v 1.7.2.1 2005/02/13 21:23:19 serassio Exp $
+ * $Id: store_heap_replacement.c,v 1.9 2005/05/17 16:56:44 hno Exp $
  *
  * DEBUG: section 20    Storage Manager Heap-based replacement
  * AUTHOR: John Dilley

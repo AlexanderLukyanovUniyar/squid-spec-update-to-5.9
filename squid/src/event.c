@@ -1,6 +1,6 @@
 
 /*
- * $Id: event.c,v 1.31.2.2 2005/02/21 02:55:04 hno Exp $
+ * $Id: event.c,v 1.37 2006/07/08 11:32:04 hno Exp $
  *
  * DEBUG: section 41    Event Processing
  * AUTHOR: Henrik Nordstrom
@@ -97,7 +97,7 @@ eventDelete(EVH * func, void *arg)
     for (E = &tasks; (event = *E) != NULL; E = &(*E)->next) {
 	if (event->func != func)
 	    continue;
-	if (event->arg != arg)
+	if (arg && event->arg != arg)
 	    continue;
 	*E = event->next;
 	if (NULL != event->arg)
@@ -105,7 +105,8 @@ eventDelete(EVH * func, void *arg)
 	memFree(event, MEM_EVENT);
 	return;
     }
-    debug_trap("eventDelete: event not found");
+    if (arg)
+	debug_trap("eventDelete: event not found");
 }
 
 void
@@ -155,12 +156,12 @@ eventCleanup(void)
 {
     struct ev_entry **p = &tasks;
 
-    debug(41, 0) ("eventCleanup\n");
+    debug(41, 2) ("eventCleanup\n");
 
     while (*p) {
 	struct ev_entry *event = *p;
 	if (!cbdataValid(event->arg)) {
-	    debug(41, 0) ("eventCleanup: cleaning '%s'\n", event->name);
+	    debug(41, 2) ("eventCleanup: cleaning '%s'\n", event->name);
 	    *p = event->next;
 	    cbdataUnlock(event->arg);
 	    memFree(event, MEM_EVENT);

@@ -1,6 +1,6 @@
 
 /*
- * $Id: store_null.c,v 1.2.2.1 2002/07/22 00:01:49 hno Exp $
+ * $Id: store_null.c,v 1.7 2006/06/08 13:39:52 hno Exp $
  *
  * DEBUG: section 47    Store Directory Routines
  * AUTHOR: Duane Wessels
@@ -78,6 +78,15 @@ storeNullDirInit(SwapDir * sd)
 	NULL, 0.0, 1);
 }
 
+/*
+ * Only "free" the filesystem specific stuff here
+ */
+static void
+storeNullDirFree(SwapDir * s)
+{
+}
+
+
 static void
 storeNullDirRebuildComplete(void *unused)
 {
@@ -89,6 +98,15 @@ storeNullDirRebuildComplete(void *unused)
 
 static int
 storeNullDirCheckObj(SwapDir * SD, const StoreEntry * e)
+{
+    return 0;
+}
+
+/*
+ * We should never, in theory, see an open/create, but just in case..
+ */
+static int
+storeNullDirCheckLoadAv(SwapDir * SD, store_op_t op)
 {
     return -1;
 }
@@ -112,7 +130,9 @@ storeNullDirParse(SwapDir * sd, int index, char *path)
     sd->path = xstrdup(path);
     sd->statfs = storeNullDirStats;
     sd->init = storeNullDirInit;
+    sd->freefs = storeNullDirFree;
     sd->checkobj = storeNullDirCheckObj;
+    sd->checkload = storeNullDirCheckLoadAv;
     sd->log.clean.start = storeNullDirWriteCleanStart;
     sd->log.clean.done = storeNullDirWriteCleanDone;
     parse_cachedir_options(sd, NULL, 0);

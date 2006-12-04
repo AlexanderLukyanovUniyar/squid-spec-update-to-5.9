@@ -1,6 +1,6 @@
 
 /*
- * $Id: util.c,v 1.83.2.3 2005/06/30 18:50:56 serassio Exp $
+ * $Id: util.c,v 1.94 2006/09/18 22:54:38 hno Exp $
  *
  * DEBUG: 
  * AUTHOR: Harvest Derived
@@ -33,6 +33,11 @@
  *
  */
 
+/* On native Windows, squid_mswin.h needs to know when we are compiling
+ * util.c for the correct handling of FD<=>socket magic
+ */
+#define UTIL_C
+
 #define _etext etext
 
 #include "config.h"
@@ -54,7 +59,7 @@
 #endif
 #if HAVE_GNUMALLLOC_H
 #include <gnumalloc.h>
-#elif HAVE_MALLOC_H && !defined(_SQUID_FREEBSD_) && !defined(_SQUID_NEXT_)
+#elif HAVE_MALLOC_H
 #include <malloc.h>
 #endif
 #if HAVE_ERRNO_H
@@ -312,7 +317,6 @@ malloc_number(void *p)
 static void
 xmalloc_show_trace(void *p, int sign)
 {
-    int statMemoryAccounted();
     static size_t last_total = 0, last_accounted = 0, last_mallinfo = 0;
     size_t accounted = statMemoryAccounted();
     size_t mi = 0;
@@ -623,14 +627,14 @@ const char *
 xstrerror(void)
 {
     static char xstrerror_buf[BUFSIZ];
-    static char strerror_buf[BUFSIZ];
+    const char *errmsg;
 
-    snprintf(strerror_buf, BUFSIZ, "%s", strerror(errno));
-   
-    if (strerror_buf) 
-	snprintf(xstrerror_buf, BUFSIZ, "(%d) %s", errno, strerror_buf);
-    else
-        snprintf(xstrerror_buf, BUFSIZ, "(%d) Unknown", errno); 
+    errmsg = strerror(errno);
+
+    if (!errmsg || !*errmsg)
+	errmsg = "Unknown error";
+
+    snprintf(xstrerror_buf, BUFSIZ, "(%d) %s", errno, errmsg);
     return xstrerror_buf;
 }
 

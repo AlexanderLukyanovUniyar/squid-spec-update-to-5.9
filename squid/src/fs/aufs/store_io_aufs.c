@@ -1,9 +1,39 @@
 
 /*
- * DEBUG 79
+ * $Id: store_io_aufs.c,v 1.33 2006/09/09 16:04:38 serassio Exp $
+ *
+ * DEBUG: section 79    Squid-side AUFS I/O functions.
+ *
+ * SQUID Web Proxy Cache          http://www.squid-cache.org/
+ * ----------------------------------------------------------
+ *
+ *  Squid is the result of efforts by numerous individuals from
+ *  the Internet community; see the CONTRIBUTORS file for full
+ *  details.   Many organizations have provided support for Squid's
+ *  development; see the SPONSORS file for full details.  Squid is
+ *  Copyrighted (C) 2001 by the Regents of the University of
+ *  California; see the COPYRIGHT file for full details.  Squid
+ *  incorporates software developed and/or copyrighted by other
+ *  sources; see the CREDITS file for full details.
+ *
+ *  This program is free software; you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation; either version 2 of the License, or
+ *  (at your option) any later version.
+ *  
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ *  
+ *  You should have received a copy of the GNU General Public License
+ *  along with this program; if not, write to the Free Software
+ *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111, USA.
+ *
  */
 
 #include "squid.h"
+#include "async_io.h"
 #include "store_asyncufs.h"
 
 #if ASYNC_READ
@@ -47,7 +77,7 @@ storeAufsOpen(SwapDir * SD, StoreEntry * e, STFNCB * file_callback,
 	return NULL;
 #endif
 #if !ASYNC_OPEN
-    fd = file_open(path, O_RDONLY | O_BINARY);
+    fd = file_open(path, O_RDONLY | O_BINARY | O_NOATIME);
     if (fd < 0) {
 	debug(79, 3) ("storeAufsOpen: got failure (%d)\n", errno);
 	return NULL;
@@ -68,7 +98,7 @@ storeAufsOpen(SwapDir * SD, StoreEntry * e, STFNCB * file_callback,
     Opening_FD++;
     statCounter.syscalls.disk.opens++;
 #if ASYNC_OPEN
-    aioOpen(path, O_RDONLY | O_BINARY, 0644, storeAufsOpenDone, sio);
+    aioOpen(path, O_RDONLY | O_BINARY | O_NOATIME, 0644, storeAufsOpenDone, sio);
 #else
     storeAufsOpenDone(fd, sio, fd, 0);
 #endif
@@ -243,6 +273,23 @@ storeAufsUnlink(SwapDir * SD, StoreEntry * e)
     storeAufsDirMapBitReset(SD, e->swap_filen);
     storeAufsDirUnlinkFile(SD, e->swap_filen);
     statCounter.syscalls.disk.unlinks++;
+}
+
+void
+storeAufsRecycle(SwapDir * SD, StoreEntry * e)
+{
+    debug(79, 3) ("storeAufsUnlink: fileno %08X\n", e->swap_filen);
+
+    /* Release the object without releasing the underlying physical object */
+    storeExpireNow(e);
+    storeReleaseRequest(e);
+    if (e->swap_filen > -1) {
+	storeAufsDirReplRemove(e);
+	storeAufsDirMapBitReset(SD, e->swap_filen);
+	e->swap_filen = -1;
+	e->swap_dirn = -1;
+    }
+    storeRelease(e);
 }
 
 /*  === STATIC =========================================================== */
@@ -445,8 +492,8 @@ storeAufsIOCallback(storeIOState * sio, int errflag)
 	return;
     debug(79, 9) ("%s:%d\n", __FILE__, __LINE__);
 #if ASYNC_CLOSE
-    aioClose(fd);
     fd_close(fd);
+    aioClose(fd);
 #else
     aioCancel(fd);
     file_close(fd);

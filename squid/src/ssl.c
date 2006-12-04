@@ -1,6 +1,6 @@
 
 /*
- * $Id: ssl.c,v 1.118.2.13 2006/03/10 22:54:38 hno Exp $
+ * $Id: ssl.c,v 1.134 2006/08/25 12:26:07 serassio Exp $
  *
  * DEBUG: section 26    Secure Sockets Layer Proxy
  * AUTHOR: Duane Wessels
@@ -132,14 +132,16 @@ sslStateFree(SslStateData * sslState)
 
 #if DELAY_POOLS
 static int
-sslDeferServerRead(int fdnotused, void *data)
+sslDeferServerRead(int fd, void *data)
 {
     SslStateData *s = data;
     int i = delayBytesWanted(s->delay_id, 0, INT_MAX);
     if (i == INT_MAX)
 	return 0;
-    if (i == 0)
+    if (i == 0) {
+	commDeferFD(fd);
 	return 1;
+    }
     return -1;
 }
 #endif
@@ -228,8 +230,14 @@ sslReadServer(int fd, void *data)
     }
     cbdataLock(sslState);
     if (len < 0) {
-	debug(50, ignoreErrno(errno) ? 3 : 1)
-	    ("sslReadServer: FD %d: read failure: %s\n", fd, xstrerror());
+	int level = 1;
+#ifdef ECONNRESET
+	if (errno == ECONNRESET)
+	    level = 2;
+#endif
+	if (ignoreErrno(errno))
+	    level = 3;
+	debug(50, level) ("sslReadServer: FD %d: read failure: %s\n", fd, xstrerror());
 	if (!ignoreErrno(errno))
 	    comm_close(fd);
     } else if (len == 0) {
@@ -416,20 +424,17 @@ sslConnectDone(int fd, int status, void *data)
     if (status == COMM_ERR_DNS) {
 	debug(26, 4) ("sslConnect: Unknown host: %s\n", sslState->host);
 	comm_close(fd);
-	err = errorCon(ERR_DNS_FAIL, HTTP_NOT_FOUND);
+	err = errorCon(ERR_DNS_FAIL, HTTP_NOT_FOUND, request);
 	*sslState->status_ptr = HTTP_NOT_FOUND;
-	err->request = requestLink(request);
 	err->dnsserver_msg = xstrdup(dns_error_message);
 	err->callback = sslErrorComplete;
 	err->callback_data = sslState;
 	errorSend(sslState->client.fd, err);
     } else if (status != COMM_OK) {
 	comm_close(fd);
-	err = errorCon(ERR_CONNECT_FAIL, HTTP_SERVICE_UNAVAILABLE);
+	err = errorCon(ERR_CONNECT_FAIL, HTTP_SERVICE_UNAVAILABLE, request);
 	*sslState->status_ptr = HTTP_SERVICE_UNAVAILABLE;
 	err->xerrno = errno;
-	err->port = sslState->port;
-	err->request = requestLink(request);
 	err->callback = sslErrorComplete;
 	err->callback_data = sslState;
 	errorSend(sslState->client.fd, err);
@@ -465,11 +470,9 @@ sslConnectTimeout(int fd, void *data)
 	hierarchyNote(&sslState->request->hier, sslState->servers->code,
 	    sslState->host);
     comm_close(fd);
-    err = errorCon(ERR_CONNECT_FAIL, HTTP_SERVICE_UNAVAILABLE);
+    err = errorCon(ERR_CONNECT_FAIL, HTTP_SERVICE_UNAVAILABLE, request);
     *sslState->status_ptr = HTTP_SERVICE_UNAVAILABLE;
     err->xerrno = ETIMEDOUT;
-    err->port = sslState->port;
-    err->request = requestLink(request);
     err->callback = sslErrorComplete;
     err->callback_data = sslState;
     errorSend(sslState->client.fd, err);
@@ -504,10 +507,8 @@ sslStart(clientHttpRequest * http, squid_off_t * size_ptr, int *status_ptr)
 	ch.request = request;
 	answer = aclCheckFast(Config.accessList.miss, &ch);
 	if (answer == 0) {
-	    err = errorCon(ERR_FORWARDING_DENIED, HTTP_FORBIDDEN);
+	    err = errorCon(ERR_FORWARDING_DENIED, HTTP_FORBIDDEN, request);
 	    *status_ptr = HTTP_FORBIDDEN;
-	    err->request = requestLink(request);
-	    err->src_addr = request->client_addr;
 	    errorSend(fd, err);
 	    return;
 	}
@@ -518,7 +519,7 @@ sslStart(clientHttpRequest * http, squid_off_t * size_ptr, int *status_ptr)
     statCounter.server.other.requests++;
     /* Create socket. */
     sock = comm_openex(SOCK_STREAM,
-	0,
+	IPPROTO_TCP,
 	getOutgoingAddr(request),
 	0,
 	COMM_NONBLOCKING,
@@ -526,10 +527,9 @@ sslStart(clientHttpRequest * http, squid_off_t * size_ptr, int *status_ptr)
 	url);
     if (sock == COMM_ERROR) {
 	debug(26, 4) ("sslStart: Failed because we're out of sockets.\n");
-	err = errorCon(ERR_SOCKET_FAILURE, HTTP_INTERNAL_SERVER_ERROR);
+	err = errorCon(ERR_SOCKET_FAILURE, HTTP_INTERNAL_SERVER_ERROR, request);
 	*status_ptr = HTTP_INTERNAL_SERVER_ERROR;
 	err->xerrno = errno;
-	err->request = requestLink(request);
 	errorSend(fd, err);
 	return;
     }
@@ -612,9 +612,8 @@ sslPeerSelectComplete(FwdServer * fs, void *data)
     peer *g = NULL;
     if (fs == NULL) {
 	ErrorState *err;
-	err = errorCon(ERR_CANNOT_FORWARD, HTTP_SERVICE_UNAVAILABLE);
+	err = errorCon(ERR_CANNOT_FORWARD, HTTP_SERVICE_UNAVAILABLE, sslState->request);
 	*sslState->status_ptr = HTTP_SERVICE_UNAVAILABLE;
-	err->request = requestLink(sslState->request);
 	err->callback = sslErrorComplete;
 	err->callback_data = sslState;
 	errorSend(sslState->client.fd, err);

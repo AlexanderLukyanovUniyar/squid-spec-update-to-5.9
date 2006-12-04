@@ -207,10 +207,10 @@ Install squid package to get all Squid parts.
 	--enable-cache-digests \
 	--enable-x-accelerator-vary \
 	--enable-auth="basic ntlm digest" \
-	--enable-basic-auth-helpers="LDAP MSNT NCSA PAM SASL SMB YP getpwnam multi-domain-NTLM winbind" \
-	--enable-ntlm-auth-helpers="SMB fakeauth no_check winbind" \
-	--enable-digest-auth-helpers="password" \
-	--enable-external-acl-helpers="ip_user ldap_group unix_group wbinfo_group winbind_group" \
+	--enable-basic-auth-helpers="LDAP MSNT NCSA PAM SASL SMB YP getpwnam multi-domain-NTLM" \
+	--enable-ntlm-auth-helpers="SMB fakeauth no_check" \
+	--enable-digest-auth-helpers="ldap password" \
+	--enable-external-acl-helpers="ip_user ldap_group unix_group session wbinfo_group" \
 	--enable-storeio="aufs coss diskd null ufs" \
 	--enable-default-err-language="English" \
 	--with-large-files \
@@ -264,7 +264,7 @@ popd
 %__install -D -p -m644 $RPM_BUILD_DIR/%name-%version/helpers/external_acl/ip_user/example-deny_all_but.conf helpers/doc/ip_user.example-deny_all_but.conf
 %__install -D -p -m644 $RPM_BUILD_DIR/%name-%version/helpers/external_acl/ip_user/example.conf helpers/doc/ip_user.example.conf
 %__install -D -p -m644 $RPM_BUILD_DIR/%name-%version/helpers/external_acl/unix_group/README helpers/doc/unix_group.README
-%__install -D -p -m644 $RPM_BUILD_DIR/%name-%version/helpers/external_acl/winbind_group/readme.txt helpers/doc/winbind_group.readme.txt
+#%__install -D -p -m644 $RPM_BUILD_DIR/%name-%version/helpers/external_acl/winbind_group/readme.txt helpers/doc/winbind_group.readme.txt
 %__install -D -p -m644 $RPM_BUILD_DIR/%name-%version/helpers/external_acl/unix_group/README helpers/doc/unix_group.README
 %__install -D -p -m644 $RPM_BUILD_DIR/%name-%version/helpers/ntlm_auth/no_check/README.no_check_ntlm_auth helpers/doc/README.no_check_ntlm_auth
 %__install -p -m755 %SOURCE4 %buildroot%_libdir/%name
@@ -306,12 +306,13 @@ popd
 %_datadir/snmp/mibs/SQUID-MIB.txt
 %_sbindir/%name
 %_sbindir/squidclient
-%_sbindir/RunAccel
+#%_sbindir/RunAccel
 %_sbindir/RunCache
+%_sbindir/cossdump
 %_man8dir/squid.8.gz
 %attr(4710,root,%name) %_libdir/%name/pinger
 %_libdir/%name/unlinkd
-%_libdir/%name/diskd
+%_libdir/%name/diskd-daemon
 %attr(3770,root,%name) %dir %_logdir/%name
 %attr(2770,root,%name) %dir %_spooldir/%name
 
@@ -334,15 +335,19 @@ popd
 %_libdir/%name/squid_ldap_auth
 %_libdir/%name/squid_ldap_group
 %_libdir/%name/squid_unix_group
-%_libdir/%name/wb_auth
-%_libdir/%name/wb_group
-%_libdir/%name/wb_ntlmauth
+%_libdir/%name/digest_ldap_auth
+%_libdir/%name/squid_session
+#%_libdir/%name/wb_auth
+#%_libdir/%name/wb_group
+#%_libdir/%name/wb_ntlmauth
 %_libdir/%name/wbinfo_group.sh
 %_libdir/%name/yp_auth
 %_man8dir/pam_auth.8.gz
+%_man8dir/ncsa_auth.8.gz
 %_man8dir/squid_ldap_auth.8.gz
 %_man8dir/squid_ldap_group.8.gz
 %_man8dir/squid_unix_group.8.gz
+%_man8dir/squid_session.8.gz
 
 %files helpers-perl
 %doc scripts/*.pl

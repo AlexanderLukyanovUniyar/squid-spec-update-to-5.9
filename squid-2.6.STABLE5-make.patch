@@ -1,0 +1,47 @@
+diff -Nur squid-2.5.STABLE3.orig/Makefile.in squid-2.5.STABLE3/Makefile.in
+--- squid-2.5.STABLE3.orig/Makefile.in	2003-07-11 13:53:18 +0600
++++ squid-2.5.STABLE3/Makefile.in	2003-07-11 13:54:46 +0600
+@@ -483,8 +483,8 @@
+ 	fi
+ 
+ install-pinger:
+-	chown root $(DEFAULT_PINGER) 
+-	chmod 4711 $(DEFAULT_PINGER)
++#	chown root $(DEFAULT_PINGER) 
++#	chmod 4711 $(DEFAULT_PINGER)
+ # Tell versions [3.59,3.63) of GNU make to not export all variables.
+ # Otherwise a system limit (for SysV at least) may be exceeded.
+ .NOEXPORT:
+diff -Nur squid-2.5.STABLE3.orig/src/Makefile.in squid-2.5.STABLE3/src/Makefile.in
+--- squid-2.5.STABLE3.orig/src/Makefile.in	2003-07-11 13:53:18 +0600
++++ squid-2.5.STABLE3/src/Makefile.in	2003-07-11 13:58:15 +0600
+@@ -374,12 +374,12 @@
+ DEFAULT_CONFIG_FILE = $(sysconfdir)/squid.conf
+ DEFAULT_MIME_TABLE = $(sysconfdir)/mime.conf
+ DEFAULT_DNSSERVER = $(libexecdir)/`echo dnsserver | sed '$(transform);s/$$/$(EXEEXT)/'`
+-DEFAULT_LOG_PREFIX = $(localstatedir)/logs
++DEFAULT_LOG_PREFIX = $(localstatedir)/log/squid
+ DEFAULT_CACHE_LOG = $(DEFAULT_LOG_PREFIX)/cache.log
+ DEFAULT_ACCESS_LOG = $(DEFAULT_LOG_PREFIX)/access.log
+ DEFAULT_STORE_LOG = $(DEFAULT_LOG_PREFIX)/store.log
+-DEFAULT_PID_FILE = $(DEFAULT_LOG_PREFIX)/squid.pid
+-DEFAULT_SWAP_DIR = $(localstatedir)/cache
++DEFAULT_PID_FILE = $(localstatedir)/run/squid.pid
++DEFAULT_SWAP_DIR = $(localstatedir)/spool/squid
+ DEFAULT_PINGER = $(libexecdir)/`echo pinger | sed '$(transform);s/$$/$(EXEEXT)/'`
+ DEFAULT_UNLINKD = $(libexecdir)/`echo unlinkd | sed '$(transform);s/$$/$(EXEEXT)/'`
+ DEFAULT_DISKD = $(libexecdir)/`echo diskd | sed '$(transform);s/$$/$(EXEEXT)/'`
+diff -Nur squid-2.6.STABLE5.orig/Makefile.am squid-2.6.STABLE5/Makefile.am
+--- squid-2.6.STABLE5.orig/Makefile.am	2003-07-11 13:53:18 +0600
++++ squid-2.6.STABLE5/Makefile.am	2003-07-11 13:53:54 +0600
+@@ -40,8 +40,8 @@
+ 	bootstrap.sh
+ 
+ install-pinger:
+-	chown root $(DEFAULT_PINGER) 
+-	chmod 4711 $(DEFAULT_PINGER)
++#	chown root $(DEFAULT_PINGER) 
++#	chmod 4711 $(DEFAULT_PINGER)
+ 
+ distuninstallcheck_listfiles = \
+ 	find . -name squid.conf -prune -o -name cachemgr.conf -prune -type f -print

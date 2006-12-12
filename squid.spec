@@ -50,6 +50,7 @@ Obsoletes: %name-novm
 BuildConflicts: bind-devel
 BuildPreReq: rpm-build >= 4.0.4-alt10, autoconf >= 2.54
 BuildRequires: OpenSP libldap-devel libpam0-devel libsasl2-devel libssl-devel perl-Authen-Smb sgml-tools
+BuildRequires: libdb4-devel
 Requires: %name-common %name-server %name-helpers %name-helpers-perl %name-cachemgr
 
 %description

@@ -3,4 +3,5 @@ copy: *.logrotate
 copy: *.patch
 copy: *.sgml
 copy: *.sh
+copy: squid-2.6.STABLE5-alt-errorlist
 tar.bz2: squid

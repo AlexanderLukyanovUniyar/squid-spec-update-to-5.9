@@ -15,35 +15,35 @@ Source1: %url/Doc/FAQ/FAQ.sgml
 Source2: %name.init
 Source3: %name.logrotate
 Source4: wbinfo_group.sh
+Source5: squid-2.6.STABLE5-alt-errorlist
 
 # Other patches
 # rediffed for 2.6.S5
-Patch1: squid-2.6.STABLE5-make.patch
+Patch1: squid-2.6.STABLE5-alt-make.patch
 # rediffed for 2.6.S5
-Patch2: squid-2.6.STABLE5-config.patch
-# bga (2006-12-14): obsoleted
-#Patch3: squid-2.4.STABLE6-alt-without-bind.patch
-# bga (2006-12-14): perl scripts have been disappeared
-#Patch4: squid-2.5-perlpath.patch
-# bga (2006-12-14): obsoleted
-#Patch5: squid-2.5-automake.patch
-Patch6: squid-errrors-belarusian.patch
+Patch2: squid-2.6.STABLE5-alt-config.patch
+Patch6: squid-2.6.STABLE5-alt-errrors_belarusian.patch
 # See http://stc.nixdev.org/getstat.php
 # DISABLED for now
 Patch7: patch-aa.patch
-# bga (2006-12-14): perl script was reworked
-#Patch8: squid-2.5.STABLE10-alt-perlreq.patch
-Patch9:	squid-2.5.STABLE10-alt-sambaprefix.patch
+Patch9: squid-2.5.STABLE10-alt-sambaprefix.patch
 
-#Official patches to Squid
-# bga (2006-12-14): applied in upstream
-#Patch10: squid-2.5.STABLE13-libaio-2.patch
-#Patch11: squid-2.5.STABLE13-header_leak.patch
-#Patch12: squid-2.5.STABLE13-ident_leak.patch
-#Patch13: squid-2.5.STABLE13-htcp_leak.patch
-#Patch14: squid-2.5.STABLE13-icons.patch
-#Patch15: squid-2.5.STABLE13-hostnamelen.patch
-#Patch16: squid-2.5.STABLE13-stable13.patch
+Patch8: squid-2.6.STABLE5-alt-feat_icap.patch
+# Official patches to Squid
+# See http://devel.squid-cache.org/projects.html#icap
+Patch10: squid-2.6.STABLE5-squid-icap.patch
+# These four came from Debian
+Patch11: squid-2.6.STABLE5-deb-coss_assert.patch
+Patch12: squid-2.6.STABLE5-deb-aufs_assert.patch
+Patch13: squid-2.6.STABLE5-deb-hosts_overflow.patch
+Patch14: squid-2.6.STABLE5-deb-htcp_assert.patch
+
+# Patches by other vendors
+Patch20: squid-2.6.STABLE5-deb-localhost.patch
+Patch21: squid-2.5.STABLE4-fc-location.patch
+Patch22: squid-2.6.STABLE5-fc-fdconfig.patch
+Patch23: squid-2.6.STABLE5-deb-unlinkd.patch
+Patch24: squid-2.6.STABLE5-deb-smb_auth.patch
 
 Obsoletes: %name-novm
 
@@ -164,26 +164,32 @@ Install squid package to get all Squid parts.
 %setup -q
 %patch1 -p1
 %patch2 -p1
-#%patch3 -p1
-#%patch4 -p1
-#%patch5 -p1
 %patch6 -p1
-#patch7 -p1
-#%patch8 -p1
 %patch9 -p1
 
-#%patch10 -p1
-#%patch11 -p1
-#%patch12 -p1
-#%patch13 -p1
-#%patch14 -p1
-#%patch15 -p1
-#%patch16 -p1
+%patch8 -p0
+install -m 644 %SOURCE5 errors/list
+%patch10 -p1
+%patch11 -p1
+%patch12 -p1
+%patch13 -p1
+%patch14 -p1
+
+%patch20 -p0
+%patch21 -p1
+%patch22 -p1
+%patch23 -p0
+%patch24 -p0
+
+find . -type f -name '*.pl' -print0 | \
+	xargs -r0 sed -ie 's,/usr/local/bin/perl,/usr/bin/perl,g'
+
+touch NEWS AUTHORS
 
 %build
 %set_autoconf_version 2.5
 
-%__autoconf
+%__autoreconf
 %configure \
 	--bindir=%_sbindir \
 	--libexecdir=%_libdir/%name \
@@ -215,6 +221,7 @@ Install squid package to get all Squid parts.
 	--enable-default-err-language="English" \
 	--with-large-files \
 	--enable-large-cache-files \
+	--enable-icap-support \
 	--with-maxfd=16384
 
 %make_build

@@ -1,0 +1,157 @@
+#! /bin/sh /usr/share/dpatch/dpatch-run
+## 54-aufs-assert.dpatch by Luigi Gangitano <luigi@debian.org>
+##
+## All lines beginning with `## DP:' are a description of the patch.
+## DP: No description.
+
+@DPATCH@
+diff -urNad squid-2.6.5~/src/fs/aufs/store_dir_aufs.c squid-2.6.5/src/fs/aufs/store_dir_aufs.c
+--- squid-2.6.5~/src/fs/aufs/store_dir_aufs.c	2006-11-06 11:46:05.000000000 +0100
++++ squid-2.6.5/src/fs/aufs/store_dir_aufs.c	2006-11-06 11:46:16.000000000 +0100
+@@ -1,6 +1,6 @@
+ 
+ /*
+- * $Id: store_dir_aufs.c,v 1.65 2006/11/05 21:14:31 hno Exp $
++ * $Id: store_dir_aufs.c,v 1.66 2006/11/05 21:32:12 hno Exp $
+  *
+  * DEBUG: section 47    Store Directory Routines
+  * AUTHOR: Duane Wessels
+@@ -51,7 +51,6 @@
+     int curlvl1;
+     int curlvl2;
+     struct {
+-	unsigned int need_to_validate:1;
+ 	unsigned int clean:1;
+ 	unsigned int init:1;
+     } flags;
+@@ -673,9 +672,7 @@
+ 	     * swapfiles back to StoreEntrys, we don't know the state
+ 	     * of the entry using that file.  */
+ 	    /* We'll assume the existing entry is valid, probably because
+-	     * were in a slow rebuild and the the swap file number got taken
+-	     * and the validation procedure hasn't run. */
+-	    assert(rb->flags.need_to_validate);
++	     * the swap file number got taken while we rebuild */
+ 	    rb->counts.clashcount++;
+ 	    continue;
+ 	} else if (e && !disk_entry_newer) {
+@@ -823,9 +820,7 @@
+ 	     * swapfiles back to StoreEntrys, we don't know the state
+ 	     * of the entry using that file.  */
+ 	    /* We'll assume the existing entry is valid, probably because
+-	     * were in a slow rebuild and the the swap file number got taken
+-	     * and the validation procedure hasn't run. */
+-	    assert(rb->flags.need_to_validate);
++	     * the swap file number got taken while we rebuld */
+ 	    rb->counts.clashcount++;
+ 	    continue;
+ 	} else if (e && !disk_entry_newer) {
+@@ -1062,8 +1057,6 @@
+ 	rb->log = fp;
+ 	rb->flags.clean = (unsigned int) clean;
+     }
+-    if (!clean)
+-	rb->flags.need_to_validate = 1;
+     debug(47, 1) ("Rebuilding storage in %s (%s)\n",
+ 	sd->path, clean ? "CLEAN" : "DIRTY");
+     store_dirs_rebuilding++;
+diff -urNad squid-2.6.5~/src/fs/diskd/store_dir_diskd.c squid-2.6.5/src/fs/diskd/store_dir_diskd.c
+--- squid-2.6.5~/src/fs/diskd/store_dir_diskd.c	2006-11-06 11:46:05.000000000 +0100
++++ squid-2.6.5/src/fs/diskd/store_dir_diskd.c	2006-11-06 11:46:16.000000000 +0100
+@@ -1,6 +1,6 @@
+ 
+ /*
+- * $Id: store_dir_diskd.c,v 1.86 2006/11/05 21:14:36 hno Exp $
++ * $Id: store_dir_diskd.c,v 1.87 2006/11/05 21:32:12 hno Exp $
+  *
+  * DEBUG: section 47    Store Directory Routines
+  * AUTHOR: Duane Wessels
+@@ -56,7 +56,6 @@
+     int curlvl1;
+     int curlvl2;
+     struct {
+-	unsigned int need_to_validate:1;
+ 	unsigned int clean:1;
+ 	unsigned int init:1;
+     } flags;
+@@ -864,9 +863,7 @@
+ 	     * swapfiles back to StoreEntrys, we don't know the state
+ 	     * of the entry using that file.  */
+ 	    /* We'll assume the existing entry is valid, probably because
+-	     * were in a slow rebuild and the the swap file number got taken
+-	     * and the validation procedure hasn't run. */
+-	    assert(rb->flags.need_to_validate);
++	     * the swap file number got taken while we rebuild */
+ 	    rb->counts.clashcount++;
+ 	    continue;
+ 	} else if (e && !disk_entry_newer) {
+@@ -1039,9 +1036,7 @@
+ 	     * swapfiles back to StoreEntrys, we don't know the state
+ 	     * of the entry using that file.  */
+ 	    /* We'll assume the existing entry is valid, probably because
+-	     * were in a slow rebuild and the the swap file number got taken
+-	     * and the validation procedure hasn't run. */
+-	    assert(rb->flags.need_to_validate);
++	     * the swap file number got taken while we rebuild */
+ 	    rb->counts.clashcount++;
+ 	    continue;
+ 	} else if (e && !disk_entry_newer) {
+@@ -1278,8 +1273,6 @@
+ 	rb->log = fp;
+ 	rb->flags.clean = (unsigned int) clean;
+     }
+-    if (!clean)
+-	rb->flags.need_to_validate = 1;
+     debug(20, 1) ("Rebuilding storage in %s (%s)\n",
+ 	sd->path, clean ? "CLEAN" : "DIRTY");
+     store_dirs_rebuilding++;
+diff -urNad squid-2.6.5~/src/fs/ufs/store_dir_ufs.c squid-2.6.5/src/fs/ufs/store_dir_ufs.c
+--- squid-2.6.5~/src/fs/ufs/store_dir_ufs.c	2006-11-06 11:46:05.000000000 +0100
++++ squid-2.6.5/src/fs/ufs/store_dir_ufs.c	2006-11-06 11:46:16.000000000 +0100
+@@ -1,6 +1,6 @@
+ 
+ /*
+- * $Id: store_dir_ufs.c,v 1.62 2006/11/05 21:14:37 hno Exp $
++ * $Id: store_dir_ufs.c,v 1.63 2006/11/05 21:32:13 hno Exp $
+  *
+  * DEBUG: section 47    Store Directory Routines
+  * AUTHOR: Duane Wessels
+@@ -50,7 +50,6 @@
+     int curlvl1;
+     int curlvl2;
+     struct {
+-	unsigned int need_to_validate:1;
+ 	unsigned int clean:1;
+ 	unsigned int init:1;
+     } flags;
+@@ -678,9 +677,7 @@
+ 	     * swapfiles back to StoreEntrys, we don't know the state
+ 	     * of the entry using that file.  */
+ 	    /* We'll assume the existing entry is valid, probably because
+-	     * were in a slow rebuild and the the swap file number got taken
+-	     * and the validation procedure hasn't run. */
+-	    assert(rb->flags.need_to_validate);
++	     * the swap file number got taken while we rebuild */
+ 	    rb->counts.clashcount++;
+ 	    continue;
+ 	} else if (e && !disk_entry_newer) {
+@@ -828,9 +825,7 @@
+ 	     * swapfiles back to StoreEntrys, we don't know the state
+ 	     * of the entry using that file.  */
+ 	    /* We'll assume the existing entry is valid, probably because
+-	     * were in a slow rebuild and the the swap file number got taken
+-	     * and the validation procedure hasn't run. */
+-	    assert(rb->flags.need_to_validate);
++	     * the swap file number got taken while we rebuild */
+ 	    rb->counts.clashcount++;
+ 	    continue;
+ 	} else if (e && !disk_entry_newer) {
+@@ -1066,8 +1061,6 @@
+ 	rb->log = fp;
+ 	rb->flags.clean = (unsigned int) clean;
+     }
+-    if (!clean)
+-	rb->flags.need_to_validate = 1;
+     debug(47, 1) ("Rebuilding storage in %s (%s)\n",
+ 	sd->path, clean ? "CLEAN" : "DIRTY");
+     store_dirs_rebuilding++;

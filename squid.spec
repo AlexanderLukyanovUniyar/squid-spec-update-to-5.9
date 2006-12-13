@@ -376,6 +376,28 @@ popd
 %changelog
 * Mon Dec 04 2006 Grigory Batalov <bga@altlinux.ru> 2.6.STABLE5-alt1
 - 2.6.STABLE5
+- applied:
+ + ICAP support
+ + correct file location in QUICKSTART
+ + config-driven maximum file descriptor number
+ + disable HTCP and SNMP by default
+ + open rsync, snews, CUPS, SWAT by default
+ + prevent appending local domain to localhost
+ + update smb_auth.sh
+ + run unlinkd on diskd and ufs only
+ + some assertion fixes from upstream
+- included into upstream:
+ + squid-2.5.STABLE13-libaio-2.patch
+ + squid-2.5.STABLE13-header_leak.patch
+ + squid-2.5.STABLE13-ident_leak.patch
+ + squid-2.5.STABLE13-htcp_leak.patch
+ + squid-2.5.STABLE13-icons.patch
+ + squid-2.5.STABLE13-hostnamelen.patch
+ + squid-2.5.STABLE13-stable13.patch
+- obsoleted:
+ + squid-2.4.STABLE6-alt-without-bind.patch
+ + squid-2.5-automake.patch
+ + squid-2.5.STABLE10-alt-perlreq.patch
 
 * Wed May 17 2006 Denis Ovsienko <pilot@altlinux.ru> 2.5.STABLE13-alt1
 - STABLE13

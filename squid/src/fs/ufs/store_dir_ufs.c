@@ -1,6 +1,6 @@
 
 /*
- * $Id: store_dir_ufs.c,v 1.61 2006/08/03 02:31:13 adrian Exp $
+ * $Id: store_dir_ufs.c,v 1.63 2006/11/05 21:32:13 hno Exp $
  *
  * DEBUG: section 47    Store Directory Routines
  * AUTHOR: Duane Wessels
@@ -50,7 +50,6 @@ struct _RebuildState {
     int curlvl1;
     int curlvl2;
     struct {
-	unsigned int need_to_validate:1;
 	unsigned int clean:1;
 	unsigned int init:1;
     } flags;
@@ -613,11 +612,6 @@ storeUfsDirRebuildFromSwapLog(void *data)
 		 * the cleanup procedure.
 		 */
 		storeRecycle(e);
-		/*
-		 * XXX considering we might've canceled an object from another store;
-		 * XXX what should happen with these stats?
-		 */
-		rb->counts.objcount--;
 		rb->counts.cancelcount++;
 	    }
 	    continue;
@@ -683,9 +677,7 @@ storeUfsDirRebuildFromSwapLog(void *data)
 	     * swapfiles back to StoreEntrys, we don't know the state
 	     * of the entry using that file.  */
 	    /* We'll assume the existing entry is valid, probably because
-	     * were in a slow rebuild and the the swap file number got taken
-	     * and the validation procedure hasn't run. */
-	    assert(rb->flags.need_to_validate);
+	     * the swap file number got taken while we rebuild */
 	    rb->counts.clashcount++;
 	    continue;
 	} else if (e && !disk_entry_newer) {
@@ -768,8 +760,6 @@ storeUfsDirRebuildFromSwapLogOld(void *data)
 		 * the cleanup procedure.
 		 */
 		storeRecycle(e);
-		/* XXX are these counters valid since e could be from another swapfs? */
-		rb->counts.objcount--;
 		rb->counts.cancelcount++;
 	    }
 	    continue;
@@ -835,9 +825,7 @@ storeUfsDirRebuildFromSwapLogOld(void *data)
 	     * swapfiles back to StoreEntrys, we don't know the state
 	     * of the entry using that file.  */
 	    /* We'll assume the existing entry is valid, probably because
-	     * were in a slow rebuild and the the swap file number got taken
-	     * and the validation procedure hasn't run. */
-	    assert(rb->flags.need_to_validate);
+	     * the swap file number got taken while we rebuild */
 	    rb->counts.clashcount++;
 	    continue;
 	} else if (e && !disk_entry_newer) {
@@ -1073,8 +1061,6 @@ storeUfsDirRebuild(SwapDir * sd)
 	rb->log = fp;
 	rb->flags.clean = (unsigned int) clean;
     }
-    if (!clean)
-	rb->flags.need_to_validate = 1;
     debug(47, 1) ("Rebuilding storage in %s (%s)\n",
 	sd->path, clean ? "CLEAN" : "DIRTY");
     store_dirs_rebuilding++;

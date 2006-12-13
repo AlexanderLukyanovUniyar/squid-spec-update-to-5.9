@@ -1,6 +1,6 @@
 
 /*
- * $Id: store_dir_aufs.c,v 1.64 2006/09/15 20:13:02 serassio Exp $
+ * $Id: store_dir_aufs.c,v 1.67 2006/11/25 20:07:41 serassio Exp $
  *
  * DEBUG: section 47    Store Directory Routines
  * AUTHOR: Duane Wessels
@@ -51,7 +51,6 @@ struct _RebuildState {
     int curlvl1;
     int curlvl2;
     struct {
-	unsigned int need_to_validate:1;
 	unsigned int clean:1;
 	unsigned int init:1;
     } flags;
@@ -608,7 +607,6 @@ storeAufsDirRebuildFromSwapLog(void *data)
 		 * the cleanup procedure.
 		 */
 		storeRecycle(e);
-		rb->counts.objcount--;
 		rb->counts.cancelcount++;
 	    }
 	    continue;
@@ -674,9 +672,7 @@ storeAufsDirRebuildFromSwapLog(void *data)
 	     * swapfiles back to StoreEntrys, we don't know the state
 	     * of the entry using that file.  */
 	    /* We'll assume the existing entry is valid, probably because
-	     * were in a slow rebuild and the the swap file number got taken
-	     * and the validation procedure hasn't run. */
-	    assert(rb->flags.need_to_validate);
+	     * the swap file number got taken while we rebuild */
 	    rb->counts.clashcount++;
 	    continue;
 	} else if (e && !disk_entry_newer) {
@@ -759,7 +755,6 @@ storeAufsDirRebuildFromSwapLogOld(void *data)
 		 * the cleanup procedure.
 		 */
 		storeRecycle(e);
-		rb->counts.objcount--;
 		rb->counts.cancelcount++;
 	    }
 	    continue;
@@ -825,9 +820,7 @@ storeAufsDirRebuildFromSwapLogOld(void *data)
 	     * swapfiles back to StoreEntrys, we don't know the state
 	     * of the entry using that file.  */
 	    /* We'll assume the existing entry is valid, probably because
-	     * were in a slow rebuild and the the swap file number got taken
-	     * and the validation procedure hasn't run. */
-	    assert(rb->flags.need_to_validate);
+	     * the swap file number got taken while we rebuld */
 	    rb->counts.clashcount++;
 	    continue;
 	} else if (e && !disk_entry_newer) {
@@ -1064,8 +1057,6 @@ storeAufsDirRebuild(SwapDir * sd)
 	rb->log = fp;
 	rb->flags.clean = (unsigned int) clean;
     }
-    if (!clean)
-	rb->flags.need_to_validate = 1;
     debug(47, 1) ("Rebuilding storage in %s (%s)\n",
 	sd->path, clean ? "CLEAN" : "DIRTY");
     store_dirs_rebuilding++;
@@ -1634,7 +1625,7 @@ storeAufsDirUnlinkFile(SwapDir * SD, sfileno f)
     debug(79, 3) ("storeAufsDirUnlinkFile: unlinking fileno %08X\n", f);
     /* storeAufsDirMapBitReset(SD, f); */
 #if USE_TRUNCATE
-    aioTruncate(storeAufsDirFullPath(SD, f, NULL), NULL, NULL);
+    aioTruncate(storeAufsDirFullPath(SD, f, NULL), 0, NULL, NULL);
 #else
     aioUnlink(storeAufsDirFullPath(SD, f, NULL), NULL, NULL);
 #endif

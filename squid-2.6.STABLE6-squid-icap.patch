@@ -1,11 +1,11 @@
 This patch is generated from the icap-2_6 branch of HEAD in squid
-Tue Nov 28 01:15:46 2006 GMT
+Wed Dec 13 01:16:11 2006 GMT
 See http://devel.squid-cache.org/
 
 Index: squid/configure.in
-diff -u squid/configure.in:1.165 squid/configure.in:1.87.4.12
---- squid/configure.in:1.165	Fri Nov  3 05:54:34 2006
-+++ squid/configure.in	Fri Nov  3 10:47:04 2006
+diff -u squid/configure.in:1.169 squid/configure.in:1.87.4.13
+--- squid/configure.in:1.169	Mon Dec 11 15:53:58 2006
++++ squid/configure.in	Tue Dec 12 14:49:40 2006
 @@ -530,6 +530,17 @@
    fi
  ])
@@ -33,7 +33,7 @@ diff -u squid/configure.in:1.165 squid/configure.in:1.87.4.12
  	strsep \
  	strtoll \
  	sysconf \
-@@ -2450,6 +2463,16 @@
+@@ -2455,6 +2468,16 @@
    AM_CONDITIONAL(NEED_OWN_SNPRINTF, true)
  fi
  
@@ -1106,10 +1106,10 @@ diff -u /dev/null squid/errors/Turkish/ERR_ICAP_FAILURE:1.1.14.1
 +<P>Your cache administrator is <A HREF="mailto:%w">%w</A>. 
 +
 Index: squid/include/util.h
-diff -u squid/include/util.h:1.15 squid/include/util.h:1.13.8.2
---- squid/include/util.h:1.15	Mon Sep 18 16:52:30 2006
-+++ squid/include/util.h	Tue Sep 26 15:47:30 2006
-@@ -151,4 +151,12 @@
+diff -u squid/include/util.h:1.17 squid/include/util.h:1.13.8.3
+--- squid/include/util.h:1.17	Sun Dec 10 05:56:25 2006
++++ squid/include/util.h	Tue Dec 12 14:49:41 2006
+@@ -157,4 +157,12 @@
  extern int WIN32_Close_FD_Socket(int);
  #endif
  
@@ -1389,10 +1389,10 @@ diff -u squid/src/MemBuf.c:1.11 squid/src/MemBuf.c:1.9.10.4
 +    return len;
 +}
 Index: squid/src/cache_cf.c
-diff -u squid/src/cache_cf.c:1.85 squid/src/cache_cf.c:1.61.4.11
---- squid/src/cache_cf.c:1.85	Sat Sep 30 14:52:27 2006
-+++ squid/src/cache_cf.c	Fri Nov  3 10:47:06 2006
-@@ -2385,6 +2385,587 @@
+diff -u squid/src/cache_cf.c:1.86 squid/src/cache_cf.c:1.61.4.12
+--- squid/src/cache_cf.c:1.86	Sat Dec  9 21:51:43 2006
++++ squid/src/cache_cf.c	Tue Dec 12 14:49:42 2006
+@@ -2389,6 +2389,587 @@
      return bodylist.head == NULL;
  }
  
@@ -1996,10 +1996,10 @@ diff -u squid/src/cbdata.c:1.18 squid/src/cbdata.c:1.18.8.1
      CREATE_CBDATA(ps_state);
      CREATE_CBDATA(RemovalPolicy);
 Index: squid/src/cf.data.pre
-diff -u squid/src/cf.data.pre:1.158 squid/src/cf.data.pre:1.100.4.11
---- squid/src/cf.data.pre:1.158	Thu Oct 12 13:51:58 2006
-+++ squid/src/cf.data.pre	Fri Nov  3 10:47:06 2006
-@@ -3184,7 +3184,6 @@
+diff -u squid/src/cf.data.pre:1.161 squid/src/cf.data.pre:1.100.4.12
+--- squid/src/cf.data.pre:1.161	Tue Nov 28 16:52:57 2006
++++ squid/src/cf.data.pre	Tue Dec 12 14:49:42 2006
+@@ -3189,7 +3189,6 @@
  	ensure correct results it is best to set server_persistent_connections
  	to off when using this directive in such configurations.
  DOC_END
@@ -2007,7 +2007,7 @@ diff -u squid/src/cf.data.pre:1.158 squid/src/cf.data.pre:1.100.4.11
  NAME: reply_header_max_size
  COMMENT: (KB)
  TYPE: b_size_t
-@@ -3453,6 +3452,187 @@
+@@ -3458,6 +3457,187 @@
  DOC_END
  
  COMMENT_START
@@ -2214,9 +2214,9 @@ diff -u squid/src/cf_gen_defines:1.7 squid/src/cf_gen_defines:1.6.8.2
  	print "{\"" $2 "\", \"" DEFINE "\", "
  	print "#if " $2
 Index: squid/src/client_side.c
-diff -u squid/src/client_side.c:1.147 squid/src/client_side.c:1.89.4.13
---- squid/src/client_side.c:1.147	Sat Sep 30 14:52:27 2006
-+++ squid/src/client_side.c	Fri Nov  3 10:47:06 2006
+diff -u squid/src/client_side.c:1.154 squid/src/client_side.c:1.89.4.14
+--- squid/src/client_side.c:1.154	Sun Dec 10 16:53:11 2006
++++ squid/src/client_side.c	Tue Dec 12 14:49:44 2006
 @@ -109,7 +109,7 @@
  static CWCB clientWriteComplete;
  static CWCB clientWriteBodyComplete;
@@ -2243,7 +2243,7 @@ diff -u squid/src/client_side.c:1.147 squid/src/client_side.c:1.89.4.13
  static DEFER httpAcceptDefer;
  static log_type clientProcessRequest2(clientHttpRequest * http);
  static int clientReplyBodyTooLarge(clientHttpRequest *, squid_off_t clen);
-@@ -157,14 +157,17 @@
+@@ -157,15 +157,18 @@
  static void clientAccessCheckDone(int answer, void *data);
  static void clientAccessCheck2(void *data);
  static void clientAccessCheckDone2(int answer, void *data);
@@ -2257,13 +2257,14 @@ diff -u squid/src/client_side.c:1.147 squid/src/client_side.c:1.89.4.13
  static int modifiedSince(StoreEntry *, request_t *);
 -static StoreEntry *clientCreateStoreEntry(clientHttpRequest *, method_t, request_flags);
 +StoreEntry *clientCreateStoreEntry(clientHttpRequest *, method_t, request_flags);
+ static inline int clientNatLookup(ConnStateData * conn);
 +#if HS_FEAT_ICAP
 +static int clientIcapReqMod(clientHttpRequest * http);
 +#endif
  
  #if USE_IDENT
  static void
-@@ -382,7 +385,7 @@
+@@ -383,7 +386,7 @@
  	EBIT_TEST(r->cache_control->mask, CC_ONLY_IF_CACHED);
  }
  
@@ -2283,9 +2284,9 @@ diff -u squid/src/client_side.c:1.147 squid/src/client_side.c:1.89.4.13
  #if HEADERS_LOG
      headersLog(0, 1, request->method, request);
  #endif
-@@ -1372,11 +1379,22 @@
-     *H = http->next;
-     http->next = NULL;
+@@ -1352,11 +1359,22 @@
+     /* Unlink us from the clients request list */
+     dlinkDelete(&http->node, &http->conn->reqs);
      dlinkDelete(&http->active, &ClientActiveRequests);
 +#if HS_FEAT_ICAP
 +    /*In the case that the upload of data breaks, we need this code here ....  */
@@ -2307,7 +2308,7 @@ diff -u squid/src/client_side.c:1.147 squid/src/client_side.c:1.89.4.13
  connStateFree(int fd, void *data)
  {
      ConnStateData *connState = data;
-@@ -1393,8 +1411,9 @@
+@@ -1376,8 +1394,9 @@
  	authenticateAuthUserRequestUnlock(connState->auth_user_request);
      connState->auth_user_request = NULL;
      authenticateOnCloseConnection(connState);
@@ -2319,7 +2320,7 @@ diff -u squid/src/client_side.c:1.147 squid/src/client_side.c:1.89.4.13
      if (connState->pinning.fd >= 0)
  	comm_close(connState->pinning.fd);
      cbdataFree(connState);
-@@ -1592,7 +1611,7 @@
+@@ -1575,7 +1594,7 @@
      }
  }
  
@@ -2328,7 +2329,7 @@ diff -u squid/src/client_side.c:1.147 squid/src/client_side.c:1.89.4.13
  clientCheckContentLength(request_t * r)
  {
      switch (r->method) {
-@@ -1611,7 +1630,7 @@
+@@ -1594,7 +1613,7 @@
      /* NOT REACHED */
  }
  
@@ -2337,7 +2338,7 @@ diff -u squid/src/client_side.c:1.147 squid/src/client_side.c:1.89.4.13
  clientCachable(clientHttpRequest * http)
  {
      request_t *req = http->request;
-@@ -1637,7 +1656,7 @@
+@@ -1620,7 +1639,7 @@
  }
  
  /* Return true if we can query our neighbors for this object */
@@ -2346,7 +2347,7 @@ diff -u squid/src/client_side.c:1.147 squid/src/client_side.c:1.89.4.13
  clientHierarchical(clientHttpRequest * http)
  {
      const char *url = http->uri;
-@@ -3351,7 +3370,7 @@
+@@ -3307,7 +3326,7 @@
      return LOG_TCP_HIT;
  }
  
@@ -2355,7 +2356,7 @@ diff -u squid/src/client_side.c:1.147 squid/src/client_side.c:1.89.4.13
  clientProcessRequest(clientHttpRequest * http)
  {
      char *url = http->uri;
-@@ -3362,6 +3381,11 @@
+@@ -3318,6 +3337,11 @@
  	RequestMethodStr[r->method],
  	url);
      r->flags.collapsed = 0;
@@ -2367,7 +2368,7 @@ diff -u squid/src/client_side.c:1.147 squid/src/client_side.c:1.89.4.13
      if (r->method == METHOD_CONNECT && !http->redirect.status) {
  	http->log_type = LOG_TCP_MISS;
  #if USE_SSL && SSL_CONNECT_INTERCEPT
-@@ -3828,6 +3852,20 @@
+@@ -3812,6 +3836,20 @@
  	    (long) conn->in.offset, (long) conn->in.size);
  	len = conn->in.size - conn->in.offset - 1;
      }
@@ -2388,24 +2389,17 @@ diff -u squid/src/client_side.c:1.147 squid/src/client_side.c:1.89.4.13
      statCounter.syscalls.sock.reads++;
      size = FD_READ_METHOD(fd, conn->in.buf + conn->in.offset, len);
      if (size > 0) {
-@@ -3931,7 +3969,15 @@
+@@ -3916,7 +3954,8 @@
  	    /* add to the client request queue */
- 	    for (H = &conn->chr; *H; H = &(*H)->next);
- 	    *H = http;
--	    conn->nrequests++;
+ 	    dlinkAddTail(http, &http->node, &conn->reqs);
+ 	    conn->nrequests++;
+-	    commSetTimeout(fd, Config.Timeout.lifetime, clientLifetimeTimeout, http);
 +	    F->pconn.uses++;
-+	    F->pconn.type = 0;
-+	    /*
-+	     * I wanted to lock 'http' here since its callback data for 
-+	     * clientLifetimeTimeout(), but there's no logical place to
-+	     * cbdataUnlock if the timeout never happens.  Maybe its safe
-+	     * enough to assume that if the FD is open, and the timeout
-+	     * triggers, that 'http' is valid.
-+	     */
- 	    commSetTimeout(fd, Config.Timeout.lifetime, clientLifetimeTimeout, http);
++            F->pconn.type = 0;
  	    if (parser_return_code < 0) {
  		debug(33, 1) ("clientReadRequest: FD %d (%s:%d) Invalid Request\n", fd, fd_table[fd].ipaddr, fd_table[fd].remote_port);
-@@ -4102,7 +4148,7 @@
+ 		err = errorCon(ERR_INVALID_REQ, HTTP_BAD_REQUEST, NULL);
+@@ -4086,7 +4125,7 @@
  }
  
  /* file_read like function, for reading body content */
@@ -2414,7 +2408,7 @@ diff -u squid/src/client_side.c:1.147 squid/src/client_side.c:1.89.4.13
  clientReadBody(request_t * request, char *buf, size_t size, CBCB * callback, void *cbdata)
  {
      ConnStateData *conn = request->body_reader_data;
-@@ -4231,7 +4277,7 @@
+@@ -4215,7 +4254,7 @@
  }
  
  /* Abort a body request */
@@ -2423,7 +2417,7 @@ diff -u squid/src/client_side.c:1.147 squid/src/client_side.c:1.89.4.13
  clientAbortBody(request_t * request)
  {
      ConnStateData *conn = request->body_reader_data;
-@@ -4273,7 +4319,7 @@
+@@ -4257,7 +4296,7 @@
  	 * Some data has been sent to the client, just close the FD
  	 */
  	comm_close(fd);
@@ -2432,7 +2426,7 @@ diff -u squid/src/client_side.c:1.147 squid/src/client_side.c:1.89.4.13
  	/*
  	 * assume its a persistent connection; just close it
  	 */
-@@ -5015,6 +5061,52 @@
+@@ -4978,6 +5017,52 @@
      }
  }
  
@@ -2620,9 +2614,9 @@ diff -u squid/src/enums.h:1.57 squid/src/enums.h:1.45.4.6
 +
  #endif /* SQUID_ENUMS_H */
 Index: squid/src/forward.c
-diff -u squid/src/forward.c:1.42 squid/src/forward.c:1.20.4.9
---- squid/src/forward.c:1.42	Sat Sep 30 14:52:28 2006
-+++ squid/src/forward.c	Fri Nov  3 10:47:13 2006
+diff -u squid/src/forward.c:1.43 squid/src/forward.c:1.20.4.10
+--- squid/src/forward.c:1.43	Sat Dec  9 21:51:43 2006
++++ squid/src/forward.c	Tue Dec 12 14:49:45 2006
 @@ -358,8 +358,9 @@
      } else {
  	debug(17, 3) ("fwdConnectDone: FD %d: '%s'\n", server_fd, storeUrl(fwdState->entry));
@@ -2635,7 +2629,7 @@ diff -u squid/src/forward.c:1.42 squid/src/forward.c:1.20.4.9
  	    peerConnectSucceded(fs->peer);
  #if USE_SSL
  	if ((fs->peer && fs->peer->use_ssl) ||
-@@ -935,6 +936,8 @@
+@@ -941,6 +942,8 @@
  void
  fwdFail(FwdState * fwdState, ErrorState * errorState)
  {
@@ -2644,7 +2638,7 @@ diff -u squid/src/forward.c:1.42 squid/src/forward.c:1.20.4.9
      debug(17, 3) ("fwdFail: %s \"%s\"\n\t%s\n",
  	err_type_str[errorState->type],
  	httpStatusString(errorState->http_status),
-@@ -973,6 +976,8 @@
+@@ -979,6 +982,8 @@
  void
  fwdUnregister(int fd, FwdState * fwdState)
  {
@@ -2653,7 +2647,7 @@ diff -u squid/src/forward.c:1.42 squid/src/forward.c:1.20.4.9
      debug(17, 3) ("fwdUnregister: %s\n", storeUrl(fwdState->entry));
      assert(fd == fwdState->server_fd);
      assert(fd > -1);
-@@ -992,7 +997,10 @@
+@@ -998,7 +1003,10 @@
  void
  fwdComplete(FwdState * fwdState)
  {
@@ -4423,10 +4417,10 @@ diff -u /dev/null squid/src/icap_opt.c:1.1.16.1
 +    }
 +}
 Index: squid/src/icap_reqmod.c
-diff -u /dev/null squid/src/icap_reqmod.c:1.1.14.8
+diff -u /dev/null squid/src/icap_reqmod.c:1.1.14.9
 --- /dev/null		Thu Jan  1 01:00:00 1970
-+++ squid/src/icap_reqmod.c	Mon Nov 27 13:45:59 2006
-@@ -0,0 +1,988 @@
++++ squid/src/icap_reqmod.c	Tue Dec 12 14:49:46 2006
+@@ -0,0 +1,990 @@
 +
 +/*
 + * $Id$
@@ -4555,11 +4549,13 @@ diff -u /dev/null squid/src/icap_reqmod.c:1.1.14.8
 +    assert(http->conn->chr->next == NULL);
 +    {
 +	ConnStateData *dummyconn;
++        clientHttpRequest *H;
 +	dummyconn = cbdataAlloc(ConnStateData);
 +	dummyconn->fd = icap->reqmod.client_fd;
 +	dummyconn->pinning.fd = -1;
-+	dummyconn->chr = http->conn->chr;
-+	dummyconn->chr->conn = dummyconn;
++        H=DLINK_HEAD(conn->reqs);
++        dlinkAddTail(H, &H->node, &dummyconn->reqs);
++        H->conn = dummyconn;
 +	comm_add_close_handler(dummyconn->fd, connStateFree, dummyconn);
 +    }
 +    http->conn->chr = http;
@@ -4570,7 +4566,7 @@ diff -u /dev/null squid/src/icap_reqmod.c:1.1.14.8
 +    http->conn->in.size = 0;
 +    http->conn->in.buf = NULL;
 +    http->conn->log_addr = icap->reqmod.log_addr;
-+    http->conn->chr = http;
++    dlinkAddTail(http, &http->node, &http->conn->reqs); 
 +    comm_add_close_handler(http->conn->fd, connStateFree, http->conn);
 +#endif
 +    http->icap_reqmod = NULL;
@@ -6748,9 +6744,9 @@ diff -u squid/src/stat.c:1.38 squid/src/stat.c:1.26.8.10
  		conn->defer.n, (long int) conn->defer.until);
  	}
 Index: squid/src/store.c
-diff -u squid/src/store.c:1.38 squid/src/store.c:1.21.10.9
---- squid/src/store.c:1.38	Mon Oct  9 06:52:39 2006
-+++ squid/src/store.c	Fri Nov  3 10:47:14 2006
+diff -u squid/src/store.c:1.39 squid/src/store.c:1.21.10.10
+--- squid/src/store.c:1.39	Sat Dec  9 22:51:20 2006
++++ squid/src/store.c	Tue Dec 12 14:49:46 2006
 @@ -1105,8 +1105,17 @@
      MemObject *mem = e->mem_obj;
      assert(mem != NULL);
@@ -6771,9 +6767,9 @@ diff -u squid/src/store.c:1.38 squid/src/store.c:1.21.10.9
  	debug(20, 5) ("storeAppend: appending %d bytes for '%s'\n",
  	    len,
 Index: squid/src/structs.h
-diff -u squid/src/structs.h:1.134 squid/src/structs.h:1.81.4.11
---- squid/src/structs.h:1.134	Mon Oct 23 04:52:56 2006
-+++ squid/src/structs.h	Fri Nov  3 10:47:14 2006
+diff -u squid/src/structs.h:1.136 squid/src/structs.h:1.81.4.12
+--- squid/src/structs.h:1.136	Wed Nov 29 08:52:51 2006
++++ squid/src/structs.h	Tue Dec 12 14:49:47 2006
 @@ -423,6 +423,23 @@
      wordlist *args;
  };
@@ -6974,17 +6970,17 @@ diff -u squid/src/structs.h:1.134 squid/src/structs.h:1.81.4.11
  	unsigned int hit:1;
      } flags;
      struct {
-@@ -1226,6 +1380,9 @@
-     } redirect;
-     dlink_node active;
-     squid_off_t maxBodySize;
+@@ -1232,6 +1386,9 @@
+      * zero.. [ahc]
+      */
+     char readbuf[CLIENT_SOCK_SZ];
 +#if HS_FEAT_ICAP
 +    IcapStateData *icap_reqmod;
 +#endif
  };
  
  struct _ConnStateData {
-@@ -1894,6 +2051,9 @@
+@@ -1900,6 +2057,9 @@
      unsigned int done_etag:1;	/* We have done clientProcessETag on this, don't attempt it again */
      char *urlgroup;		/* urlgroup, returned by redirectors */
      char *peer_domain;		/* Configured peer forceddomain */
@@ -6994,7 +6990,7 @@ diff -u squid/src/structs.h:1.134 squid/src/structs.h:1.81.4.11
      BODY_HANDLER *body_reader;
      void *body_reader_data;
      String extacl_log;		/* String to be used for access.log purposes */
-@@ -2001,7 +2161,11 @@
+@@ -2007,7 +2167,11 @@
  	    kb_t kbytes_in;
  	    kb_t kbytes_out;
  	} all , http, ftp, other;

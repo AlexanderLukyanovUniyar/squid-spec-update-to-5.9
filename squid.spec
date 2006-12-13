@@ -1,5 +1,5 @@
 Name: squid
-Version: 2.6.STABLE5
+Version: 2.6.STABLE6
 Release: alt1
 
 Summary: The Squid proxy caching server
@@ -31,12 +31,7 @@ Patch9: squid-2.5.STABLE10-alt-sambaprefix.patch
 Patch8: squid-2.6.STABLE5-alt-feat_icap.patch
 # Official patches to Squid
 # See http://devel.squid-cache.org/projects.html#icap
-Patch10: squid-2.6.STABLE5-squid-icap.patch
-# These four came from Debian
-Patch11: squid-2.6.STABLE5-deb-coss_assert.patch
-Patch12: squid-2.6.STABLE5-deb-aufs_assert.patch
-Patch13: squid-2.6.STABLE5-deb-hosts_overflow.patch
-Patch14: squid-2.6.STABLE5-deb-htcp_assert.patch
+Patch10: squid-2.6.STABLE6-squid-icap.patch.bz2
 
 # Patches by other vendors
 Patch20: squid-2.6.STABLE5-deb-localhost.patch
@@ -171,10 +166,6 @@ Install squid package to get all Squid parts.
 %patch8 -p0
 install -m 644 %SOURCE5 errors/list
 %patch10 -p1
-%patch11 -p1
-%patch12 -p1
-%patch13 -p1
-%patch14 -p1
 
 %patch20 -p0
 %patch21 -p1
@@ -374,8 +365,8 @@ popd
 
 
 %changelog
-* Mon Dec 04 2006 Grigory Batalov <bga@altlinux.ru> 2.6.STABLE5-alt1
-- 2.6.STABLE5
+* Wed Dec 13 2006 Grigory Batalov <bga@altlinux.ru> 2.6.STABLE6-alt1
+- 2.6.STABLE6
 - applied:
  + ICAP support
  + correct file location in QUICKSTART
@@ -385,7 +376,6 @@ popd
  + prevent appending local domain to localhost
  + update smb_auth.sh
  + run unlinkd on diskd and ufs only
- + some assertion fixes from upstream
 - included into upstream:
  + squid-2.5.STABLE13-libaio-2.patch
  + squid-2.5.STABLE13-header_leak.patch

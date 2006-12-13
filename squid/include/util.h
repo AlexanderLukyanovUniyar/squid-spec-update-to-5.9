@@ -1,5 +1,5 @@
 /*
- * $Id: util.h,v 1.67 2006/09/18 22:54:38 hno Exp $
+ * $Id: util.h,v 1.69 2006/12/10 13:36:23 serassio Exp $
  *
  * AUTHOR: Harvest Derived
  *
@@ -52,6 +52,10 @@
 #define _etext etext
 #endif
 
+#ifndef MIN
+#define	MIN(a, b)	((a) < (b) ? (a) : (b))
+#endif
+
 extern const char *getfullhostname(void);
 extern const char *mkhttpdlogtime(const time_t *);
 extern const char *mkrfc1123(time_t);
@@ -64,7 +68,7 @@ extern int tvSubUsec(struct timeval, struct timeval);
 extern double tvSubDsec(struct timeval, struct timeval);
 extern char *xstrncpy(char *, const char *, size_t);
 extern size_t xcountws(const char *str);
-extern time_t parse_rfc1123(const char *str);
+extern time_t parse_rfc1123(const char *str, int len);
 extern void *xcalloc(size_t, size_t);
 extern void *xmalloc(size_t);
 extern void *xrealloc(void *, size_t);
@@ -130,7 +134,9 @@ extern int64_t WIN32_strtoll(const char *nptr, char **endptr, int base);
 #endif
 extern int chroot(const char *);
 extern int ftruncate(int, off_t);
+#ifndef HAVE_GETTIMEOFDAY
 extern int gettimeofday(struct timeval *, struct timezone *);
+#endif
 extern int inet_aton(const char *, struct in_addr *);
 extern int kill(pid_t, int);
 extern int statfs(const char *, struct statfs *);

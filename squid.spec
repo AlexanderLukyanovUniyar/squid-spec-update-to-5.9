@@ -493,7 +493,7 @@ popd
  + 2005-04-20 21:55 (Minor) Unable to run "squid -k" when hostname cannot be determined
  + 2005-04-21 10:31 (Cosmetic) Correctly read DOS/Windows formatted config files with CRLF as line terminator
  + 2005-04-22 20:21 (Minor) Unrecognized cache-control directives are silently dropped
- + 2005-04-24 16:35 (Minor) Make the use of the %m error page to return auth info messages
+ + 2005-04-24 16:35 (Minor) Make the use of the %%m error page to return auth info messages
  + 2005-04-22 20:48 (Cosmetic) PID file check fails when chrooting
  + 2005-04-26 04:30 (Minor Security) Fix for CVE-1999-0710: cachemgr malicouse use
  + 2005-04-25 16:36 (Cosmetic) Minor aufs improvements
@@ -613,11 +613,11 @@ popd
 * Sat Dec 04 2004 Denis Ovsienko <pilot@altlinux.ru> 2.5.STABLE7-alt3
 - applied current patches:
  + 2004-11-07 23:37 (Minor) Squid fails to close TCP connection after blank HTTP response
- + 2004-11-06 21:42 (Minor) 100% CPU on startup on new/experimental Linux kernels due to O_NONBLOCK
+ + 2004-11-06 21:42 (Minor) 100%% CPU on startup on new/experimental Linux kernels due to O_NONBLOCK
  + 2004-11-06 15:28 (Minor) Failure to shut down busy helpers on -k rotate/reconfigure
  + 2004-10-20 23:23 (Minor) The new req_header and resp_header acls segfaults immediately on parse of squid.conf
  + 2004-10-19 10:09 (Cosmetic) Document -v (protocol version) option to LDAP helpers
- + 2004-10-14 22:48 (Minor) 100% CPU usage on half-closed PUT/POST requests
+ + 2004-10-14 22:48 (Minor) 100%% CPU usage on half-closed PUT/POST requests
 
 * Sun Nov 14 2004 Dmitry V. Levin <ldv@altlinux.org> 2.5.STABLE7-alt2
 - Cleaned up build dependencies, was too superfluous

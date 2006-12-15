@@ -44,8 +44,13 @@ Obsoletes: %name-novm
 
 BuildConflicts: bind-devel
 BuildPreReq: rpm-build >= 4.0.4-alt10, autoconf >= 2.54
-BuildRequires: OpenSP libldap-devel libpam0-devel libsasl2-devel libssl-devel perl-Authen-Smb sgml-tools
-BuildRequires: libdb4-devel
+
+# Automatically added by buildreq on Fri Dec 15 2006
+BuildRequires: OpenSP libdb4-devel libldap-devel libpam-devel libsasl2-devel libssl-devel sgml-tools
+# Used by smb_auth.pl, required on find-requires stage:
+BuildRequires: perl-Authen-Smb
+BuildRequires: rpm-build-compat
+
 Requires: %name-common %name-server %name-helpers %name-helpers-perl %name-cachemgr
 
 %description
@@ -188,18 +193,24 @@ touch NEWS AUTHORS
 	--localstatedir=%_var \
 	--sysconfdir=%_sysconfdir/%name \
 	--datadir=%_datadir/%name \
-	--enable-poll \
+	--enable-epoll \
 	--enable-snmp \
 	--enable-removal-policies="lru heap" \
 	--enable-delay-pools \
 	--enable-icmp \
+	--enable-htcp \
 	--enable-async-io=16 \
 	--enable-useragent-log \
 	--enable-wccp \
+	--enable-wccpv2 \
 	--with-gnu-regex \
 	--enable-arp-acl \
 	--enable-ssl \
 	--enable-forw-via-db \
+	--enable-follow-x-forwarded-for \
+	--enable-forward-log \
+	--enable-referer-log \
+	--enable-ident-lookups \
 	--enable-carp \
 	--enable-ntlm-fail-open \
 	--enable-cache-digests \
@@ -214,6 +225,8 @@ touch NEWS AUTHORS
 	--with-large-files \
 	--enable-large-cache-files \
 	--enable-icap-support \
+	--enable-multicast-miss \
+	--enable-fd-config \
 	--with-maxfd=16384
 
 %make_build

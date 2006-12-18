@@ -401,7 +401,7 @@ popd
  + suggest -c option to digest auth helper
  + squid-pinger obsoleted by squid-server
  + add libdb4-devel to BuildRequires
- + quote percent sign (%) in changelog
+ + quote percent sign (%%) in changelog
 - Included into upstream:
  + squid-2.5.STABLE13-libaio-2.patch
  + squid-2.5.STABLE13-header_leak.patch

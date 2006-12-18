@@ -80,6 +80,7 @@ Group: System/Servers
 PreReq: net-snmp-mibs
 Requires: %name-common
 Conflicts: %name <= 2.5.STABLE9-alt3
+Obsoletes: %name-pinger
 
 %description server
 This package contains Squid main server and its necessary files
@@ -134,7 +135,6 @@ Summary(ru_RU.KOI8-R): вспомогательные программы для squid-server
 Group: System/Servers
 Requires: %name-common
 Conflicts: %name <= 2.5.STABLE9-alt3
-Obsoletes: %name-pinger
 
 %description helpers
 This package contains Squid helpers for different kinds of authentication.

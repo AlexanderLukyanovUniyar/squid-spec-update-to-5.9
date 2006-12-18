@@ -379,17 +379,30 @@ popd
 
 %changelog
 * Wed Dec 13 2006 Grigory Batalov <bga@altlinux.ru> 2.6.STABLE6-alt1
-- 2.6.STABLE6
-- applied:
+- New upstream release.
+- Applied:
  + ICAP support
  + correct file location in QUICKSTART
  + config-driven maximum file descriptor number
- + disable HTCP and SNMP by default
+ + build with HTCP, WCCPv2, SNMP but disable in config
  + open rsync, snews, CUPS, SWAT by default
  + prevent appending local domain to localhost
  + update smb_auth.sh
  + run unlinkd on diskd and ufs only
-- included into upstream:
+ + helpers list update
+ + get back default port to listen to
+ + get back default access logging
+ + use epoll instead of poll
+ + allow X-Forwarded-For following
+ + allow forward_log config directive
+ + allow Referer logging
+ + allow Ident (RFC931) lookups
+ + allow multicast notification of cache misses
+ + suggest -c option to digest auth helper
+ + squid-pinger obsoleted by squid-server
+ + add libdb4-devel to BuildRequires
+ + quote percent sign (%) in changelog
+- Included into upstream:
  + squid-2.5.STABLE13-libaio-2.patch
  + squid-2.5.STABLE13-header_leak.patch
  + squid-2.5.STABLE13-ident_leak.patch
@@ -397,7 +410,7 @@ popd
  + squid-2.5.STABLE13-icons.patch
  + squid-2.5.STABLE13-hostnamelen.patch
  + squid-2.5.STABLE13-stable13.patch
-- obsoleted:
+- Obsoleted:
  + squid-2.4.STABLE6-alt-without-bind.patch
  + squid-2.5-automake.patch
  + squid-2.5.STABLE10-alt-perlreq.patch

@@ -1,6 +1,14 @@
+%def_enable poll
+%def_disable epoll
+
+# epoll has higher priority if both specified, so disable it
+%if_enabled poll
+%def_disable epoll
+%endif
+
 Name: squid
 Version: 2.6.STABLE6
-Release: alt1
+Release: alt2
 
 Summary: The Squid proxy caching server
 Summary(ru_RU.KOI8-R): Кэширующий прокси-сервер Squid
@@ -193,7 +201,8 @@ touch NEWS AUTHORS
 	--localstatedir=%_var \
 	--sysconfdir=%_sysconfdir/%name \
 	--datadir=%_datadir/%name \
-	--enable-epoll \
+	%{subst_enable poll} \
+	%{subst_enable epoll} \
 	--enable-snmp \
 	--enable-removal-policies="lru heap" \
 	--enable-delay-pools \
@@ -226,6 +235,7 @@ touch NEWS AUTHORS
 	--enable-large-cache-files \
 	--enable-icap-support \
 	--enable-multicast-miss \
+	--enable-underscores \
 	--enable-fd-config \
 	--with-maxfd=16384
 
@@ -378,6 +388,10 @@ popd
 
 
 %changelog
+* Wed Dec 20 2006 Grigory Batalov <bga@altlinux.ru> 2.6.STABLE6-alt2
+- Don't ban undersores in hostname.
+- By default use poll.
+
 * Wed Dec 13 2006 Grigory Batalov <bga@altlinux.ru> 2.6.STABLE6-alt1
 - New upstream release.
 - Applied:

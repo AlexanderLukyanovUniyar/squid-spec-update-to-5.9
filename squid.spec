@@ -1,9 +1,9 @@
 %def_enable poll
-%def_disable epoll
+%def_enable epoll
 
 # epoll has higher priority if both specified, so disable it
 %if_enabled poll
-%def_disable epoll
+%force_disable epoll
 %endif
 
 Name: squid

@@ -8,7 +8,7 @@
 
 Name: squid
 Version: 2.6.STABLE6
-Release: alt2
+Release: alt3
 
 Summary: The Squid proxy caching server
 Summary(ru_RU.KOI8-R): Кэширующий прокси-сервер Squid
@@ -47,6 +47,7 @@ Patch21: squid-2.5.STABLE4-fc-location.patch
 Patch22: squid-2.6.STABLE5-fc-fdconfig.patch
 Patch23: squid-2.6.STABLE5-deb-unlinkd.patch
 Patch24: squid-2.6.STABLE5-deb-smb_auth.patch
+Patch25: squid-2.6.STABLE6-drweb-icap.patch
 
 Obsoletes: %name-novm
 
@@ -185,6 +186,7 @@ install -m 644 %SOURCE5 errors/list
 %patch22 -p1
 %patch23 -p0
 %patch24 -p0
+%patch25 -p2
 
 find . -type f -name '*.pl' -print0 | \
 	xargs -r0 sed -ie 's,/usr/local/bin/perl,/usr/bin/perl,g'
@@ -388,8 +390,12 @@ popd
 
 
 %changelog
+* Mon Dec 25 2006 Grigory Batalov <bga@altlinux.ru> 2.6.STABLE6-alt3
+- Applied:
+ + DrWeb's ICAP patch
+
 * Wed Dec 20 2006 Grigory Batalov <bga@altlinux.ru> 2.6.STABLE6-alt2
-- Don't ban undersores in hostname.
+- Don't ban underscores in hostname.
 - By default use poll.
 
 * Wed Dec 13 2006 Grigory Batalov <bga@altlinux.ru> 2.6.STABLE6-alt1

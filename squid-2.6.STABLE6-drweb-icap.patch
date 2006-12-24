@@ -1,0 +1,182 @@
+diff --git a/squid/src/comm.c b/squid/src/comm.c
+index 7d08db7..43680c2 100644
+--- a/squid/src/comm.c
++++ b/squid/src/comm.c
+@@ -738,7 +738,7 @@ comm_close(int fd)
+     if (shutting_down && (!F->flags.open || F->type == FD_FILE))
+ 	return;
+     assert(F->flags.open);
+-    assert(F->type != FD_FILE);
++    if(F->type == FD_FILE) return;//AI: fix for our path
+     F->flags.closing = 1;
+     CommWriteStateCallbackAndFree(fd, COMM_ERR_CLOSING);
+     commCallCloseHandlers(fd);
+diff --git a/squid/src/comm_generic.c b/squid/src/comm_generic.c
+index 9cb9337..9f0da4b 100644
+--- a/squid/src/comm_generic.c
++++ b/squid/src/comm_generic.c
+@@ -247,7 +247,7 @@ comm_call_handlers(int fd, int read_even
+ #endif
+ 	    default:
+ 		if (!(F->flags.backoff)) {
+-		    debug(5, 1) ("comm_call_handlers(): WARNING defer handler for fd=%d (desc=%s) does not call commDeferFD() - backing off manually\n", fd, F->desc);
++		    debug(5, 2) ("comm_call_handlers(): WARNING defer handler for fd=%d (desc=%s) does not call commDeferFD() - backing off manually\n", fd, F->desc);/*AI: chnage from 2 to 1*/
+ 		    commDeferFD(fd);
+ 		}
+ 		break;
+diff --git a/squid/src/http.c b/squid/src/http.c
+index be8d719..86bda1c 100644
+--- a/squid/src/http.c
++++ b/squid/src/http.c
+@@ -757,7 +757,7 @@ httpReadReply(int fd, void *data)
+ #ifdef HS_FEAT_ICAP
+ 	if (httpState->icap_writer && cbdataValid(httpState->icap_writer)) {
+ 	    debug(81, 3) ("httpReadReply: EOF for ICAP writer\n");
+-	    icapSendRespMod(httpState->icap_writer, buf, len, 1);
++	    icapSendRespMod(httpState->icap_writer, buf, len, 1, 0);
+ 	}
+ #endif
+ 	if (httpState->reply_hdr_state < 2)
+@@ -816,7 +816,7 @@ httpReadReply(int fd, void *data)
+ 	if (httpState->icap_writer) {
+ 	    debug(81, 5) ("calling icapSendRespMod from %s:%d\n", __FILE__, __LINE__);
+ 	    if (cbdataValid(httpState->icap_writer)) {
+-		icapSendRespMod(httpState->icap_writer, buf, len, 0);
++		icapSendRespMod(httpState->icap_writer, buf, len, 0,&(httpState->fwd->client_fd));
+ 		httpState->icap_writer->fake_content_length += len;
+ 	    }
+ 	} else
+@@ -883,7 +883,7 @@ httpReadReply(int fd, void *data)
+ #ifdef HS_FEAT_ICAP
+ 			if (httpState->icap_writer) {
+ 			    debug(81, 5) ("calling icapSendRespMod from %s:%d\n", __FILE__, __LINE__);
+-			    icapSendRespMod(httpState->icap_writer, buf, len, 0);
++			    icapSendRespMod(httpState->icap_writer, buf, len, 0, &(httpState->fwd->client_fd));
+ 			    httpState->icap_writer->fake_content_length += len;
+ 			} else
+ #endif
+@@ -893,7 +893,7 @@ httpReadReply(int fd, void *data)
+ 		}
+ #ifdef HS_FEAT_ICAP
+ 		if (httpState->icap_writer)
+-		    icapSendRespMod(httpState->icap_writer, NULL, 0, 1);
++		    icapSendRespMod(httpState->icap_writer, NULL, 0, 1,0);
+ #endif
+ 		if (keep_alive) {
+ 		    int pinned = 0;
+@@ -952,7 +952,7 @@ httpReadReply(int fd, void *data)
+ 		storeUrl(entry));
+ #ifdef HS_FEAT_ICAP
+ 	    if (httpState->icap_writer)
+-		icapSendRespMod(httpState->icap_writer, NULL, 0, 1);
++		icapSendRespMod(httpState->icap_writer, NULL, 0, 1,0);
+ #endif
+ 	    fwdComplete(httpState->fwd);
+ 	    comm_close(fd);
+@@ -1274,7 +1274,7 @@ httpBuildRequestHeader(request_t * reque
+     /* append Via */
+     if (Config.onoff.via) {
+ 	String strVia = httpHeaderGetList(hdr_in, HDR_VIA);
+-	snprintf(bbuf, BBUF_SZ, "%d.%d %s",
++	snprintf(bbuf, BBUF_SZ, "%d.%d %s Dr.Web patch 2",
+ 	    orig_request->http_ver.major,
+ 	    orig_request->http_ver.minor, ThisCache);
+ 	strListAdd(&strVia, bbuf, ',');
+diff --git a/squid/src/icap_respmod.c b/squid/src/icap_respmod.c
+index 18b7795..ecc1f32 100644
+--- a/squid/src/icap_respmod.c
++++ b/squid/src/icap_respmod.c
+@@ -177,9 +177,8 @@ buildRespModHeader(MemBuf * mb, IcapStat
+     return consumed;
+ }
+ 
+-
+ void
+-icapSendRespMod(IcapStateData * icap, char *buf, int len, int theEnd)
++icapSendRespMod(IcapStateData * icap, char *buf, int len, int theEnd,int* client_fd)
+ {
+     MemBuf mb;
+ #if ICAP_PREVIEW
+@@ -350,6 +349,9 @@ icapSendRespMod(IcapStateData * icap, ch
+ 	    icap->flags.wait_for_preview_reply = 1;
+ 	}
+     } else if (icap->flags.wait_for_preview_reply) {
++		//AI: check for client state
++		if(client_fd&&icapCheckClientCloseConnection(icap,*client_fd))
++			return;
+ 	/* received new data while waiting for preview response */
+ 	/* add data to internal buffer and send later */
+ 	debug(81,
+@@ -398,6 +400,10 @@ icapSendRespMod(IcapStateData * icap, ch
+ 	memBufClean(&mb);
+ 	return;
+     }
++	//AI: check for client state
++	if(client_fd&&icapCheckClientCloseConnection(icap,*client_fd))
++		return;
++
+     debug(81, 5) ("icapSendRespMod: FD %d writing {%s}\n", icap->icap_fd,
+ 	mb.buf);
+     icap->flags.write_pending = 1;
+@@ -472,7 +478,7 @@ icapRespModReadReply(int fd, void *data)
+ 	     * else let http to call icapSendRespMod when new data arrived
+ 	     */
+ 	    if (icap->flags.http_server_eof)
+-		icapSendRespMod(icap, NULL, 0, 0);
++		icapSendRespMod(icap, NULL, 0, 0,0);
+ 	    /*
+ 	     * reset the header to send the rest of the preview
+ 	     */
+@@ -628,7 +634,7 @@ icapSendRespModDone(int fd, char *bufnot
+ 	debug(81,
+ 	    3) ("icapSendRespModDone: I'm supposed to send zero chunk now\n");
+ 	icap->flags.send_zero_chunk = 0;
+-	icapSendRespMod(icap, NULL, 0, 1);
++	icapSendRespMod(icap, NULL, 0, 1,0);
+ 	return;
+     }
+     if (icap->flags.wait_for_preview_reply || icap->flags.wait_for_reply) {
+@@ -820,6 +826,30 @@ icapRespModKeepAliveOrClose(IcapStateDat
+     }
+ }
+ 
++static int
++icapCheckClientCloseConnection(IcapStateData * icap,int client_fd)
++{
++	fd_set read_mask;
++	struct timeval zero_tv;
++	char local_buf;
++
++	debug(81, 5) ("icapCheckClientCloseConnection: check socket: %i\n", client_fd);
++	zero_tv.tv_sec = 0;
++	zero_tv.tv_usec = 0;
++	FD_ZERO(&read_mask);
++	FD_SET(client_fd, &read_mask);
++	if (select(client_fd+1, &read_mask, NULL, NULL, &zero_tv) == 1){//AI: ok ready for stop this game
++		if(recv(client_fd,&local_buf,1,MSG_PEEK)<=0){
++			if(errno!=EINTR){
++				debug(81, 2) ("icapCheckClientCloseConnection: client stop his connection: %s\n", strerror(errno));
++				icapRespModKeepAliveOrClose(icap);
++				comm_close(client_fd);
++				return 1;
++			}
++		}
++	}
++	return 0;
++}
+ 
+ 
+ /*
+diff --git a/squid/src/protos.h b/squid/src/protos.h
+index 8c6cad5..de1d477 100644
+--- a/squid/src/protos.h
++++ b/squid/src/protos.h
+@@ -1449,7 +1449,7 @@ int icapParseStatusLine(const char *, in
+  * icap_respmod.c
+  */
+ IcapStateData *icapRespModStart(icap_service_t, request_t *, StoreEntry *, http_state_flags);
+-void icapSendRespMod(IcapStateData *, char *, int, int);
++void icapSendRespMod(IcapStateData *, char *, int, int,int*);
+ CNCB icapConnectOver;
+ 
+ /*

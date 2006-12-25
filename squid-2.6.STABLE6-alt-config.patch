@@ -191,3 +191,14 @@ diff -urN squid-2.6.STABLE5.orig/src/cf.data.pre squid-2.6.STABLE5/src/cf.data.p
  DOC_END
  
  NAME: snmp_access
+--- squid.orig/src/cf.data.pre
++++ squid/src/cf.data.pre
+@@ -1708,6 +1708,8 @@ DOC_START
+ 	returned by prefixing the returned url with "!urlgroup!"
+ 
+ 	By default, a URL rewriter is not used.
++
++ url_rewrite_program /path/to/redirector
+ DOC_END
+ 
+ NAME: url_rewrite_children redirect_children

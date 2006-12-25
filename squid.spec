@@ -28,8 +28,8 @@ Source5: squid-2.6.STABLE5-alt-errorlist
 # Other patches
 # rediffed for 2.6.S5
 Patch1: squid-2.6.STABLE5-alt-make.patch
-# rediffed for 2.6.S5
-Patch2: squid-2.6.STABLE5-alt-config.patch
+# rediffed for 2.6.S6
+Patch2: squid-2.6.STABLE6-alt-config.patch
 Patch6: squid-2.6.STABLE5-alt-errrors_belarusian.patch
 # See http://stc.nixdev.org/getstat.php
 # DISABLED for now
@@ -393,6 +393,7 @@ popd
 * Mon Dec 25 2006 Grigory Batalov <bga@altlinux.ru> 2.6.STABLE6-alt3
 - Applied:
  + DrWeb's ICAP patch
+ + Config updated: redirector template
 
 * Wed Dec 20 2006 Grigory Batalov <bga@altlinux.ru> 2.6.STABLE6-alt2
 - Don't ban underscores in hostname.

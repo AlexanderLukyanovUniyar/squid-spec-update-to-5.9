@@ -30,6 +30,7 @@ Source5: squid-2.6.STABLE5-alt-errorlist
 Patch1: squid-2.6.STABLE5-alt-make.patch
 # rediffed for 2.6.S6
 Patch2: squid-2.6.STABLE6-alt-config.patch
+Patch5: squid-2.6.STABLE6-alt-max_body_size.patch
 Patch6: squid-2.6.STABLE5-alt-errrors_belarusian.patch
 # See http://stc.nixdev.org/getstat.php
 # DISABLED for now
@@ -174,6 +175,7 @@ Install squid package to get all Squid parts.
 %setup -q
 %patch1 -p1
 %patch2 -p1
+%patch5 -p2
 %patch6 -p1
 %patch9 -p1
 
@@ -394,6 +396,7 @@ popd
 - Applied:
  + DrWeb's ICAP patch
  + Config updated: redirector template
+ + ACL max_body_size
 
 * Wed Dec 20 2006 Grigory Batalov <bga@altlinux.ru> 2.6.STABLE6-alt2
 - Don't ban underscores in hostname.

@@ -190,6 +190,10 @@ install -m 644 %SOURCE5 errors/list
 %patch24 -p0
 %patch25 -p2
 
+mkdir -p faq
+install -m644 %SOURCE1 FAQ.sgml
+sed -i -e 's,url="/\(htpasswd/chpasswd-cgi.tar.gz\)",url="http://www.squid-cache.org/\1",g' FAQ.sgml
+
 find . -type f -name '*.pl' -print0 | \
 	xargs -r0 sed -ie 's,/usr/local/bin/perl,/usr/bin/perl,g'
 
@@ -245,8 +249,7 @@ touch NEWS AUTHORS
 
 %make_build
 
-%__mkdir faq
-%__cp $RPM_SOURCE_DIR/FAQ.sgml faq
+cp FAQ.sgml faq/
 pushd faq
 sgml2html FAQ.sgml
 rm FAQ.sgml
@@ -393,6 +396,7 @@ popd
 
 %changelog
 * Mon Dec 25 2006 Grigory Batalov <bga@altlinux.ru> 2.6.STABLE6-alt3
+- Set absolute link to chpasswd.cgi tarball.
 - Applied:
  + DrWeb's ICAP patch
  + Config updated: redirector template

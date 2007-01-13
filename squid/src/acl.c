@@ -1,6 +1,6 @@
 
 /*
- * $Id: acl.c,v 1.316 2006/10/16 20:11:41 serassio Exp $
+ * $Id: acl.c,v 1.318 2007/01/06 17:22:45 hno Exp $
  *
  * DEBUG: section 28    Access Control
  * AUTHOR: Duane Wessels
@@ -1128,24 +1128,18 @@ aclParseAclLine(acl ** head)
 
 /* does name lookup, returns page_id */
 err_type
-aclGetDenyInfoPage(acl_deny_info_list ** head, const char *name)
+aclGetDenyInfoPage(acl_deny_info_list ** head, const char *name, int redirect_allowed)
 {
     acl_deny_info_list *A = NULL;
-    acl_name_list *L = NULL;
 
-    A = *head;
-    if (NULL == *head)		/* empty list */
-	return ERR_NONE;
-    while (A) {
-	L = A->acl_list;
-	if (NULL == L)		/* empty list should never happen, but in case */
+    for (A = *head; A; A = A->next) {
+	acl_name_list *L = NULL;
+	if (!redirect_allowed && strchr(A->err_page_name, ':'))
 	    continue;
-	while (L) {
+	for (L = A->acl_list; L; L = L->next) {
 	    if (!strcmp(name, L->name))
 		return A->err_page_id;
-	    L = L->next;
 	}
-	A = A->next;
     }
     return ERR_NONE;
 }
@@ -3083,7 +3077,7 @@ struct arpreq {
  * token namespace crashing any structures or classes having members
  * of the same names.
  */
-#ifdef _SQUID_OPENBSD_
+#if defined(_SQUID_NETBSD_) || defined(_SQUID_OPENBSD_)
 #undef free
 #endif
 #include <sys/sysctl.h>
@@ -3096,7 +3090,7 @@ struct arpreq {
 #include <net/route.h>
 #endif
 #include <net/if.h>
-#if defined(_SQUID_FREEBSD_) || defined(_SQUID_OPENBSD_)
+#if defined(_SQUID_FREEBSD_) || defined(_SQUID_NETBSD_) || defined(_SQUID_OPENBSD_)
 #include <net/if_arp.h>
 #endif
 #if HAVE_NETINET_IF_ETHER_H
@@ -3318,7 +3312,7 @@ aclMatchArp(void *dataptr, struct in_addr c)
 	    inet_ntoa(c), splayLastResult ? "NOT found" : "found");
 	return (0 == splayLastResult);
     }
-#elif defined(_SQUID_FREEBSD_) || defined(_SQUID_OPENBSD_)
+#elif defined(_SQUID_FREEBSD_) || defined(_SQUID_NETBSD_) || defined(_SQUID_OPENBSD_)
 
     struct arpreq arpReq;
     struct sockaddr_in ipAddr;
@@ -3475,7 +3469,7 @@ aclArpCompare(const void *a, const void *b)
 	return (d1[4] > d2[4]) ? 1 : -1;
     if (d1[5] != d2[5])
 	return (d1[5] > d2[5]) ? 1 : -1;
-#elif defined(_SQUID_FREEBSD_) || defined(_SQUID_OPENBSD_)
+#elif defined(_SQUID_FREEBSD_) || defined(_SQUID_OPENBSD_) || defined(_SQUID_NETBSD_)
     const unsigned char *d1 = a;
     const unsigned char *d2 = b;
     if (d1[0] != d2[0])

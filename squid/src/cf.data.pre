@@ -1,6 +1,6 @@
 
 #
-# $Id: cf.data.pre,v 1.377 2006/11/28 23:51:52 hno Exp $
+# $Id: cf.data.pre,v 1.380 2007/01/13 16:06:42 hno Exp $
 #
 #
 # SQUID Web Proxy Cache          http://www.squid-cache.org/
@@ -84,9 +84,11 @@ DOC_START
 	You may specify multiple socket addresses on multiple lines.
 
 	options are:
-		transparent	Support for transparent proxies
-		vhost		Accelerator using Host directive
-		vport		Accelerator with IP virtual host support
+		transparent	Support for transparent interception of
+				outgoing requests without browser settings
+		vhost		Accelerator using the Host header for
+				virtual domain support.
+		vport		Accelerator with IP based virtual host support
 		vport=		As above, but uses specified port number
 				rather than the http_port number.
 		defaultsite=	Main web site name for accelerators.
@@ -1916,7 +1918,7 @@ DOC_START
 	"program" cmdline
 	Specify the command for the external authenticator.  Such a program
 	reads a line containing "username":"realm" and replies with the
-	appropriate H(A1) value base64 encoded or ERR if the user (or his H(A1)
+	appropriate H(A1) value hex encoded or ERR if the user (or his H(A1)
 	hash) does not exists.  See RFC 2616 for the definition of H(A1).
 	"ERR" responses may optionally be followed by a error description
 	available as %m in the returned error page.

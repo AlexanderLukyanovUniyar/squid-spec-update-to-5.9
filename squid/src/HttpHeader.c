@@ -1,6 +1,6 @@
 
 /*
- * $Id: HttpHeader.c,v 1.90 2006/11/29 05:31:48 adrian Exp $
+ * $Id: HttpHeader.c,v 1.91.2.1 2007/01/21 10:26:44 hno Exp $
  *
  * DEBUG: section 55    HTTP Header
  * AUTHOR: Alex Rousskov

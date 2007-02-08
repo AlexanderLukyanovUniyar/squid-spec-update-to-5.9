@@ -7,8 +7,8 @@
 %endif
 
 Name: squid
-Version: 2.6.STABLE6
-Release: alt3
+Version: 2.6.STABLE9
+Release: alt1
 
 Summary: The Squid proxy caching server
 Summary(ru_RU.KOI8-R): Кэширующий прокси-сервер Squid
@@ -40,7 +40,7 @@ Patch9: squid-2.5.STABLE10-alt-sambaprefix.patch
 Patch8: squid-2.6.STABLE5-alt-feat_icap.patch
 # Official patches to Squid
 # See http://devel.squid-cache.org/projects.html#icap
-Patch10: squid-2.6.STABLE6-squid-icap.patch.bz2
+Patch10: squid-2.6.STABLE9-squid-icap.patch.bz2
 
 # Patches by other vendors
 Patch20: squid-2.6.STABLE5-deb-localhost.patch
@@ -181,7 +181,7 @@ Install squid package to get all Squid parts.
 
 %patch8 -p0
 install -m 644 %SOURCE5 errors/list
-%patch10 -p1
+%patch10 -p2
 
 %patch20 -p0
 %patch21 -p1
@@ -395,6 +395,11 @@ popd
 
 
 %changelog
+* Thu Feb 08 2007 Grigory Batalov <bga@altlinux.ru> 2.6.STABLE9-alt1
+- New upstream release
+ + includes NTLM authentication DoS fix, see squid bug #1873.
+- Official ICAP patch updated.
+
 * Mon Dec 25 2006 Grigory Batalov <bga@altlinux.ru> 2.6.STABLE6-alt3
 - Set absolute link to chpasswd.cgi tarball.
 - Applied:

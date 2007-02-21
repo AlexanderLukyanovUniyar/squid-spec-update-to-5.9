@@ -30,6 +30,7 @@ Source5: squid-2.6.STABLE5-alt-errorlist
 Patch1: squid-2.6.STABLE5-alt-make.patch
 # rediffed for 2.6.S6
 Patch2: squid-2.6.STABLE6-alt-config.patch
+Patch3: squid-2.6.STABLE5-alt-default_port.patch
 Patch5: squid-2.6.STABLE6-alt-max_body_size.patch
 Patch6: squid-2.6.STABLE5-alt-errrors_belarusian.patch
 # See http://stc.nixdev.org/getstat.php
@@ -175,6 +176,7 @@ Install squid package to get all Squid parts.
 %setup -q
 %patch1 -p1
 %patch2 -p1
+%patch3 -p2
 %patch5 -p2
 %patch6 -p1
 %patch9 -p1

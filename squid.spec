@@ -8,7 +8,7 @@
 
 Name: squid
 Version: 2.6.STABLE9
-Release: alt1
+Release: alt2
 
 Summary: The Squid proxy caching server
 Summary(ru_RU.KOI8-R): Кэширующий прокси-сервер Squid
@@ -397,6 +397,10 @@ popd
 
 
 %changelog
+* Thu Feb 22 2007 Grigory Batalov <bga@altlinux.ru> 2.6.STABLE9-alt2
+- Remove extra access_log directive from config.
+- Export default port settings into separate patch.
+
 * Thu Feb 08 2007 Grigory Batalov <bga@altlinux.ru> 2.6.STABLE9-alt1
 - New upstream release
  + includes NTLM authentication DoS fix, see squid bug #1873.

@@ -1285,7 +1285,7 @@ DOC_END
 NAME: access_log cache_access_log
 TYPE: access_log
 LOC: Config.Log.accesslogs
-DEFAULT: @DEFAULT_ACCESS_LOG@
+DEFAULT: none
 DOC_START
   These files log client request activities. Has a line every HTTP or
   ICP request. The format is:

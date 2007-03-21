@@ -7,8 +7,8 @@
 %endif
 
 Name: squid
-Version: 2.6.STABLE9
-Release: alt2
+Version: 2.6.STABLE12
+Release: alt1
 
 Summary: The Squid proxy caching server
 Summary(ru_RU.KOI8-R): Кэширующий прокси-сервер Squid
@@ -41,7 +41,7 @@ Patch9: squid-2.5.STABLE10-alt-sambaprefix.patch
 Patch8: squid-2.6.STABLE5-alt-feat_icap.patch
 # Official patches to Squid
 # See http://devel.squid-cache.org/projects.html#icap
-Patch10: squid-2.6.STABLE9-squid-icap.patch.bz2
+Patch10: squid-2.6.STABLE12-squid-icap.patch.bz2
 
 # Patches by other vendors
 Patch20: squid-2.6.STABLE5-deb-localhost.patch
@@ -190,7 +190,7 @@ install -m 644 %SOURCE5 errors/list
 %patch22 -p1
 %patch23 -p0
 %patch24 -p0
-%patch25 -p2
+#%patch25 -p2
 
 mkdir -p faq
 install -m644 %SOURCE1 FAQ.sgml
@@ -397,6 +397,12 @@ popd
 
 
 %changelog
+* Wed Mar 21 2007 Grigory Batalov <bga@altlinux.ru> 2.6.STABLE12-alt1
+- New upstream release
+  + includes security fix SQUID-2007:1.
+- Official ICAP patch updated and cleaned up.
+- DrWeb's ICAP patch obsoleted (disabled).
+
 * Thu Feb 22 2007 Grigory Batalov <bga@altlinux.ru> 2.6.STABLE9-alt2
 - Remove extra access_log directive from config.
 - Export default port settings into separate patch.

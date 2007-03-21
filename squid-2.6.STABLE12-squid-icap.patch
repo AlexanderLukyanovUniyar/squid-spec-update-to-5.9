@@ -1,5 +1,5 @@
 diff --git a/squid/configure.in b/squid/configure.in
-index ebb6ab6..5a8aa34 100644
+index b915cde..d55b9e3 100644
 --- a/squid/configure.in
 +++ b/squid/configure.in
 @@ -530,6 +530,17 @@ AC_ARG_ENABLE(delay-pools,
@@ -29,7 +29,7 @@ index ebb6ab6..5a8aa34 100644
  	strsep \
  	strtoll \
  	sysconf \
-@@ -2457,6 +2470,16 @@ if test "$ac_cv_func_snprintf" = "no" || test "$ac_cv_func_vsnprintf" = "no" ; t
+@@ -2533,6 +2546,16 @@ if test "$ac_cv_func_snprintf" = "no" || test "$ac_cv_func_vsnprintf" = "no" ; t
    AM_CONDITIONAL(NEED_OWN_SNPRINTF, true)
  fi
  
@@ -46,14 +46,6 @@ index ebb6ab6..5a8aa34 100644
  AM_CONDITIONAL(NEED_OWN_STRSEP, false)
  if test "$ac_cv_func_strsep" = "no" ; then
    AM_CONDITIONAL(NEED_OWN_STRSEP, true)
-diff --git a/squid/errors/list b/squid/errors/list
---- a/squid/errors/list	Fri Apr 28 04:10:45 2006
-+++ b/squid/errors/list	Wed May 17 10:57:59 2006
-@@ -28,3 +28,4 @@
- ERR_URN_RESOLVE
- ERR_WRITE_ERROR
- ERR_ZERO_SIZE_OBJECT
-+ERR_ICAP_FAILURE
 diff --git a/squid/errors/Bulgarian/ERR_ICAP_FAILURE b/squid/errors/Bulgarian/ERR_ICAP_FAILURE
 new file mode 100644
 index 0000000..8b64ee5
@@ -1415,10 +1407,10 @@ index 0fa38f1..cf05492 100644
 +    return len;
 +}
 diff --git a/squid/src/cache_cf.c b/squid/src/cache_cf.c
-index 7cb65ea..fcf315a 100644
+index f1db60c..0bdc35d 100644
 --- a/squid/src/cache_cf.c
 +++ b/squid/src/cache_cf.c
-@@ -2393,6 +2393,587 @@ check_null_body_size_t(dlink_list bodylist)
+@@ -2394,6 +2394,587 @@ check_null_body_size_t(dlink_list bodylist)
      return bodylist.head == NULL;
  }
  
@@ -2022,18 +2014,10 @@ index 5143824..544579e 100644
      CREATE_CBDATA(ps_state);
      CREATE_CBDATA(RemovalPolicy);
 diff --git a/squid/src/cf.data.pre b/squid/src/cf.data.pre
-index 0c6f8c8..611860c 100644
+index 7f00f0d..d44aed1 100644
 --- a/squid/src/cf.data.pre
 +++ b/squid/src/cf.data.pre
-@@ -3214,7 +3214,6 @@ DOC_START
- 	ensure correct results it is best to set server_persistent_connections
- 	to off when using this directive in such configurations.
- DOC_END
--
- NAME: reply_header_max_size
- COMMENT: (KB)
- TYPE: b_size_t
-@@ -3483,6 +3482,187 @@ DOC_START
+@@ -3484,6 +3484,187 @@ DOC_START
  DOC_END
  
  COMMENT_START
@@ -2240,7 +2224,7 @@ index c8584c8..bc5b18a 100755
  	print "{\"" $2 "\", \"" DEFINE "\", "
  	print "#if " $2
 diff --git a/squid/src/client_side.c b/squid/src/client_side.c
-index a5aae88..980f115 100644
+index e34e41c..56331c6 100644
 --- a/squid/src/client_side.c
 +++ b/squid/src/client_side.c
 @@ -109,7 +109,7 @@ static const char *const crlf = "\r\n";
@@ -2310,7 +2294,7 @@ index a5aae88..980f115 100644
  #if HEADERS_LOG
      headersLog(0, 1, request->method, request);
  #endif
-@@ -1356,11 +1363,22 @@ httpRequestFree(void *data)
+@@ -1368,11 +1375,22 @@ httpRequestFree(void *data)
      /* Unlink us from the clients request list */
      dlinkDelete(&http->node, &http->conn->reqs);
      dlinkDelete(&http->active, &ClientActiveRequests);
@@ -2334,7 +2318,7 @@ index a5aae88..980f115 100644
  connStateFree(int fd, void *data)
  {
      ConnStateData *connState = data;
-@@ -1380,8 +1398,9 @@ connStateFree(int fd, void *data)
+@@ -1392,8 +1410,9 @@ connStateFree(int fd, void *data)
  	authenticateAuthUserRequestUnlock(connState->auth_user_request);
      connState->auth_user_request = NULL;
      authenticateOnCloseConnection(connState);
@@ -2346,7 +2330,7 @@ index a5aae88..980f115 100644
      if (connState->pinning.fd >= 0)
  	comm_close(connState->pinning.fd);
      cbdataFree(connState);
-@@ -1579,7 +1598,7 @@ clientSetKeepaliveFlag(clientHttpRequest * http)
+@@ -1591,7 +1610,7 @@ clientSetKeepaliveFlag(clientHttpRequest * http)
      }
  }
  
@@ -2355,7 +2339,7 @@ index a5aae88..980f115 100644
  clientCheckContentLength(request_t * r)
  {
      switch (r->method) {
-@@ -1598,7 +1617,7 @@ clientCheckContentLength(request_t * r)
+@@ -1610,7 +1629,7 @@ clientCheckContentLength(request_t * r)
      /* NOT REACHED */
  }
  
@@ -2364,7 +2348,7 @@ index a5aae88..980f115 100644
  clientCachable(clientHttpRequest * http)
  {
      request_t *req = http->request;
-@@ -1624,7 +1643,7 @@ clientCachable(clientHttpRequest * http)
+@@ -1636,7 +1655,7 @@ clientCachable(clientHttpRequest * http)
  }
  
  /* Return true if we can query our neighbors for this object */
@@ -2373,7 +2357,7 @@ index a5aae88..980f115 100644
  clientHierarchical(clientHttpRequest * http)
  {
      const char *url = http->uri;
-@@ -3310,7 +3329,7 @@ clientProcessRequest2(clientHttpRequest * http)
+@@ -3302,7 +3321,7 @@ clientProcessRequest2(clientHttpRequest * http)
      return LOG_TCP_HIT;
  }
  
@@ -2382,7 +2366,7 @@ index a5aae88..980f115 100644
  clientProcessRequest(clientHttpRequest * http)
  {
      char *url = http->uri;
-@@ -3321,6 +3340,11 @@ clientProcessRequest(clientHttpRequest * http)
+@@ -3313,6 +3332,11 @@ clientProcessRequest(clientHttpRequest * http)
  	RequestMethodStr[r->method],
  	url);
      r->flags.collapsed = 0;
@@ -2394,7 +2378,7 @@ index a5aae88..980f115 100644
      if (r->method == METHOD_CONNECT && !http->redirect.status) {
  	http->log_type = LOG_TCP_MISS;
  #if USE_SSL && SSL_CONNECT_INTERCEPT
-@@ -3815,6 +3839,20 @@ clientReadRequest(int fd, void *data)
+@@ -3807,6 +3831,20 @@ clientReadRequest(int fd, void *data)
  	    (long) conn->in.offset, (long) conn->in.size);
  	len = conn->in.size - conn->in.offset - 1;
      }
@@ -2415,17 +2399,16 @@ index a5aae88..980f115 100644
      statCounter.syscalls.sock.reads++;
      size = FD_READ_METHOD(fd, conn->in.buf + conn->in.offset, len);
      if (size > 0) {
-@@ -3919,7 +3957,9 @@ clientReadRequest(int fd, void *data)
+@@ -3911,6 +3949,8 @@ clientReadRequest(int fd, void *data)
  	    /* add to the client request queue */
  	    dlinkAddTail(http, &http->node, &conn->reqs);
  	    conn->nrequests++;
 +	    F->pconn.uses++;
-+           F->pconn.type = 0;
++	    F->pconn.type = 0;
  	    commSetTimeout(fd, Config.Timeout.lifetime, clientLifetimeTimeout, http);
  	    if (parser_return_code < 0) {
  		debug(33, 1) ("clientReadRequest: FD %d (%s:%d) Invalid Request\n", fd, fd_table[fd].ipaddr, fd_table[fd].remote_port);
- 		err = errorCon(ERR_INVALID_REQ, HTTP_BAD_REQUEST, NULL);
-@@ -4089,7 +4128,7 @@ clientReadRequest(int fd, void *data)
+@@ -4081,7 +4121,7 @@ clientReadRequest(int fd, void *data)
  }
  
  /* file_read like function, for reading body content */
@@ -2434,7 +2417,7 @@ index a5aae88..980f115 100644
  clientReadBody(request_t * request, char *buf, size_t size, CBCB * callback, void *cbdata)
  {
      ConnStateData *conn = request->body_reader_data;
-@@ -4218,7 +4257,7 @@ clientProcessBody(ConnStateData * conn)
+@@ -4210,7 +4250,7 @@ clientProcessBody(ConnStateData * conn)
  }
  
  /* Abort a body request */
@@ -2443,7 +2426,7 @@ index a5aae88..980f115 100644
  clientAbortBody(request_t * request)
  {
      ConnStateData *conn = request->body_reader_data;
-@@ -4260,7 +4299,7 @@ requestTimeout(int fd, void *data)
+@@ -4252,7 +4292,7 @@ requestTimeout(int fd, void *data)
  	 * Some data has been sent to the client, just close the FD
  	 */
  	comm_close(fd);
@@ -2452,7 +2435,7 @@ index a5aae88..980f115 100644
  	/*
  	 * assume its a persistent connection; just close it
  	 */
-@@ -4981,6 +5020,52 @@ varyEvaluateMatch(StoreEntry * entry, request_t * request)
+@@ -4974,6 +5014,52 @@ varyEvaluateMatch(StoreEntry * entry, request_t * request)
      }
  }
  
@@ -2521,7 +2504,7 @@ index 30432c5..7d08db7 100644
      if (F->ssl) {
  	if (!F->flags.close_request) {
 diff --git a/squid/src/enums.h b/squid/src/enums.h
-index 75470a7..54284d8 100644
+index df1b96e..b25fa16 100644
 --- a/squid/src/enums.h
 +++ b/squid/src/enums.h
 @@ -94,6 +94,7 @@ typedef enum {
@@ -2532,7 +2515,7 @@ index 75470a7..54284d8 100644
      ERR_INVALID_RESP,
      ERR_MAX
  } err_type;
-@@ -456,6 +457,9 @@ typedef enum {
+@@ -461,6 +462,9 @@ typedef enum {
      PROTO_WHOIS,
      PROTO_INTERNAL,
      PROTO_HTTPS,
@@ -2542,7 +2525,7 @@ index 75470a7..54284d8 100644
      PROTO_MAX
  } protocol_t;
  
-@@ -631,6 +635,12 @@ typedef enum {
+@@ -636,6 +640,12 @@ typedef enum {
  #if USE_SSL
      MEM_ACL_CERT_DATA,
  #endif
@@ -2555,7 +2538,7 @@ index 75470a7..54284d8 100644
      MEM_MAX
  } mem_type;
  
-@@ -731,9 +741,14 @@ typedef enum {
+@@ -736,9 +746,14 @@ typedef enum {
      CBDATA_RemovalPolicyWalker,
      CBDATA_RemovalPurgeWalker,
      CBDATA_store_client,
@@ -2570,7 +2553,7 @@ index 75470a7..54284d8 100644
  /*
   * Return codes from checkVary(request)
   */
-@@ -782,4 +797,68 @@ typedef enum {
+@@ -787,4 +802,68 @@ typedef enum {
      ST_OP_CREATE
  } store_op_t;
  
@@ -2640,7 +2623,7 @@ index 75470a7..54284d8 100644
 +
  #endif /* SQUID_ENUMS_H */
 diff --git a/squid/src/forward.c b/squid/src/forward.c
-index 6f26a6b..7e55ac3 100644
+index b12e08d..0e0cd88 100644
 --- a/squid/src/forward.c
 +++ b/squid/src/forward.c
 @@ -358,8 +358,9 @@ fwdConnectDone(int server_fd, int status, void *data)
@@ -2686,7 +2669,7 @@ index 6f26a6b..7e55ac3 100644
      debug(17, 3) ("fwdComplete: %s\n\tstatus %d\n", storeUrl(e),
  	e->mem_obj->reply->sline.status);
 diff --git a/squid/src/globals.h b/squid/src/globals.h
-index 84201d2..9f90bac 100644
+index 84201d2..0a2562c 100644
 --- a/squid/src/globals.h
 +++ b/squid/src/globals.h
 @@ -171,6 +171,9 @@ extern const char *external_acl_message;	/* NULL */
@@ -2700,7 +2683,7 @@ index 84201d2..9f90bac 100644
  extern int opt_no_daemon;	/* 0 */
  #if LINUX_TPROXY
 diff --git a/squid/src/http.c b/squid/src/http.c
-index a26a78e..88948e6 100644
+index bbd6c4e..2e62ca1 100644
 --- a/squid/src/http.c
 +++ b/squid/src/http.c
 @@ -47,7 +47,7 @@ static CWCB httpSendRequestEntry;
@@ -2728,67 +2711,92 @@ index a26a78e..88948e6 100644
  #endif
      if (httpState == NULL)
  	return;
-@@ -80,6 +81,9 @@ httpStateFree(int fd, void *data)
-     requestUnlink(httpState->orig_request);
+@@ -81,6 +82,9 @@ httpStateFree(int fd, void *data)
      httpState->request = NULL;
      httpState->orig_request = NULL;
+     stringClean(&httpState->chunkhdr);
 +#if HS_FEAT_ICAP
 +    cbdataUnlock(httpState->icap_writer);
 +#endif
      cbdataFree(httpState);
  }
  
-@@ -409,7 +413,7 @@ httpMakeVaryMark(request_t * request, HttpReply * reply)
+@@ -410,7 +414,7 @@ httpMakeVaryMark(request_t * request, HttpReply * reply)
  }
  
  /* rewrite this later using new interfaces @?@ */
--static void
-+void
+-static size_t
++size_t
  httpProcessReplyHeader(HttpStateData * httpState, const char *buf, int size)
  {
      StoreEntry *entry = httpState->entry;
-@@ -552,24 +556,35 @@ httpPconnTransferDone(HttpStateData * httpState)
-     MemObject *mem = httpState->entry->mem_obj;
-     HttpReply *reply = mem->reply;
-     squid_off_t clen;
-+    squid_off_t content_bytes_read;
-     debug(11, 3) ("httpPconnTransferDone: FD %d\n", httpState->fd);
-     debug(11, 5) ("httpPconnTransferDone: content_length=%" PRINTF_OFF_T "\n",
- 	reply->content_length);
-     /* If we haven't seen the end of reply headers, we are not done */
--    if (httpState->reply_hdr_state < 2)
-+    if (httpState->reply_hdr_state < 2) {
-+	debug(11, 3) ("httpPconnTransferDone: reply_hdr_state=%d, returning 0\n",
-+	    httpState->reply_hdr_state);
- 	return 0;
-+    }
-     clen = httpReplyBodySize(httpState->request->method, reply);
+@@ -639,11 +643,25 @@ httpAppendBody(HttpStateData * httpState, const char *buf, ssize_t len, int buff
+ 	    if (size > httpState->chunk_size)
+ 		size = httpState->chunk_size;
+ 	    httpState->chunk_size -= size;
 +#ifdef HS_FEAT_ICAP
-+    if (httpState->icap_writer) {
-+	content_bytes_read = httpState->icap_writer->fake_content_length;
-+	debug(11, 3) ("using fake conten length %" PRINTF_OFF_T "\n", content_bytes_read);
-+    } else
++	    if (httpState->icap_writer) {
++		debug(81, 5) ("calling icapRespModAddBodyData from %s:%d\n", __FILE__, __LINE__);
++		icapRespModAddBodyData(httpState->icap_writer, buf, size);
++		httpState->icap_writer->fake_content_length += size;
++	    } else
 +#endif
-+	content_bytes_read = mem->inmem_hi;
-     /* If the body size is unknown we must wait for EOF */
-     if (clen < 0)
- 	return 0;
-     /* Barf if we got more than we asked for */
--    if (mem->inmem_hi > clen + reply->hdr_sz)
-+    if (content_bytes_read > clen + reply->hdr_sz)
- 	return -1;
-     /* If there is no message body, we can be persistent */
-     if (0 == clen)
- 	return 1;
-     /* If the body size is known, we must wait until we've gotten all of it.  */
--    if (mem->inmem_hi < clen + reply->hdr_sz)
-+    if (content_bytes_read < clen + reply->hdr_sz)
- 	return 0;
-     /* We got it all */
-     return 1;
-@@ -636,6 +651,17 @@ httpReadReply(int fd, void *data)
-     delay_id delay_id;
+ 	    storeAppend(httpState->entry, buf, size);
+ 	    buf += size;
+ 	    len -= size;
+ 	} else if (httpState->chunk_size < 0) {
+ 	    /* non-chunked without content-length */
++#ifdef HS_FEAT_ICAP
++	     if (httpState->icap_writer) {
++		 debug(81, 5) ("calling icapRespModAddBodyData from %s:%d\n", __FILE__, __LINE__);
++		 icapRespModAddBodyData(httpState->icap_writer, buf, len);
++		 httpState->icap_writer->fake_content_length += len;
++	     } else
++#endif	     
+ 	    storeAppend(httpState->entry, buf, len);
+ 	    len = 0;
+ 	} else if (httpState->flags.chunked) {
+@@ -698,6 +716,15 @@ httpAppendBody(HttpStateData * httpState, const char *buf, ssize_t len, int buff
+ 	    /* Don't know what to do with this data. Bail out */
+ 	    break;
+ 	}
++#if HS_FEAT_ICAP
++	if (httpState->icap_writer) {
++	    if (!httpState->icap_writer->respmod.entry) {
++		debug(11, 3) ("httpReadReply: FD: %d: icap respmod aborded!\n", fd);
++		comm_close(fd);
++		return;
++	    }
++	} else
++#endif
+ 	if (EBIT_TEST(entry->flags, ENTRY_ABORTED)) {
+ 	    /*
+ 	     * the above storeAppend() call could ABORT this entry,
+@@ -710,6 +737,10 @@ httpAppendBody(HttpStateData * httpState, const char *buf, ssize_t len, int buff
+     if (!httpState->chunk_size && !httpState->flags.chunked)
+ 	complete = 1;
+     if (!complete && len == 0) {
++#ifdef HS_FEAT_ICAP
++    if (httpState->icap_writer)
++	icapSendRespMod(httpState->icap_writer, 0);
++#endif
+ 	/* Wait for more data or EOF condition */
+ 	if (httpState->flags.keepalive_broken) {
+ 	    commSetTimeout(fd, 10, NULL, NULL);
+@@ -769,6 +800,10 @@ httpAppendBody(HttpStateData * httpState, const char *buf, ssize_t len, int buff
+      */
+     if (!entry->mem_obj->reply->keep_alive)
+ 	keep_alive = 0;
++#ifdef HS_FEAT_ICAP
++    if (httpState->icap_writer)
++	icapSendRespMod(httpState->icap_writer, 1);
++#endif
+     if (keep_alive) {
+ 	int pinned = 0;
+ #if LINUX_TPROXY
+@@ -828,6 +863,17 @@ httpReadReply(int fd, void *data)
  #endif
+     int buffer_filled;
  
 +#if HS_FEAT_ICAP
 +    if (httpState->icap_writer) {
@@ -2804,7 +2812,7 @@ index a26a78e..88948e6 100644
      if (EBIT_TEST(entry->flags, ENTRY_ABORTED)) {
  	comm_close(fd);
  	return;
-@@ -647,7 +673,35 @@ httpReadReply(int fd, void *data)
+@@ -839,7 +885,35 @@ httpReadReply(int fd, void *data)
      else
  	delay_id = delayMostBytesAllowed(entry->mem_obj, &read_sz);
  #endif
@@ -2840,9 +2848,9 @@ index a26a78e..88948e6 100644
      errno = 0;
      statCounter.syscalls.sock.reads++;
      len = FD_READ_METHOD(fd, buf, read_sz);
-@@ -664,7 +718,13 @@ httpReadReply(int fd, void *data)
- 	    clen >>= 1;
+@@ -858,7 +932,13 @@ httpReadReply(int fd, void *data)
  	IOStats.Http.read_hist[bin]++;
+ 	buf[len] = '\0';
      }
 -    if (!httpState->reply_hdr.size && len > 0 && fd_table[fd].uses > 1) {
 +#ifdef HS_FEAT_ICAP
@@ -2855,84 +2863,22 @@ index a26a78e..88948e6 100644
  	/* Skip whitespace */
  	while (len > 0 && xisspace(*buf))
  	    xmemmove(buf, buf + 1, len--);
-@@ -694,6 +754,12 @@ httpReadReply(int fd, void *data)
-     } else if (len == 0) {
- 	/* Connection closed; retrieval done. */
- 	httpState->eof = 1;
-+#ifdef HS_FEAT_ICAP
-+	if (httpState->icap_writer && cbdataValid(httpState->icap_writer)) {
-+	    debug(81, 3) ("httpReadReply: EOF for ICAP writer\n");
-+	    icapSendRespMod(httpState->icap_writer, buf, len, 1);
-+	}
-+#endif
- 	if (httpState->reply_hdr_state < 2)
- 	    /*
- 	     * Yes Henrik, there is a point to doing this.  When we
-@@ -746,7 +812,28 @@ httpReadReply(int fd, void *data)
- 		    EBIT_CLR(entry->flags, ENTRY_FWD_HDR_WAIT);
+@@ -956,12 +1036,49 @@ httpReadReply(int fd, void *data)
+ 		commSetSelect(fd, COMM_SELECT_READ, httpReadReply, httpState, 0);
+ 		return;
  	    }
++#ifdef HS_FEAT_ICAP
++	    if (httpState->icap_writer) {
++		debug(81, 5) ("calling icapSendRespMod from %s:%d\n", __FILE__, __LINE__);
++		if (cbdataValid(httpState->icap_writer)) {
++		    icapRespModAddResponceHeaders(httpState->icap_writer, buf, done);
++		    httpState->icap_writer->fake_content_length += done;
++		}
++	    }
++#endif
  	}
--	storeAppend(entry, buf, len);
-+#ifdef HS_FEAT_ICAP
-+	if (httpState->icap_writer) {
-+	    debug(81, 5) ("calling icapSendRespMod from %s:%d\n", __FILE__, __LINE__);
-+	    if (cbdataValid(httpState->icap_writer)) {
-+		icapSendRespMod(httpState->icap_writer, buf, len, 0);
-+		httpState->icap_writer->fake_content_length += len;
-+	    }
-+	} else
-+#endif
-+	    storeAppend(entry, buf, len);
-+
-+
-+	debug(11, 5) ("httpReadReply: after storeAppend FD %d read %d\n", fd, len);
-+#if HS_FEAT_ICAP
-+	if (httpState->icap_writer) {
-+	    if (!httpState->icap_writer->respmod.entry) {
-+		debug(11, 3) ("httpReadReply: FD: %d: icap respmod aborded!\n", fd);
-+		comm_close(fd);
-+		return;
-+	    }
-+	} else
-+#endif
- 	if (EBIT_TEST(entry->flags, ENTRY_ABORTED)) {
- 	    /*
- 	     * the above storeAppend() call could ABORT this entry,
-@@ -793,10 +880,21 @@ httpReadReply(int fd, void *data)
- 			    ("httpReadReply: Excess data from \"%s %s\"\n",
- 			    RequestMethodStr[orig_request->method],
- 			    storeUrl(entry));
--			storeAppend(entry, buf, len);
-+#ifdef HS_FEAT_ICAP
-+			if (httpState->icap_writer) {
-+			    debug(81, 5) ("calling icapSendRespMod from %s:%d\n", __FILE__, __LINE__);
-+			    icapSendRespMod(httpState->icap_writer, buf, len, 0);
-+			    httpState->icap_writer->fake_content_length += len;
-+			} else
-+#endif
-+			    storeAppend(entry, buf, len);
- 			keep_alive = 0;
- 		    }
- 		}
-+#ifdef HS_FEAT_ICAP
-+		if (httpState->icap_writer)
-+		    icapSendRespMod(httpState->icap_writer, NULL, 0, 1);
-+#endif
- 		if (keep_alive) {
- 		    int pinned = 0;
- #if LINUX_TPROXY
-@@ -852,6 +950,10 @@ httpReadReply(int fd, void *data)
- 		("httpReadReply: Excess data from \"%s %s\"\n",
- 		RequestMethodStr[orig_request->method],
- 		storeUrl(entry));
-+#ifdef HS_FEAT_ICAP
-+	    if (httpState->icap_writer)
-+		icapSendRespMod(httpState->icap_writer, NULL, 0, 1);
-+#endif
- 	    fwdComplete(httpState->fwd);
- 	    comm_close(fd);
- 	    return;
-@@ -862,6 +964,34 @@ httpReadReply(int fd, void *data)
+ 	httpAppendBody(httpState, buf + done, len - done, buffer_filled);
+ 	return;
      }
  }
  
@@ -2967,7 +2913,7 @@ index a26a78e..88948e6 100644
  /* This will be called when request write is complete. Schedule read of
   * reply. */
  static void
-@@ -889,6 +1019,63 @@ httpSendComplete(int fd, char *bufnotused, size_t size, int errflag, void *data)
+@@ -989,6 +1106,63 @@ httpSendComplete(int fd, char *bufnotused, size_t size, int errflag, void *data)
  	comm_close(fd);
  	return;
      } else {
@@ -3031,7 +2977,7 @@ index a26a78e..88948e6 100644
  	/*
  	 * Set the read timeout here because it hasn't been set yet.
  	 * We only set the read timeout after the request has been
-@@ -897,8 +1084,18 @@ httpSendComplete(int fd, char *bufnotused, size_t size, int errflag, void *data)
+@@ -997,8 +1171,18 @@ httpSendComplete(int fd, char *bufnotused, size_t size, int errflag, void *data)
  	 * the timeout for POST/PUT requests that have very large
  	 * request bodies.
  	 */
@@ -3051,7 +2997,7 @@ index a26a78e..88948e6 100644
      }
      httpState->flags.request_sent = 1;
  }
-@@ -1192,8 +1389,11 @@ httpBuildRequestHeader(request_t * request,
+@@ -1302,8 +1486,11 @@ httpBuildRequestHeader(request_t * request,
  	if (!EBIT_TEST(cc->mask, CC_MAX_AGE)) {
  	    const char *url = entry ? storeUrl(entry) : urlCanonical(orig_request);
  	    httpHdrCcSetMaxAge(cc, getMaxAge(url));
@@ -3063,7 +3009,7 @@ index a26a78e..88948e6 100644
  	}
  	/* Set no-cache if determined needed but not found */
  	if (orig_request->flags.nocache && !httpHeaderHas(hdr_in, HDR_PRAGMA))
-@@ -1319,6 +1519,7 @@ httpStart(FwdState * fwd)
+@@ -1429,6 +1616,7 @@ httpStart(FwdState * fwd)
      int fd = fwd->server_fd;
      HttpStateData *httpState;
      request_t *proxy_req;
@@ -3071,7 +3017,7 @@ index a26a78e..88948e6 100644
      request_t *orig_req = fwd->request;
      debug(11, 3) ("httpStart: \"%s %s\"\n",
  	RequestMethodStr[orig_req->method],
-@@ -1361,12 +1562,22 @@ httpStart(FwdState * fwd)
+@@ -1471,12 +1659,22 @@ httpStart(FwdState * fwd)
  	httpState->request = requestLink(orig_req);
  	httpState->orig_request = requestLink(orig_req);
      }
@@ -4446,10 +4392,10 @@ index 0000000..517bb85
 +}
 diff --git a/squid/src/icap_reqmod.c b/squid/src/icap_reqmod.c
 new file mode 100644
-index 0000000..d4b1735
+index 0000000..c112c7d
 --- /dev/null
 +++ b/squid/src/icap_reqmod.c
-@@ -0,0 +1,990 @@
+@@ -0,0 +1,989 @@
 +
 +/*
 + * $Id$
@@ -4557,7 +4503,6 @@ index 0000000..d4b1735
 +     * url here.
 +     */
 +    http->uri = xstrdup(urlCanonical(icap->request));
-+    http->log_uri = xstrndup(http->uri, MAX_URL);
 +    http->range_iter.boundary = StringNull;
 +    http->request = requestLink(request ? request : icap->request);
 +    http->flags.did_icap_reqmod = 1;
@@ -4578,13 +4523,13 @@ index 0000000..d4b1735
 +    assert(http->conn->chr->next == NULL);
 +    {
 +	ConnStateData *dummyconn;
-+        clientHttpRequest *H;
++	clientHttpRequest *H;
 +	dummyconn = cbdataAlloc(ConnStateData);
 +	dummyconn->fd = icap->reqmod.client_fd;
 +	dummyconn->pinning.fd = -1;
-+        H=DLINK_HEAD(conn->reqs);
-+        dlinkAddTail(H, &H->node, &dummyconn->reqs);
-+        H->conn = dummyconn;
++	H = DLINK_HEAD(conn->reqs);
++	dlinkAddTail(H, &H->node, &dummyconn->reqs);
++	H->conn = dummyconn;
 +	comm_add_close_handler(dummyconn->fd, connStateFree, dummyconn);
 +    }
 +    http->conn->chr = http;
@@ -4595,7 +4540,7 @@ index 0000000..d4b1735
 +    http->conn->in.size = 0;
 +    http->conn->in.buf = NULL;
 +    http->conn->log_addr = icap->reqmod.log_addr;
-+    dlinkAddTail(http, &http->node, &http->conn->reqs); 
++    dlinkAddTail(http, &http->node, &http->conn->reqs);
 +    comm_add_close_handler(http->conn->fd, connStateFree, http->conn);
 +#endif
 +    http->icap_reqmod = NULL;
@@ -5330,7 +5275,7 @@ index 0000000..d4b1735
 +	    icapParseChunkedBody(icap,
 +	    icapReqModMemBufAppend, &icap->reqmod.http_entity.buf);
 +    }
-+    if (icap->chunk_size < 0 )
++    if (icap->chunk_size < 0)
 +	icap->flags.reqmod_http_entity_eof = 1;
 +
 +    if (!icap->flags.reqmod_http_entity_eof)
@@ -5442,10 +5387,10 @@ index 0000000..d4b1735
 +}
 diff --git a/squid/src/icap_respmod.c b/squid/src/icap_respmod.c
 new file mode 100644
-index 0000000..18b7795
+index 0000000..5727885
 --- /dev/null
 +++ b/squid/src/icap_respmod.c
-@@ -0,0 +1,1058 @@
+@@ -0,0 +1,1018 @@
 +
 +/*
 + * $Id$
@@ -5528,8 +5473,7 @@ index 0000000..18b7795
 +}
 +
 +static int
-+buildRespModHeader(MemBuf * mb, IcapStateData * icap, char *buf,
-+    ssize_t len, int theEnd)
++buildRespModHeader(MemBuf * mb, IcapStateData * icap)
 +{
 +    MemBuf mb_hdr;
 +    char *client_addr;
@@ -5540,13 +5484,8 @@ index 0000000..18b7795
 +    icap_service *service;
 +    HttpReply *r;
 +
-+    if (memBufIsNull(&icap->respmod.req_hdr_copy))
-+	memBufDefInit(&icap->respmod.req_hdr_copy);
-+
-+    memBufAppend(&icap->respmod.req_hdr_copy, buf, len);
-+
 +    if (icap->respmod.req_hdr_copy.size > 4 && strncmp(icap->respmod.req_hdr_copy.buf, "HTTP/", 5)) {
-+	debug(81, 3) ("buildRespModHeader: Non-HTTP-compliant header: '%s'\n", buf);
++	debug(81, 3) ("buildRespModHeader: Non-HTTP-compliant header: '%s'\n", icap->respmod.req_hdr_copy.buf);
 +	/*
 +	 *Possible we can consider that we did not have http responce headers 
 +	 *(maybe HTTP 0.9 protocol), lets returning -1...
@@ -5561,16 +5500,12 @@ index 0000000..18b7795
 +
 +	hlen = headersEnd(icap->respmod.req_hdr_copy.buf,
 +	    icap->respmod.req_hdr_copy.size);
-+	debug(81, 3) ("buildRespModHeader: headersEnd = %d(%s)\n", hlen, buf);
++	debug(81, 3) ("buildRespModHeader: headersEnd = %d(%s)\n", hlen, icap->respmod.req_hdr_copy.buf);
 +	if (0 == hlen)
 +	    return 0;
 +
-+	/*
-+	 * calc how many bytes from this 'buf' went towards the
-+	 * reply header.
-+	 */
-+	consumed = hlen - (icap->respmod.req_hdr_copy.size - len);
-+	debug(81, 3) ("buildRespModHeader: consumed = %d\n", consumed);
++	consumed = hlen;
++	debug(81, 3) ("buildRespModHeader: consumed = %d (from %d)\n", consumed, icap->respmod.req_hdr_copy.size);
 +
 +
 +	/*
@@ -5620,23 +5555,25 @@ index 0000000..18b7795
 +    memBufAppend(mb, crlf, 2);
 +    memBufAppend(mb, mb_hdr.buf, mb_hdr.size);
 +    memBufClean(&mb_hdr);
-+
-+
 +    return consumed;
 +}
 +
++void
++icapRespModAddResponceHeaders(IcapStateData * icap, char *buf, int len)
++{
++    if (memBufIsNull(&icap->respmod.req_hdr_copy))
++	memBufDefInit(&icap->respmod.req_hdr_copy);
++    memBufAppend(&icap->respmod.req_hdr_copy, buf, len);
++    if (len && icap->flags.copy_response) {
++	if (memBufIsNull(&icap->respmod.resp_copy))
++	    memBufDefInit(&icap->respmod.resp_copy);
++	memBufAppend(&icap->respmod.resp_copy, buf, len);
++    }
++}
 +
 +void
-+icapSendRespMod(IcapStateData * icap, char *buf, int len, int theEnd)
++icapRespModAddBodyData(IcapStateData * icap, char *buf, int len)
 +{
-+    MemBuf mb;
-+#if ICAP_PREVIEW
-+    int size;
-+    const int preview_size = icap->preview_size;
-+#endif
-+    debug(81, 5) ("icapSendRespMod: FD %d, len %d, theEnd %d\n",
-+	icap->icap_fd, len, theEnd);
-+
 +    if (icap->flags.no_content) {
 +	/*
 +	 * ICAP server said there are no modifications to make, so
@@ -5650,8 +5587,6 @@ index 0000000..18b7795
 +		icap->respmod.resp_copy.buf, icap->respmod.resp_copy.size);
 +	    icap->respmod.resp_copy.size = 0;
 +	}
-+	debug(81, 5) ("icapSendRepMod: len=%d theEnd=%d write_pending=%d\n",
-+	    len, theEnd, icap->flags.write_pending);
 +	if (len) {
 +	    /*
 +	     * also copy any new data from the HTTP side
@@ -5661,29 +5596,6 @@ index 0000000..18b7795
 +	(void) icapReadReply2(icap);
 +	return;
 +    }
-+    if (theEnd) {
-+	if (icap->respmod.res_body_sz)
-+	    icap->flags.send_zero_chunk = 1;
-+	icap->flags.http_server_eof = 1;
-+    }
-+    /*
-+     * httpReadReply is going to call us with a chunk and then
-+     * right away again with an EOF if httpPconnTransferDone() is true.
-+     * Since the first write is already dispatched, we'll have to 
-+     * hack this in somehow.
-+     */
-+    if (icap->flags.write_pending) {
-+	debug(81, 3) ("icapSendRespMod: oops, write_pending=1\n");
-+	assert(theEnd);
-+	assert(len == 0);
-+	return;
-+    }
-+    if (!cbdataValid(icap)) {
-+	debug(81, 3) ("icapSendRespMod: failed to establish connection?\n");
-+	return;
-+    }
-+    memBufDefInit(&mb);
-+
 +#if SUPPORT_ICAP_204 || ICAP_PREVIEW
 +    /*
 +     * make a copy of the response in case ICAP server gives us a 204
@@ -5704,9 +5616,45 @@ index 0000000..18b7795
 +    }
 +#endif
 +
++    if (buf && len > 0)
++	memBufAppend(&icap->respmod.buffer, buf, len);
++}
++
++
++void
++icapSendRespMod(IcapStateData * icap, int theEnd)
++{
++    MemBuf mb;
++#if ICAP_PREVIEW
++    int size;
++    const int preview_size = icap->preview_size;
++#endif
++    if (icap->flags.no_content) {
++	return;
++    }
++    debug(81, 5) ("icapSendRespMod: FD %d, theEnd %d\n",
++	icap->icap_fd, theEnd);
++
++    /*
++     * httpReadReply is going to call us with a chunk and then
++     * right away again with an EOF if httpPconnTransferDone() is true.
++     * Since the first write is already dispatched, we'll have to 
++     * hack this in somehow.
++     */
++    if (icap->flags.write_pending) {
++	debug(81, 3) ("icapSendRespMod: oops, write_pending=1\n");
++	assert(theEnd);
++	return;
++    }
++    if (!cbdataValid(icap)) {
++	debug(81, 3) ("icapSendRespMod: failed to establish connection?\n");
++	return;
++    }
++    memBufDefInit(&mb);
++
 +    if (icap->sc == 0) {
 +	// http connection has been closed without sending us anything
-+	if (len == 0 && theEnd == 1) {
++	if (icap->respmod.req_hdr_copy.size == 0 && theEnd == 1) {
 +	    ErrorState *err;
 +	    err = errorCon(ERR_INVALID_RESP, HTTP_BAD_GATEWAY, icap->request);
 +	    errorAppendEntry(icap->respmod.entry, err);
@@ -5714,29 +5662,13 @@ index 0000000..18b7795
 +	    return;
 +	}
 +	/* No data sent yet. Start with headers */
-+	if ((icap->sc = buildRespModHeader(&mb, icap, buf, len, theEnd)) > 0) {
-+	    buf += icap->sc;
-+	    len -= icap->sc;
-+	}
-+	/*
-+	 * Then we do not have http responce headers. All data (previous and those in buf)
-+	 * now are exist to icap->respmod.req_hdr_copy. Lets get them back.......
-+	 */
-+	if (icap->sc < 0) {
-+	    memBufAppend(&icap->respmod.buffer,
-+		icap->respmod.req_hdr_copy.buf,
-+		icap->respmod.req_hdr_copy.size);
-+	    icap->sc = icap->respmod.req_hdr_copy.size;
-+	    icap->respmod.req_hdr_copy.size = 0;
-+	    buf = NULL;
-+	    len = 0;
-+	}
++	icap->sc = buildRespModHeader(&mb, icap);
++	assert(icap->sc != 0);
 +    }
-+    if (0 == icap->sc) {
-+	/* check again; bail if we're not ready to send ICAP/HTTP hdrs */
-+	debug(81, 5) ("icapSendRespMod: dont have full HTTP response hdrs\n");
-+	memBufClean(&mb);
-+	return;
++    if (theEnd) {
++	if (icap->respmod.res_body_sz)
++	    icap->flags.send_zero_chunk = 1;
++	icap->flags.http_server_eof = 1;
 +    }
 +#if ICAP_PREVIEW
 +    if (preview_size < 0 || !Config.icapcfg.preview_enable)	/* preview feature off */
@@ -5744,23 +5676,6 @@ index 0000000..18b7795
 +
 +    if (!icap->flags.preview_done) {
 +	/* preview not yet sent */
-+	if (icap->sc > 0 && icap->respmod.buffer.size <= preview_size
-+	    && len > 0) {
-+	    /* Try to collect at least preview_size+1 bytes */
-+	    /* By collecting one more byte than needed for preview we know best */
-+	    /* whether we have to send the ieof chunk extension */
-+	    size = icap->respmod.buffer.size + len;
-+	    if (size > preview_size + 1)
-+		size = preview_size + 1;
-+	    size -= icap->respmod.buffer.size;
-+	    debug(81,
-+		3)
-+		("icapSendRespMod: FD %d: copy %d more bytes to preview buffer.\n",
-+		icap->icap_fd, size);
-+	    memBufAppend(&icap->respmod.buffer, buf, size);
-+	    buf = ((char *) buf) + size;
-+	    len -= size;
-+	}
 +	if (icap->respmod.buffer.size > preview_size || theEnd) {
 +	    /* we got enough bytes for preview or this is the last call */
 +	    /* add preview preview now */
@@ -5785,29 +5700,20 @@ index 0000000..18b7795
 +		/* copy the extra byte and all other data to the icap buffer */
 +		/* so that it can be handled next time */
 +		ch = icap->respmod.buffer.buf[preview_size];
-+		memBufReset(&icap->respmod.buffer);	/* will now be used for other data */
-+		memBufAppend(&icap->respmod.buffer, &ch, 1);
++		xmemmove(icap->respmod.buffer.buf,
++		    icap->respmod.buffer.buf + preview_size,
++		    icap->respmod.buffer.size - preview_size);
++		icap->respmod.buffer.size = icap->respmod.buffer.size - preview_size;
++		icap->respmod.buffer.buf[icap->respmod.buffer.size] = '\0';
 +		debug(81,
 +		    3)
 +		    ("icapSendRespMod: FD %d: sending preview and keeping %d bytes in internal buf.\n",
-+		    icap->icap_fd, len + 1);
-+		if (len > 0)
-+		    memBufAppend(&icap->respmod.buffer, buf, len);
++		    icap->icap_fd, icap->respmod.buffer.size);
 +	    }
 +	    icap->flags.preview_done = 1;
 +	    icap->flags.wait_for_preview_reply = 1;
 +	}
 +    } else if (icap->flags.wait_for_preview_reply) {
-+	/* received new data while waiting for preview response */
-+	/* add data to internal buffer and send later */
-+	debug(81,
-+	    3)
-+	    ("icapSendRespMod: FD %d: add %d more bytes to internal buf while waiting for preview-response.\n",
-+	    icap->icap_fd, len);
-+	if (len > 0)
-+	    memBufAppend(&icap->respmod.buffer, buf, len);
-+	/* do not send any data now while waiting for preview response */
-+	/* but prepare for read more data on the HTTP connection */
 +	memBufClean(&mb);
 +	return;
 +    } else
@@ -5822,12 +5728,6 @@ index 0000000..18b7795
 +	    memBufAppend(&mb, crlf, 2);
 +	    icap->sc += icap->respmod.buffer.size;
 +	    memBufReset(&icap->respmod.buffer);
-+	}
-+	if (len > 0) {
-+	    memBufPrintf(&mb, "%x\r\n", len);
-+	    memBufAppend(&mb, buf, len);
-+	    memBufAppend(&mb, crlf, 2);
-+	    icap->sc += len;
 +	}
 +	if (icap->flags.send_zero_chunk) {
 +	    /* send zero end chunk */
@@ -5920,7 +5820,7 @@ index 0000000..18b7795
 +	     * else let http to call icapSendRespMod when new data arrived
 +	     */
 +	    if (icap->flags.http_server_eof)
-+		icapSendRespMod(icap, NULL, 0, 0);
++		icapSendRespMod(icap, 0);
 +	    /*
 +	     * reset the header to send the rest of the preview
 +	     */
@@ -6057,7 +5957,7 @@ index 0000000..18b7795
 +    if (errflag == COMM_ERR_CLOSING)
 +	return;
 +    if (errflag) {
-+	if (cbdataValid(icap)) 
++	if (cbdataValid(icap))
 +	    err = errorCon(ERR_ICAP_FAILURE, HTTP_INTERNAL_SERVER_ERROR, icap->request);
 +	else
 +	    err = errorCon(ERR_ICAP_FAILURE, HTTP_INTERNAL_SERVER_ERROR, NULL);
@@ -6076,7 +5976,7 @@ index 0000000..18b7795
 +	debug(81,
 +	    3) ("icapSendRespModDone: I'm supposed to send zero chunk now\n");
 +	icap->flags.send_zero_chunk = 0;
-+	icapSendRespMod(icap, NULL, 0, 1);
++	icapSendRespMod(icap, 1);
 +	return;
 +    }
 +    if (icap->flags.wait_for_preview_reply || icap->flags.wait_for_reply) {
@@ -6223,9 +6123,10 @@ index 0000000..18b7795
 +    return icap->httpState->reply_hdr_state;
 +}
 +
-+static void
++static size_t
 +icapProcessHttpReplyHeader(IcapStateData * icap, const char *buf, int size)
 +{
++    size_t done;
 +    if (NULL == icap->httpState) {
 +	icap->httpState = cbdataAlloc(HttpStateData);
 +	icap->httpState->request = requestLink(icap->request);
@@ -6233,9 +6134,10 @@ index 0000000..18b7795
 +	icap->httpState->entry = icap->respmod.entry;
 +	storeLockObject(icap->httpState->entry);	/* lock it */
 +    }
-+    httpProcessReplyHeader(icap->httpState, buf, size);
++    done = httpProcessReplyHeader(icap->httpState, buf, size);
 +    if (2 == icap->httpState->reply_hdr_state)
 +	EBIT_CLR(icap->httpState->entry->flags, ENTRY_FWD_HDR_WAIT);
++    return done;
 +}
 +
 +/*
@@ -6365,7 +6267,7 @@ index 0000000..18b7795
 +	} else if (entry->mem_obj->inmem_hi == 0) {
 +	    ErrorState *err;
 +	    debug(81, 2) ("icapReadReply: FD %d: generating error page\n", fd);
-+	    err = errorCon(ERR_ICAP_FAILURE, HTTP_INTERNAL_SERVER_ERROR, (request_t *)request);
++	    err = errorCon(ERR_ICAP_FAILURE, HTTP_INTERNAL_SERVER_ERROR, (request_t *) request);
 +	    err->xerrno = errno;
 +	    errorAppendEntry(entry, err);
 +	    comm_close(fd);
@@ -6383,12 +6285,13 @@ index 0000000..18b7795
 +static int
 +icapReadReply2(IcapStateData * icap)
 +{
++    size_t done = 0;
 +    StoreEntry *entry = icap->respmod.entry;
 +    const request_t *request = icap->request;
 +    debug(81, 3) ("icapReadReply2\n");
 +    if (icap->chunk_buf.size == 0 && entry->mem_obj->inmem_hi == 0) {
 +	ErrorState *err;
-+	err = errorCon(ERR_ZERO_SIZE_OBJECT, HTTP_SERVICE_UNAVAILABLE, (request_t *)request);
++	err = errorCon(ERR_ZERO_SIZE_OBJECT, HTTP_SERVICE_UNAVAILABLE, (request_t *) request);
 +	err->xerrno = errno;
 +	errorAppendEntry(entry, err);
 +	icap->flags.http_server_eof = 1;
@@ -6412,7 +6315,7 @@ index 0000000..18b7795
 +	debug(81, 3) ("needed=%d\n", needed);
 +	assert(needed < 0 || needed >= 0);
 +	if (0 > expect) {
-+	    icapProcessHttpReplyHeader(icap,
++	    done = icapProcessHttpReplyHeader(icap,
 +		icap->chunk_buf.buf, icap->chunk_buf.size);
 +	} else if (0 == expect) {
 +	    /*
@@ -6426,15 +6329,16 @@ index 0000000..18b7795
 +		    icap->respmod.req_hdr_copy.buf,
 +		    icap->respmod.req_hdr_copy.size);
 +	    }
-+	    icapProcessHttpReplyHeader(icap, icap->chunk_buf.buf,
++	    done = icapProcessHttpReplyHeader(icap, icap->chunk_buf.buf,
 +		icap->chunk_buf.size);
 +	    assert(icapHttpReplyHdrState(icap) == 2);
 +	    icap->chunk_size = 0;	/*we are ready to read chunks of data now.... */
 +	} else if (needed) {
-+	    icapProcessHttpReplyHeader(icap,
++	    done = icapProcessHttpReplyHeader(icap,
 +		icap->chunk_buf.buf, icap->chunk_buf.size);
 +	    if (icap->chunk_buf.size >= needed) {
-+		storeAppend(entry, icap->chunk_buf.buf, needed);
++		/*storeAppend not needed here, appended in httpProcessReplyHeader */
++		/*must done  = so_far - needed */
 +		so_far += needed;
 +		xmemmove(icap->chunk_buf.buf,
 +		    icap->chunk_buf.buf + needed,
@@ -6462,8 +6366,9 @@ index 0000000..18b7795
 +	/* data from http.c is not chunked */
 +	if (!EBIT_TEST(entry->flags, ENTRY_ABORTED)) {
 +	    debug(81, 3) ("copying %d bytes from chunk_buf to entry\n",
-+		icap->chunk_buf.size);
-+	    storeAppend(entry, icap->chunk_buf.buf, icap->chunk_buf.size);
++		icap->chunk_buf.size - done);
++	    if ((icap->chunk_buf.size - done) > 0)
++		storeAppend(entry, icap->chunk_buf.buf + done, icap->chunk_buf.size - done);
 +	    icap->chunk_buf.size = 0;
 +	}
 +    } else if (2 == icapHttpReplyHdrState(icap)) {
@@ -6505,7 +6410,7 @@ index 0000000..18b7795
 +    }
 +}
 diff --git a/squid/src/main.c b/squid/src/main.c
-index 84431e4..10842fe 100644
+index 979634e..bef7ef1 100644
 --- a/squid/src/main.c
 +++ b/squid/src/main.c
 @@ -391,6 +391,9 @@ mainReconfigure(void)
@@ -6557,10 +6462,10 @@ index d66d7ff..65ad80d 100644
      for (i = 0; i < mem_str_pool_count; i++) {
  	StrPools[i].pool = memPoolCreate(StrPoolsAttrs[i].name, StrPoolsAttrs[i].obj_size);
 diff --git a/squid/src/mk-string-arrays.pl b/squid/src/mk-string-arrays.pl
-index 3f77140..95f5251 100755
+index 3f77140..1db50c9 100755
 --- a/squid/src/mk-string-arrays.pl
 +++ b/squid/src/mk-string-arrays.pl
-@@ -17,6 +17,7 @@ $pat{'icp_opcode'} = "icp_opcode_str";
+@@ -17,9 +17,11 @@ $pat{'icp_opcode'} = "icp_opcode_str";
  $pat{'swap_log_op'} = "swap_log_op_str";
  $pat{'lookup_t'} = "lookup_t_str";
  $pat{'log_type'} = "log_tags";
@@ -6568,6 +6473,10 @@ index 3f77140..95f5251 100755
  
  print "#include \"squid.h\"\n";
  
++
+ $state = 0;	# start state
+ while (<>) {
+ 	if ($state == 0) {
 diff --git a/squid/src/pconn.c b/squid/src/pconn.c
 index 0723fbc..a28c0ca 100644
 --- a/squid/src/pconn.c
@@ -6631,7 +6540,7 @@ index 0723fbc..a28c0ca 100644
  	assert(0);
  }
 diff --git a/squid/src/protos.h b/squid/src/protos.h
-index 296518d..8ce6201 100644
+index 296518d..226f938 100644
 --- a/squid/src/protos.h
 +++ b/squid/src/protos.h
 @@ -302,6 +302,8 @@ extern void whoisStart(FwdState *);
@@ -6639,7 +6548,7 @@ index 296518d..8ce6201 100644
  extern int httpCachable(method_t);
  extern void httpStart(FwdState *);
 +extern void httpParseReplyHeaders(const char *, http_reply *);
-+extern void httpProcessReplyHeader(HttpStateData *, const char *, int);
++extern size_t httpProcessReplyHeader(HttpStateData *, const char *, int);
  extern int httpBuildRequestPrefix(request_t * request,
      request_t * orig_request,
      StoreEntry * entry,
@@ -6651,7 +6560,7 @@ index 296518d..8ce6201 100644
  
  extern char *mime_get_header(const char *mime, const char *header);
  extern char *mime_get_header_field(const char *mime, const char *name, const char *prefix);
-@@ -1417,4 +1420,53 @@ void storeLocateVaryDone(VaryData * data);
+@@ -1417,4 +1420,55 @@ void storeLocateVaryDone(VaryData * data);
  void storeLocateVary(StoreEntry * e, int offset, const char *vary_data, String accept_encoding, STLVCB * callback, void *cbdata);
  void storeAddVary(const char *url, const char *log_url, const method_t method, const cache_key * key, const char *etag, const char *vary, const char *vary_headers, const char *accept_encoding);
  
@@ -6684,7 +6593,9 @@ index 296518d..8ce6201 100644
 + * icap_respmod.c
 + */
 +IcapStateData *icapRespModStart(icap_service_t, request_t *, StoreEntry *, http_state_flags);
-+void icapSendRespMod(IcapStateData *, char *, int, int);
++void icapSendRespMod(IcapStateData *, int);
++void icapRespModAddResponceHeaders(IcapStateData *, char *, int);
++void icapRespModAddBodyData(IcapStateData *, char *, int);
 +CNCB icapConnectOver;
 +
 +/*
@@ -6774,7 +6685,7 @@ index 4466115..a2217c5 100644
  		conn->defer.n, (long int) conn->defer.until);
  	}
 diff --git a/squid/src/store.c b/squid/src/store.c
-index 5524019..8428695 100644
+index 2f0df9a..b7f3d91 100644
 --- a/squid/src/store.c
 +++ b/squid/src/store.c
 @@ -1105,8 +1105,17 @@ storeAppend(StoreEntry * e, const char *buf, int len)
@@ -6797,7 +6708,7 @@ index 5524019..8428695 100644
  	debug(20, 5) ("storeAppend: appending %d bytes for '%s'\n",
  	    len,
 diff --git a/squid/src/structs.h b/squid/src/structs.h
-index 7484b34..5da428b 100644
+index 71f95e2..b6e1cbf 100644
 --- a/squid/src/structs.h
 +++ b/squid/src/structs.h
 @@ -423,6 +423,23 @@ struct _RemovalPolicySettings {
@@ -6845,8 +6756,8 @@ index 7484b34..5da428b 100644
      int uses;			/* ie # req's over persistent conn */
      struct _fde_disk {
  	DWCB *wrt_handle;
-@@ -1095,6 +1119,131 @@ struct _http_state_flags {
-     unsigned int originpeer:1;
+@@ -1097,6 +1121,131 @@ struct _http_state_flags {
+     unsigned int trailer:1;
  };
  
 +#ifdef HS_FEAT_ICAP
@@ -6977,7 +6888,7 @@ index 7484b34..5da428b 100644
  struct _HttpStateData {
      StoreEntry *entry;
      request_t *request;
-@@ -1106,10 +1255,14 @@ struct _HttpStateData {
+@@ -1108,12 +1257,16 @@ struct _HttpStateData {
      int fd;
      http_state_flags flags;
      FwdState *fwd;
@@ -6986,13 +6897,15 @@ index 7484b34..5da428b 100644
 +#endif
      char *body_buf;
      int body_buf_sz;
+     squid_off_t chunk_size;
+     String chunkhdr;
  };
  
 +
  struct _icpUdpData {
      struct sockaddr_in address;
      void *msg;
-@@ -1218,6 +1371,7 @@ struct _clientHttpRequest {
+@@ -1223,6 +1376,7 @@ struct _clientHttpRequest {
  	unsigned int internal:1;
  	unsigned int done_copying:1;
  	unsigned int purging:1;
@@ -7000,7 +6913,7 @@ index 7484b34..5da428b 100644
  	unsigned int hit:1;
      } flags;
      struct {
-@@ -1232,6 +1386,9 @@ struct _clientHttpRequest {
+@@ -1237,6 +1391,9 @@ struct _clientHttpRequest {
       * zero.. [ahc]
       */
      char readbuf[CLIENT_SOCK_SZ];
@@ -7010,7 +6923,7 @@ index 7484b34..5da428b 100644
  };
  
  struct _ConnStateData {
-@@ -1900,6 +2057,9 @@ struct _request_t {
+@@ -1906,6 +2063,9 @@ struct _request_t {
      unsigned int done_etag:1;	/* We have done clientProcessETag on this, don't attempt it again */
      char *urlgroup;		/* urlgroup, returned by redirectors */
      char *peer_domain;		/* Configured peer forceddomain */
@@ -7020,7 +6933,7 @@ index 7484b34..5da428b 100644
      BODY_HANDLER *body_reader;
      void *body_reader_data;
      String extacl_log;		/* String to be used for access.log purposes */
-@@ -2007,7 +2167,11 @@ struct _StatCounters {
+@@ -2013,7 +2173,11 @@ struct _StatCounters {
  	    kb_t kbytes_in;
  	    kb_t kbytes_out;
  	} all , http, ftp, other;
@@ -7054,10 +6967,10 @@ index 37e468d..55809f6 100644
  typedef struct _clientHttpRequest clientHttpRequest;
  typedef struct _ConnStateData ConnStateData;
 diff --git a/squid/src/url.c b/squid/src/url.c
-index 8dd7432..7713ddd 100644
+index 408cefe..3166415 100644
 --- a/squid/src/url.c
 +++ b/squid/src/url.c
-@@ -103,6 +103,9 @@ const char *ProtocolStr[] =
+@@ -106,6 +106,9 @@ const char *ProtocolStr[] =
      "whois",
      "internal",
      "https",
@@ -7067,7 +6980,7 @@ index 8dd7432..7713ddd 100644
      "TOTAL"
  };
  
-@@ -217,6 +220,10 @@ urlParseProtocol(const char *s)
+@@ -220,6 +223,10 @@ urlParseProtocol(const char *s)
  	return PROTO_WHOIS;
      if (strcasecmp(s, "internal") == 0)
  	return PROTO_INTERNAL;
@@ -7078,7 +6991,7 @@ index 8dd7432..7713ddd 100644
      return PROTO_NONE;
  }
  
-@@ -240,6 +247,10 @@ urlDefaultPort(protocol_t p)
+@@ -243,6 +250,10 @@ urlDefaultPort(protocol_t p)
  	return CACHE_HTTP_PORT;
      case PROTO_WHOIS:
  	return 43;

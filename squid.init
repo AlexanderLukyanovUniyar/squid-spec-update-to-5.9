@@ -24,6 +24,7 @@ WITHOUT_RC_COMPAT=1
 # Source networking configuration.
 SourceIfNotEmpty /etc/sysconfig/network 
 
+SQUID=/usr/sbin/squid
 # default squid options
 # -D disables initial dns checks. If you most likely will not to have an
 #    internet connection when you start squid, uncomment this
@@ -48,7 +49,7 @@ start()
 	
         for adir in $CACHE_SWAP; do
          if [ ! -d $adir/00 ]; then 
-	     /usr/sbin/squid -z -F 2>/dev/null
+	     $SQUID -z -F 2>/dev/null
 	 fi
 	done
 	
@@ -73,8 +74,7 @@ restart()
 
 reload()
 {
-	msg_reloading squid
-	stop_daemon --pidfile "$PIDFILE" --expect-user squid -HUP squid
+	action "Reloading squid service:" $SQUID -k reconfigure
 	RETVAL=$?
 	return $RETVAL
 }

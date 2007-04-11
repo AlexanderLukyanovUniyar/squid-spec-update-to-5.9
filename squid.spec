@@ -8,7 +8,7 @@
 
 Name: squid
 Version: 2.6.STABLE12
-Release: alt2
+Release: alt3
 
 Summary: The Squid proxy caching server
 Summary(ru_RU.KOI8-R): Кэширующий прокси-сервер Squid
@@ -398,6 +398,9 @@ popd
 
 
 %changelog
+* Wed Apr 11 2007 Grigory Batalov <bga@altlinux.ru> 2.6.STABLE12-alt3
+- Reload service in a safe manner.
+
 * Thu Mar 29 2007 Grigory Batalov <bga@altlinux.ru> 2.6.STABLE12-alt2
 - Provide %_datadir/%name directory.
 

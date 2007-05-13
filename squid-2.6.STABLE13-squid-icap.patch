@@ -1,5 +1,5 @@
 diff --git a/squid/configure.in b/squid/configure.in
-index b915cde..d55b9e3 100644
+index affabf0..d7b1f16 100644
 --- a/squid/configure.in
 +++ b/squid/configure.in
 @@ -530,6 +530,17 @@ AC_ARG_ENABLE(delay-pools,
@@ -20,7 +20,7 @@ index b915cde..d55b9e3 100644
  dnl This is a developer only option. Developers know how to set defines
  dnl
  dnl AC_ARG_ENABLE(mem-gen-trace,
-@@ -2348,6 +2359,8 @@ AC_CHECK_FUNCS(\
+@@ -2349,6 +2360,8 @@ AC_CHECK_FUNCS(\
  	srand48 \
  	srandom \
  	statfs \
@@ -29,7 +29,7 @@ index b915cde..d55b9e3 100644
  	strsep \
  	strtoll \
  	sysconf \
-@@ -2533,6 +2546,16 @@ if test "$ac_cv_func_snprintf" = "no" || test "$ac_cv_func_vsnprintf" = "no" ; t
+@@ -2534,6 +2547,16 @@ if test "$ac_cv_func_snprintf" = "no" || test "$ac_cv_func_vsnprintf" = "no" ; t
    AM_CONDITIONAL(NEED_OWN_SNPRINTF, true)
  fi
  
@@ -1362,7 +1362,7 @@ index 0000000..a4c9567
 +}
 +#endif
 diff --git a/squid/src/Makefile.am b/squid/src/Makefile.am
-index 20fdd19..a0d4412 100644
+index ea50b59..6cd70ba 100644
 --- a/squid/src/Makefile.am
 +++ b/squid/src/Makefile.am
 @@ -6,6 +6,12 @@
@@ -2014,7 +2014,7 @@ index 5143824..544579e 100644
      CREATE_CBDATA(ps_state);
      CREATE_CBDATA(RemovalPolicy);
 diff --git a/squid/src/cf.data.pre b/squid/src/cf.data.pre
-index 7f00f0d..d44aed1 100644
+index 793506f..57ee4fa 100644
 --- a/squid/src/cf.data.pre
 +++ b/squid/src/cf.data.pre
 @@ -3484,6 +3484,187 @@ DOC_START
@@ -2489,7 +2489,7 @@ index e34e41c..56331c6 100644
  static void
  clientPinnedConnectionClosed(int fd, void *data)
 diff --git a/squid/src/comm.c b/squid/src/comm.c
-index 30432c5..7d08db7 100644
+index d9a2d6a..8fbd264 100644
 --- a/squid/src/comm.c
 +++ b/squid/src/comm.c
 @@ -742,8 +742,8 @@ comm_close(int fd)
@@ -2623,22 +2623,10 @@ index df1b96e..b25fa16 100644
 +
  #endif /* SQUID_ENUMS_H */
 diff --git a/squid/src/forward.c b/squid/src/forward.c
-index b12e08d..0e0cd88 100644
+index 8bf7b00..a924e83 100644
 --- a/squid/src/forward.c
 +++ b/squid/src/forward.c
-@@ -358,8 +358,9 @@ fwdConnectDone(int server_fd, int status, void *data)
-     } else {
- 	debug(17, 3) ("fwdConnectDone: FD %d: '%s'\n", server_fd, storeUrl(fwdState->entry));
- 	fd_note(server_fd, storeUrl(fwdState->entry));
--	fd_table[server_fd].uses++;
--	if (fd_table[server_fd].uses == 1 && fs->peer)
-+	fd_table[server_fd].pconn.uses++;
-+	fd_table[server_fd].pconn.type = 1;
-+	if (fd_table[server_fd].pconn.uses ==1 && fs->peer)
- 	    peerConnectSucceded(fs->peer);
- #if USE_SSL
- 	if ((fs->peer && fs->peer->use_ssl) ||
-@@ -941,6 +942,8 @@ fwdCheckDeferRead(int fd, void *data)
+@@ -943,6 +943,8 @@ fwdCheckDeferRead(int fd, void *data)
  void
  fwdFail(FwdState * fwdState, ErrorState * errorState)
  {
@@ -2647,7 +2635,7 @@ index b12e08d..0e0cd88 100644
      debug(17, 3) ("fwdFail: %s \"%s\"\n\t%s\n",
  	err_type_str[errorState->type],
  	httpStatusString(errorState->http_status),
-@@ -979,6 +982,8 @@ fwdPeerClosed(int fd, void *data)
+@@ -981,6 +983,8 @@ fwdPeerClosed(int fd, void *data)
  void
  fwdUnregister(int fd, FwdState * fwdState)
  {
@@ -2656,7 +2644,7 @@ index b12e08d..0e0cd88 100644
      debug(17, 3) ("fwdUnregister: %s\n", storeUrl(fwdState->entry));
      assert(fd == fwdState->server_fd);
      assert(fd > -1);
-@@ -998,7 +1003,10 @@ fwdUnregister(int fd, FwdState * fwdState)
+@@ -1000,7 +1004,10 @@ fwdUnregister(int fd, FwdState * fwdState)
  void
  fwdComplete(FwdState * fwdState)
  {
@@ -2683,7 +2671,7 @@ index 84201d2..0a2562c 100644
  extern int opt_no_daemon;	/* 0 */
  #if LINUX_TPROXY
 diff --git a/squid/src/http.c b/squid/src/http.c
-index bbd6c4e..2e62ca1 100644
+index 36149d9..c7fd58c 100644
 --- a/squid/src/http.c
 +++ b/squid/src/http.c
 @@ -47,7 +47,7 @@ static CWCB httpSendRequestEntry;
@@ -2730,7 +2718,7 @@ index bbd6c4e..2e62ca1 100644
  httpProcessReplyHeader(HttpStateData * httpState, const char *buf, int size)
  {
      StoreEntry *entry = httpState->entry;
-@@ -639,11 +643,25 @@ httpAppendBody(HttpStateData * httpState, const char *buf, ssize_t len, int buff
+@@ -640,11 +644,25 @@ httpAppendBody(HttpStateData * httpState, const char *buf, ssize_t len, int buff
  	    if (size > httpState->chunk_size)
  		size = httpState->chunk_size;
  	    httpState->chunk_size -= size;
@@ -2756,7 +2744,7 @@ index bbd6c4e..2e62ca1 100644
  	    storeAppend(httpState->entry, buf, len);
  	    len = 0;
  	} else if (httpState->flags.chunked) {
-@@ -698,6 +716,15 @@ httpAppendBody(HttpStateData * httpState, const char *buf, ssize_t len, int buff
+@@ -699,6 +717,15 @@ httpAppendBody(HttpStateData * httpState, const char *buf, ssize_t len, int buff
  	    /* Don't know what to do with this data. Bail out */
  	    break;
  	}
@@ -2772,7 +2760,7 @@ index bbd6c4e..2e62ca1 100644
  	if (EBIT_TEST(entry->flags, ENTRY_ABORTED)) {
  	    /*
  	     * the above storeAppend() call could ABORT this entry,
-@@ -710,6 +737,10 @@ httpAppendBody(HttpStateData * httpState, const char *buf, ssize_t len, int buff
+@@ -720,6 +747,10 @@ httpAppendBody(HttpStateData * httpState, const char *buf, ssize_t len, int buff
      if (!httpState->chunk_size && !httpState->flags.chunked)
  	complete = 1;
      if (!complete && len == 0) {
@@ -2783,7 +2771,7 @@ index bbd6c4e..2e62ca1 100644
  	/* Wait for more data or EOF condition */
  	if (httpState->flags.keepalive_broken) {
  	    commSetTimeout(fd, 10, NULL, NULL);
-@@ -769,6 +800,10 @@ httpAppendBody(HttpStateData * httpState, const char *buf, ssize_t len, int buff
+@@ -779,6 +810,10 @@ httpAppendBody(HttpStateData * httpState, const char *buf, ssize_t len, int buff
       */
      if (!entry->mem_obj->reply->keep_alive)
  	keep_alive = 0;
@@ -2794,7 +2782,7 @@ index bbd6c4e..2e62ca1 100644
      if (keep_alive) {
  	int pinned = 0;
  #if LINUX_TPROXY
-@@ -828,6 +863,17 @@ httpReadReply(int fd, void *data)
+@@ -838,6 +873,17 @@ httpReadReply(int fd, void *data)
  #endif
      int buffer_filled;
  
@@ -2812,7 +2800,7 @@ index bbd6c4e..2e62ca1 100644
      if (EBIT_TEST(entry->flags, ENTRY_ABORTED)) {
  	comm_close(fd);
  	return;
-@@ -839,7 +885,35 @@ httpReadReply(int fd, void *data)
+@@ -849,7 +895,35 @@ httpReadReply(int fd, void *data)
      else
  	delay_id = delayMostBytesAllowed(entry->mem_obj, &read_sz);
  #endif
@@ -2848,7 +2836,7 @@ index bbd6c4e..2e62ca1 100644
      errno = 0;
      statCounter.syscalls.sock.reads++;
      len = FD_READ_METHOD(fd, buf, read_sz);
-@@ -858,7 +932,13 @@ httpReadReply(int fd, void *data)
+@@ -868,7 +942,13 @@ httpReadReply(int fd, void *data)
  	IOStats.Http.read_hist[bin]++;
  	buf[len] = '\0';
      }
@@ -2863,7 +2851,7 @@ index bbd6c4e..2e62ca1 100644
  	/* Skip whitespace */
  	while (len > 0 && xisspace(*buf))
  	    xmemmove(buf, buf + 1, len--);
-@@ -956,12 +1036,49 @@ httpReadReply(int fd, void *data)
+@@ -972,12 +1052,49 @@ httpReadReply(int fd, void *data)
  		commSetSelect(fd, COMM_SELECT_READ, httpReadReply, httpState, 0);
  		return;
  	    }
@@ -2913,7 +2901,7 @@ index bbd6c4e..2e62ca1 100644
  /* This will be called when request write is complete. Schedule read of
   * reply. */
  static void
-@@ -989,6 +1106,63 @@ httpSendComplete(int fd, char *bufnotused, size_t size, int errflag, void *data)
+@@ -1005,6 +1122,63 @@ httpSendComplete(int fd, char *bufnotused, size_t size, int errflag, void *data)
  	comm_close(fd);
  	return;
      } else {
@@ -2944,7 +2932,7 @@ index bbd6c4e..2e62ca1 100644
 +		 * the icap server, rather than put it into
 +		 * a StoreEntry
 +		 */
-+		storeClientUnregisterAbort(httpState->entry);
++		storeUnregisterAbort(httpState->entry);
 +		storeUnlockObject(httpState->entry);
 +		/*
 +		 * create a bogus entry because the code assumes one is
@@ -2977,7 +2965,7 @@ index bbd6c4e..2e62ca1 100644
  	/*
  	 * Set the read timeout here because it hasn't been set yet.
  	 * We only set the read timeout after the request has been
-@@ -997,8 +1171,18 @@ httpSendComplete(int fd, char *bufnotused, size_t size, int errflag, void *data)
+@@ -1013,8 +1187,18 @@ httpSendComplete(int fd, char *bufnotused, size_t size, int errflag, void *data)
  	 * the timeout for POST/PUT requests that have very large
  	 * request bodies.
  	 */
@@ -2997,7 +2985,7 @@ index bbd6c4e..2e62ca1 100644
      }
      httpState->flags.request_sent = 1;
  }
-@@ -1302,8 +1486,11 @@ httpBuildRequestHeader(request_t * request,
+@@ -1318,8 +1502,11 @@ httpBuildRequestHeader(request_t * request,
  	if (!EBIT_TEST(cc->mask, CC_MAX_AGE)) {
  	    const char *url = entry ? storeUrl(entry) : urlCanonical(orig_request);
  	    httpHdrCcSetMaxAge(cc, getMaxAge(url));
@@ -3009,7 +2997,7 @@ index bbd6c4e..2e62ca1 100644
  	}
  	/* Set no-cache if determined needed but not found */
  	if (orig_request->flags.nocache && !httpHeaderHas(hdr_in, HDR_PRAGMA))
-@@ -1429,6 +1616,7 @@ httpStart(FwdState * fwd)
+@@ -1445,6 +1632,7 @@ httpStart(FwdState * fwd)
      int fd = fwd->server_fd;
      HttpStateData *httpState;
      request_t *proxy_req;
@@ -3017,7 +3005,7 @@ index bbd6c4e..2e62ca1 100644
      request_t *orig_req = fwd->request;
      debug(11, 3) ("httpStart: \"%s %s\"\n",
  	RequestMethodStr[orig_req->method],
-@@ -1471,12 +1659,22 @@ httpStart(FwdState * fwd)
+@@ -1487,12 +1675,22 @@ httpStart(FwdState * fwd)
  	httpState->request = requestLink(orig_req);
  	httpState->orig_request = requestLink(orig_req);
      }
@@ -6540,7 +6528,7 @@ index 0723fbc..a28c0ca 100644
  	assert(0);
  }
 diff --git a/squid/src/protos.h b/squid/src/protos.h
-index 296518d..226f938 100644
+index 1700437..f56232b 100644
 --- a/squid/src/protos.h
 +++ b/squid/src/protos.h
 @@ -302,6 +302,8 @@ extern void whoisStart(FwdState *);
@@ -6685,7 +6673,7 @@ index 4466115..a2217c5 100644
  		conn->defer.n, (long int) conn->defer.until);
  	}
 diff --git a/squid/src/store.c b/squid/src/store.c
-index 2f0df9a..b7f3d91 100644
+index 838d819..58d9bad 100644
 --- a/squid/src/store.c
 +++ b/squid/src/store.c
 @@ -1105,8 +1105,17 @@ storeAppend(StoreEntry * e, const char *buf, int len)
@@ -6708,7 +6696,7 @@ index 2f0df9a..b7f3d91 100644
  	debug(20, 5) ("storeAppend: appending %d bytes for '%s'\n",
  	    len,
 diff --git a/squid/src/structs.h b/squid/src/structs.h
-index 71f95e2..b6e1cbf 100644
+index 7ba9322..f246cc9 100644
 --- a/squid/src/structs.h
 +++ b/squid/src/structs.h
 @@ -423,6 +423,23 @@ struct _RemovalPolicySettings {

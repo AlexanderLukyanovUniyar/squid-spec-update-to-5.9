@@ -7,8 +7,8 @@
 %endif
 
 Name: squid
-Version: 2.6.STABLE12
-Release: alt3
+Version: 2.6.STABLE13
+Release: alt1
 
 Summary: The Squid proxy caching server
 Summary(ru_RU.KOI8-R): Кэширующий прокси-сервер Squid
@@ -41,7 +41,7 @@ Patch9: squid-2.5.STABLE10-alt-sambaprefix.patch
 Patch8: squid-2.6.STABLE5-alt-feat_icap.patch
 # Official patches to Squid
 # See http://devel.squid-cache.org/projects.html#icap
-Patch10: squid-2.6.STABLE12-squid-icap.patch.bz2
+Patch10: squid-2.6.STABLE13-squid-icap.patch.bz2
 
 # Patches by other vendors
 Patch20: squid-2.6.STABLE5-deb-localhost.patch
@@ -398,6 +398,10 @@ popd
 
 
 %changelog
+* Sun May 13 2007 Grigory Batalov <bga@altlinux.ru> 2.6.STABLE13-alt1
+- New upstream release.
+- ICAP patch cleaned up.
+
 * Wed Apr 11 2007 Grigory Batalov <bga@altlinux.ru> 2.6.STABLE12-alt3
 - Reload service in a safe manner.
 

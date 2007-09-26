@@ -1,0 +1,24 @@
+<HTML><HEAD><meta HTTP-EQUIV="CONTENT-TYPE" CONTENT="text/html; charset=windows-1251">
+<TITLE>ПАМЫЛКА: FTP PUT/upload завершана няўдала</TITLE>
+</HEAD><BODY>
+<H1>ПАМЫЛКА</H1>
+<H2>FTP PUT/upload завершана няўдала.</H2>
+<HR>
+<P>
+Пад час дастаўкі файлу па адрэсе:
+<A HREF="%U">%U</A>
+<P>
+Кэш даслаў наступную FTP каманду:
+<PRE><STRONG>
+         %f
+</STRONG></PRE>
+і атрымаў адказ
+<PRE><STRONG>
+         %F
+</STRONG></PRE>
+<P>
+Гэта азначае:
+<PRE>
+ Праверце шлях, правы доступу, вольнае мейсца й паспрабуйце нанова.
+</PRE>
+<P>Адміністратар Вашага кэшу <A HREF="mailto:%w">%w</A>. 

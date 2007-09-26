@@ -1,0 +1,22 @@
+<HTML><HEAD><meta HTTP-EQUIV="CONTENT-TYPE" CONTENT="text/html; charset=windows-1251">
+<TITLE>ПАМЫЛКА: Запытаны URN ня можа быць дастаўлены</TITLE>
+</HEAD><BODY>
+<H1>ПАМЫЛКА</H1>
+<H2>URL для запытанага URN ня можа быць атрыманы</H2>
+<HR>
+<P>
+Пад час дастаўкі URN:
+<A HREF="%U">%U</A>
+<P>
+Адбылася наступная памылка:
+<UL>
+<LI>
+<STRONG>
+Немагчыма вызначыць URL для дадзенага URN.<br>
+(Cannot Resolve URN)
+</STRONG>
+</UL>
+
+<P>
+Гей, ня варта шмат чакаць ад гэтае тэхналёгії (URN) на %T :)
+<P>Адміністратар Вашага кэшу <A HREF="mailto:%w">%w</A>. 

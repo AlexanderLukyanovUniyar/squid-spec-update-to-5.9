@@ -1,0 +1,19 @@
+<HTML><HEAD><meta HTTP-EQUIV="CONTENT-TYPE" CONTENT="text/html; charset=windows-1251">
+<TITLE>ПАМЫЛКА: Запытаны URL ня можа быць дастаўлены</TITLE>
+</HEAD><BODY>
+<H1>ПАМЫЛКА</H1>
+<H2>Запытаны URL ня можа быць дастаўлены.</H2>
+<HR>
+<P>
+Адбылася памылка пратаколу FTP пад час дастаўкі URL:
+<A HREF="%U">%U</A>
+<P>
+Squid даслаў наступную каманду FTP:
+<blockquote><strong><pre>%f</pre></strong></blockquote>
+й атрымаў адказ
+<blockquote><strong><pre>%F</pre></strong></blockquote>
+<blockquote><strong><pre>%g</pre></strong></blockquote>
+<P>
+Гэта можа быць выклікана адрэсай з абсалютным шляхам (якая ня адпавядае стандарту RFC 1738).
+У гэтым выпадку, файл можа быць адшуканы па адрэсе <A HREF="%B">%B</A>.
+<P>Адміністратар Вашага кэшу <A HREF="mailto:%w">%w</A>. 

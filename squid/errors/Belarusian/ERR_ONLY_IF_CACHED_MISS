@@ -1,0 +1,23 @@
+<HTML><HEAD><meta HTTP-EQUIV="CONTENT-TYPE" CONTENT="text/html; charset=windows-1251">
+<TITLE>ПАМЫЛКА: Запытаны URL ня можа быць дастаўлены</TITLE>
+</HEAD><BODY>
+<H1>ПАМЫЛКА</H1>
+<H2>Запытаны URL ня можа быць дастаўлены</H2>
+<HR>
+<P>
+Пад час дастаўкі URL:
+<A HREF="%U">%U</A>
+<P>
+Адбылася наступная памылка:
+<UL>
+<LI>
+<STRONG>
+Правільны дакумэнт ня адшуканы ў кэшы й была вызначана дырэктыва
+<code>only-if-cached</code>.
+</STRONG>
+</UL>
+
+<P>
+Вы даслалі запыт з дэрыктывай кэш-кантролю <code>only-if-cached</code>.
+Правільны дакумэнт ня адшуканы ў кэшы, <em>альбо</em> ён патрабуе абнаўленьня, якое забаронена дырэктывай <code>only-if-cached</code>.
+<P>Адміністратар Вашага кэшу <A HREF="mailto:%w">%w</A>. 

@@ -1,0 +1,16 @@
+<HTML><HEAD><meta HTTP-EQUIV="CONTENT-TYPE" CONTENT="text/html; charset=windows-1251">
+<TITLE>ПАМЫЛКА: Запытаны URL ня можа быць дастаўлены</TITLE>
+</HEAD><BODY>
+<H1>ПАМЫЛКА</H1>
+<H2>Запытаны URL ня можа быць дастаўлены.</H2>
+<HR>
+<P>
+Адбылася памылка FTP аўтэнтыфікаціі пад час спробы запытаць URL:
+<A HREF="%U">%U</A>
+<P>
+Squid даслаў наступную каманду FTP:
+<blockquote><strong><pre>%f</pre></strong></blockquote>
+й атрымаў адказ
+<blockquote><strong><pre>%F</pre></strong></blockquote>
+<blockquote><strong><pre>%g</pre></strong></blockquote>
+<P>Адміністратар Вашага кэшу <A HREF="mailto:%w">%w</A>. 

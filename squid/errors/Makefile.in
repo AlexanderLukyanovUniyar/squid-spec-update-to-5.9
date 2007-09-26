@@ -262,7 +262,8 @@ LANGUAGES = \
 		Spanish \
 		Swedish \
 		Traditional_Chinese \
-		Turkish
+		Turkish \
+		Belarusian
 
 all: all-am
 

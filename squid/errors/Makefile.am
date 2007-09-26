@@ -41,7 +41,8 @@ LANGUAGES	= \
 		Spanish \
 		Swedish \
 		Traditional_Chinese \
-		Turkish
+		Turkish \
+		Belarusian
 
 install-data-local:
 	@for l in $(INSTALL_LANGUAGES); do \

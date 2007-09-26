@@ -12,10 +12,9 @@ After you retrieved, compiled and installed the Squid software (see
 INSTALL in the same directory), you have to configure the squid.conf
 file. This is the list of the values you *need* to change, because no
 sensible defaults could be defined. Do not touch the other variables
-for now.  We assume you have installed Squid in the default location:
-/usr/local/squid
+for now.
 
-Uncomment and edit the following lines in /usr/local/squid/etc/squid.conf:
+Uncomment and edit the following lines in /etc/squid/squid.conf:
 
 ==============================================================================
 
@@ -26,7 +25,7 @@ cache_peer, never_direct/always_direct
     always ask permission before adding a parent cache. See also the
     never_direct/always_direct directives.
 
-cache_dir /usr/local/squid/var/cache 100 16 256
+cache_dir /var/spool/squid 100 16 256
 
     Add here (first number, here 100) the amount of hard disk space 
     (in megabytes) to devote to caching.
@@ -69,8 +68,8 @@ visible_hostname
 After editing squid.conf to your liking, run Squid from the command
 line TWICE:
 
-    % /usr/local/squid/sbin/squid -z
-    % /usr/local/squid/sbin/squid 
+    % /usr/sbin/squid -z
+    % /usr/sbin/squid
 
 Check in the cache.log (/usr/local/squid/var/logs/cache.log) that
 everything is all right.

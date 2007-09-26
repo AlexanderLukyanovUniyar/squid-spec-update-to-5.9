@@ -14,7 +14,7 @@
 ## FIXME: autoconf should test for the samba path.
 
 SMB_AUTH_HELPER	= smb_auth.sh
-SAMBAPREFIX=/usr/local/samba
+SAMBAPREFIX=/usr
 SMB_AUTH_HELPER_PATH = $(libexecdir)/$(SMB_AUTH_HELPER)
 
 libexec_SCRIPTS	= $(SMB_AUTH_HELPER)

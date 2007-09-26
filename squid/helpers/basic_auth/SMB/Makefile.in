@@ -262,7 +262,7 @@ sharedstatedir = @sharedstatedir@
 sysconfdir = @sysconfdir@
 target_alias = @target_alias@
 SMB_AUTH_HELPER = smb_auth.sh
-SAMBAPREFIX = /usr/local/samba
+SAMBAPREFIX = /usr
 SMB_AUTH_HELPER_PATH = $(libexecdir)/$(SMB_AUTH_HELPER)
 libexec_SCRIPTS = $(SMB_AUTH_HELPER)
 smb_auth_CFLAGS = -DSAMBAPREFIX=\"$(SAMBAPREFIX)\" -DHELPERSCRIPT=\"$(SMB_AUTH_HELPER_PATH)\"

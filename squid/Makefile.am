@@ -40,8 +40,8 @@ EXTRA_DIST = \
 	bootstrap.sh
 
 install-pinger:
-	chown root $(DEFAULT_PINGER) 
-	chmod 4711 $(DEFAULT_PINGER)
+#	chown root $(DEFAULT_PINGER)
+#	chmod 4711 $(DEFAULT_PINGER)
 
 distuninstallcheck_listfiles = \
 	find . -name squid.conf -prune -o -name cachemgr.conf -prune -type f -print

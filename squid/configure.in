@@ -530,6 +530,17 @@ AC_ARG_ENABLE(delay-pools,
   fi
 ])
 
+dnl Enable ICAP Support
+AM_CONDITIONAL(USE_ICAP, false)
+AC_ARG_ENABLE(icap-support,
+[  --enable-icap-support   	   Enable ICAP client capability],
+[ if test "$enableval" = "yes" ; then
+    echo "ICAP support enabled"
+    AC_DEFINE(HS_FEAT_ICAP, 1, [Content filtering via ICAP servers.])
+    AM_CONDITIONAL(USE_ICAP, true)
+  fi
+])
+
 dnl This is a developer only option. Developers know how to set defines
 dnl
 dnl AC_ARG_ENABLE(mem-gen-trace,
@@ -2349,6 +2360,8 @@ AC_CHECK_FUNCS(\
 	srand48 \
 	srandom \
 	statfs \
+	strnstr \
+	strcasestr \
 	strsep \
 	strtoll \
 	sysconf \
@@ -2532,6 +2545,16 @@ fi
 AM_CONDITIONAL(NEED_OWN_SNPRINTF, false)
 if test "$ac_cv_func_snprintf" = "no" || test "$ac_cv_func_vsnprintf" = "no" ; then
   AM_CONDITIONAL(NEED_OWN_SNPRINTF, true)
+fi
+
+AM_CONDITIONAL(NEED_OWN_STRNSTR, false)
+if test "$ac_cv_func_strnstr" = "no" || test "$ac_cv_func_vstrnstr" = "no" ; then
+  AM_CONDITIONAL(NEED_OWN_STRNSTR, true)
+fi
+
+AM_CONDITIONAL(NEED_OWN_STRCASESTR, false)
+if test "$ac_cv_func_strcasestr" = "no" || test "$ac_cv_func_vstrcasestr" = "no"; then
+  AM_CONDITIONAL(NEED_OWN_STRCASESTR, true)
 fi
 
 AM_CONDITIONAL(NEED_OWN_STRSEP, false)

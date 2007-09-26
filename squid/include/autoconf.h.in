@@ -905,6 +905,9 @@
 /* Have unsigned char datatype */
 #undef u_int8_t
 
+/*  ICAP - Internet Content Adaptation Protocol  */
+#undef HS_FEAT_ICAP
+
 /* Have unsigned int datatype */
 #undef uint16_t
 

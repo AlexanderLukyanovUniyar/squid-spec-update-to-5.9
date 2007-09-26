@@ -17,8 +17,10 @@ $pat{'icp_opcode'} = "icp_opcode_str";
 $pat{'swap_log_op'} = "swap_log_op_str";
 $pat{'lookup_t'} = "lookup_t_str";
 $pat{'log_type'} = "log_tags";
+$pat{'icap_service_t'} = "icap_service_type_str";
 
 print "#include \"squid.h\"\n";
+
 
 $state = 0;	# start state
 while (<>) {

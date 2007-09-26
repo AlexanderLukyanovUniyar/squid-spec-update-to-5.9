@@ -391,6 +391,9 @@ mainReconfigure(void)
 #else
     idnsShutdown();
 #endif
+#ifdef HS_FEAT_ICAP
+    icapClose();
+#endif
     redirectShutdown();
     locationRewriteShutdown();
     authenticateShutdown();
@@ -422,6 +425,9 @@ mainReconfigure(void)
 #endif
     redirectInit();
     locationRewriteInit();
+#ifdef HS_FEAT_ICAP
+    icapInit();
+#endif
     authenticateInit(&Config.authConfig);
     externalAclInit();
 #if USE_WCCP
@@ -573,6 +579,9 @@ mainInitialize(void)
     redirectInit();
     locationRewriteInit();
     errorMapInit();
+#ifdef HS_FEAT_ICAP
+    icapInit();
+#endif
     authenticateInit(&Config.authConfig);
     externalAclInit();
     useragentOpenLog();

@@ -109,7 +109,7 @@ static const char *const crlf = "\r\n";
 static CWCB clientWriteComplete;
 static CWCB clientWriteBodyComplete;
 static PF clientReadRequest;
-static PF connStateFree;
+PF connStateFree;
 static PF requestTimeout;
 static PF clientLifetimeTimeout;
 static int clientCheckTransferDone(clientHttpRequest *);
@@ -141,12 +141,12 @@ static void clientSetKeepaliveFlag(clientHttpRequest *);
 static void clientPackRangeHdr(const HttpReply * rep, const HttpHdrRangeSpec * spec, String boundary, MemBuf * mb);
 static void clientPackTermBound(String boundary, MemBuf * mb);
 static void clientInterpretRequestHeaders(clientHttpRequest *);
-static void clientProcessRequest(clientHttpRequest *);
+void clientProcessRequest(clientHttpRequest *);
 static void clientProcessExpired(void *data);
 static void clientProcessOnlyIfCachedMiss(clientHttpRequest * http);
-static int clientCachable(clientHttpRequest * http);
-static int clientHierarchical(clientHttpRequest * http);
-static int clientCheckContentLength(request_t * r);
+int clientCachable(clientHttpRequest * http);
+int clientHierarchical(clientHttpRequest * http);
+int clientCheckContentLength(request_t * r);
 static DEFER httpAcceptDefer;
 static log_type clientProcessRequest2(clientHttpRequest * http);
 static int clientReplyBodyTooLarge(clientHttpRequest *, squid_off_t clen);
@@ -157,15 +157,18 @@ static void clientAccessCheck(void *data);
 static void clientAccessCheckDone(int answer, void *data);
 static void clientAccessCheck2(void *data);
 static void clientAccessCheckDone2(int answer, void *data);
-static BODY_HANDLER clientReadBody;
+BODY_HANDLER clientReadBody;
 static void clientAbortBody(request_t * req);
 #if USE_SSL
 static void httpsAcceptSSL(ConnStateData * connState, SSL_CTX * sslContext);
 #endif
 static int varyEvaluateMatch(StoreEntry * entry, request_t * request);
 static int modifiedSince(StoreEntry *, request_t *);
-static StoreEntry *clientCreateStoreEntry(clientHttpRequest *, method_t, request_flags);
+StoreEntry *clientCreateStoreEntry(clientHttpRequest *, method_t, request_flags);
 static inline int clientNatLookup(ConnStateData * conn);
+#if HS_FEAT_ICAP
+static int clientIcapReqMod(clientHttpRequest * http);
+#endif
 
 #if USE_IDENT
 static void
@@ -383,7 +386,7 @@ clientOnlyIfCached(clientHttpRequest * http)
 	EBIT_TEST(r->cache_control->mask, CC_ONLY_IF_CACHED);
 }
 
-static StoreEntry *
+StoreEntry *
 clientCreateStoreEntry(clientHttpRequest * h, method_t m, request_flags flags)
 {
     StoreEntry *e;
@@ -640,6 +643,10 @@ clientRedirectDone(void *data, char *result)
     if (urlgroup && *urlgroup)
 	http->request->urlgroup = xstrdup(urlgroup);
     clientInterpretRequestHeaders(http);
+#if HS_FEAT_ICAP
+    if (Config.icapcfg.onoff)
+	icapCheckAcl(http);
+#endif
 #if HEADERS_LOG
     headersLog(0, 1, request->method, request);
 #endif
@@ -1368,11 +1375,22 @@ httpRequestFree(void *data)
     /* Unlink us from the clients request list */
     dlinkDelete(&http->node, &http->conn->reqs);
     dlinkDelete(&http->active, &ClientActiveRequests);
+#if HS_FEAT_ICAP
+    /*In the case that the upload of data breaks, we need this code here ....  */
+    if (NULL != http->icap_reqmod) {
+	if (cbdataValid(http->icap_reqmod))
+	    if (http->icap_reqmod->icap_fd > -1) {
+		comm_close(http->icap_reqmod->icap_fd);
+	    }
+	cbdataUnlock(http->icap_reqmod);
+	http->icap_reqmod = NULL;
+    }
+#endif
     cbdataFree(http);
 }
 
 /* This is a handler normally called by comm_close() */
-static void
+void
 connStateFree(int fd, void *data)
 {
     ConnStateData *connState = data;
@@ -1392,8 +1410,9 @@ connStateFree(int fd, void *data)
 	authenticateAuthUserRequestUnlock(connState->auth_user_request);
     connState->auth_user_request = NULL;
     authenticateOnCloseConnection(connState);
-    memFreeBuf(connState->in.size, connState->in.buf);
-    pconnHistCount(0, connState->nrequests);
+    if (connState->in.buf)
+        memFreeBuf(connState->in.size, connState->in.buf);
+/*  pconnHistCount(0, connState->nrequests);*/
     if (connState->pinning.fd >= 0)
 	comm_close(connState->pinning.fd);
     cbdataFree(connState);
@@ -1591,7 +1610,7 @@ clientSetKeepaliveFlag(clientHttpRequest * http)
     }
 }
 
-static int
+int
 clientCheckContentLength(request_t * r)
 {
     switch (r->method) {
@@ -1610,7 +1629,7 @@ clientCheckContentLength(request_t * r)
     /* NOT REACHED */
 }
 
-static int
+int
 clientCachable(clientHttpRequest * http)
 {
     request_t *req = http->request;
@@ -1636,7 +1655,7 @@ clientCachable(clientHttpRequest * http)
 }
 
 /* Return true if we can query our neighbors for this object */
-static int
+int
 clientHierarchical(clientHttpRequest * http)
 {
     const char *url = http->uri;
@@ -3302,7 +3321,7 @@ clientProcessRequest2(clientHttpRequest * http)
     return LOG_TCP_HIT;
 }
 
-static void
+void
 clientProcessRequest(clientHttpRequest * http)
 {
     char *url = http->uri;
@@ -3313,6 +3332,11 @@ clientProcessRequest(clientHttpRequest * http)
 	RequestMethodStr[r->method],
 	url);
     r->flags.collapsed = 0;
+#if HS_FEAT_ICAP
+    if (clientIcapReqMod(http)) {
+	return;
+    }
+#endif
     if (r->method == METHOD_CONNECT && !http->redirect.status) {
 	http->log_type = LOG_TCP_MISS;
 #if USE_SSL && SSL_CONNECT_INTERCEPT
@@ -3807,6 +3831,20 @@ clientReadRequest(int fd, void *data)
 	    (long) conn->in.offset, (long) conn->in.size);
 	len = conn->in.size - conn->in.offset - 1;
     }
+#if HS_FEAT_ICAP
+    /*
+     * This check exists because ICAP doesn't always work well
+     * with persistent (reused) connections.  One version of the
+     * REQMOD code creates a fake ConnStateData, which doesn't have
+     * an in.buf.  We want to make sure that the fake ConnStateData
+     * doesn't get used here.
+     */
+    if (NULL == conn->in.buf) {
+	debug(33, 1) ("clientReadRequest: FD %d aborted; conn->in.buf is NULL\n", fd);
+	comm_close(fd);
+	return;
+    }
+#endif
     statCounter.syscalls.sock.reads++;
     size = FD_READ_METHOD(fd, conn->in.buf + conn->in.offset, len);
     if (size > 0) {
@@ -3911,6 +3949,8 @@ clientReadRequest(int fd, void *data)
 	    /* add to the client request queue */
 	    dlinkAddTail(http, &http->node, &conn->reqs);
 	    conn->nrequests++;
+	    F->pconn.uses++;
+	    F->pconn.type = 0;
 	    commSetTimeout(fd, Config.Timeout.lifetime, clientLifetimeTimeout, http);
 	    if (parser_return_code < 0) {
 		debug(33, 1) ("clientReadRequest: FD %d (%s:%d) Invalid Request\n", fd, fd_table[fd].ipaddr, fd_table[fd].remote_port);
@@ -4081,7 +4121,7 @@ clientReadRequest(int fd, void *data)
 }
 
 /* file_read like function, for reading body content */
-static void
+void
 clientReadBody(request_t * request, char *buf, size_t size, CBCB * callback, void *cbdata)
 {
     ConnStateData *conn = request->body_reader_data;
@@ -4210,7 +4250,7 @@ clientProcessBody(ConnStateData * conn)
 }
 
 /* Abort a body request */
-static void
+void
 clientAbortBody(request_t * request)
 {
     ConnStateData *conn = request->body_reader_data;
@@ -4252,7 +4292,7 @@ requestTimeout(int fd, void *data)
 	 * Some data has been sent to the client, just close the FD
 	 */
 	comm_close(fd);
-    } else if (conn->nrequests) {
+    } else if (fd_table[fd].pconn.uses) {
 	/*
 	 * assume its a persistent connection; just close it
 	 */
@@ -4973,6 +5013,52 @@ varyEvaluateMatch(StoreEntry * entry, request_t * request)
 	}
     }
 }
+
+#if HS_FEAT_ICAP
+static int
+clientIcapReqMod(clientHttpRequest * http)
+{
+    ErrorState *err;
+    icap_service *service;
+    if (http->flags.did_icap_reqmod)
+	return 0;
+    if (NULL == (service = icapService(ICAP_SERVICE_REQMOD_PRECACHE, http->request)))
+	return 0;
+    debug(33, 3) ("clientIcapReqMod: calling icapReqModStart for %p\n", http);
+    /*
+     * Note, we pass 'start' and 'log_addr' to ICAP so the access.log
+     * entry comes out right.  The 'clientHttpRequest' created by
+     * the ICAP side is the one that gets logged.  The first
+     * 'clientHttpRequest' does not get logged because its out.size
+     * is zero and log_type is unset.
+     */
+    http->icap_reqmod = icapReqModStart(service,
+	http->uri,
+	http->request,
+	http->conn->fd,
+	http->start,
+	http->conn->log_addr,
+	(void *) http->conn);
+    if (NULL == http->icap_reqmod) {
+	return 0;
+    } else if (-1 == (int) http->icap_reqmod) {
+	/* produce error */
+	http->icap_reqmod = NULL;
+	debug(33, 2) ("clientIcapReqMod: icap told us to send an error\n");
+	http->log_type = LOG_TCP_DENIED;
+	err = errorCon(ERR_ICAP_FAILURE, HTTP_INTERNAL_SERVER_ERROR, http->orig_request);
+	err->xerrno = ETIMEDOUT;
+	err->request = requestLink(http->request);
+	err->src_addr = http->conn->peer.sin_addr;
+	http->entry = clientCreateStoreEntry(http, http->request->method, null_request_flags);
+	errorAppendEntry(http->entry, err);
+	return 1;
+    }
+    cbdataLock(http->icap_reqmod);
+    http->flags.did_icap_reqmod = 1;
+    return 1;
+}
+#endif
 
 /* This is a handler normally called by comm_close() */
 static void

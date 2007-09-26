@@ -192,6 +192,8 @@ aclStrToType(const char *s)
 	return ACL_MAX_USER_IP;
     if (!strcmp(s, "external"))
 	return ACL_EXTERNAL;
+    if (!strcmp(s, "max_body_size"))
+	return ACL_MAX_BODY_SIZE;
     if (!strcmp(s, "urllogin"))
 	return ACL_URLLOGIN;
 #if USE_SSL
@@ -286,6 +288,8 @@ aclTypeToStr(squid_acl type)
 	return "max_user_ip";
     if (type == ACL_EXTERNAL)
 	return "external";
+    if (type == ACL_MAX_BODY_SIZE)
+	return "max_body_size";
     if (type == ACL_URLLOGIN)
 	return "urllogin";
 #if USE_SSL
@@ -1020,6 +1024,7 @@ aclParseAclLine(acl ** head)
     case ACL_SRC_ASN:
     case ACL_MAXCONN:
     case ACL_DST_ASN:
+    case ACL_MAX_BODY_SIZE:
 	aclParseIntlist(&A->data);
 	break;
     case ACL_MAX_USER_IP:
@@ -1890,6 +1895,8 @@ aclMatchAcl(acl * ae, aclCheck_t * checklist)
 	k = clientdbEstablished(checklist->src_addr, 0);
 	return ((k > ((intlist *) ae->data)->i) ? 1 : 0);
 	/* NOTREACHED */
+    case ACL_MAX_BODY_SIZE:
+	return ((r->content_length > ((intlist *) ae->data)->i) ? 1 : 0);
     case ACL_URL_PORT:
 	return aclMatchIntegerRange(ae->data, (int) r->port);
 	/* NOTREACHED */
@@ -2532,6 +2539,9 @@ aclDestroyAcls(acl ** head)
 	case ACL_MAXCONN:
 	    intlistDestroy((intlist **) (void *) &a->data);
 	    break;
+	case ACL_MAX_BODY_SIZE:
+	    intlistDestroy((intlist **) & a->data);
+	    break;
 	case ACL_MAX_USER_IP:
 	    aclDestroyUserMaxIP(&a->data);
 	    break;
@@ -2965,6 +2975,7 @@ aclDumpGeneric(const acl * a)
     case ACL_SRC_ASN:
     case ACL_MAXCONN:
     case ACL_DST_ASN:
+    case ACL_MAX_BODY_SIZE:
 	return aclDumpIntlistList(a->data);
     case ACL_MAX_USER_IP:
 	return aclDumpUserMaxIP(a->data);

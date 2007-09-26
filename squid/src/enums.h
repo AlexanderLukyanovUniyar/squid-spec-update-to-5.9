@@ -142,6 +142,7 @@ typedef enum {
     ACL_MAX_USER_IP,
     ACL_EXTERNAL,
     ACL_URLLOGIN,
+    ACL_MAX_BODY_SIZE,
 #if USE_SSL
     ACL_USER_CERT,
     ACL_CA_CERT,

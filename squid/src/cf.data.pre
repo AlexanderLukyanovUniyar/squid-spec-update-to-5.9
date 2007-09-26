@@ -2798,6 +2798,10 @@ DOC_START
 	  # effect in rules that affect the reply data stream such as
 	  # http_reply_access.
 
+	acl aclname max_body_size <bytes>
+	  # This will be matched when the client's HTTP Request Body is
+	  # greater than <bytes>.
+
 	acl aclname rep_header header-name [-i] any\.regex\.here
 	  # regex match against any of the known response headers.
 	  # Example:
@@ -2829,6 +2833,7 @@ acl myexample dst_as 1241
 acl password proxy_auth REQUIRED
 acl fileupload req_mime_type -i ^multipart/form-data$
 acl javascript rep_mime_type -i ^application/x-javascript$
+acl big_request max_body_size 10240
 
 NOCOMMENT_START
 #Recommended minimum configuration:
@@ -3988,6 +3993,9 @@ DOC_START
 
 	This option replaces some v1.1 options such as local_domain
 	and local_ip.
+
+Example:
+ always_direct allow big_request
 DOC_END
 
 NAME: never_direct

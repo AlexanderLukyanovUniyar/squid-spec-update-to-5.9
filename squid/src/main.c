@@ -1,6 +1,6 @@
 
 /*
- * $Id: main.c,v 1.393.2.2 2007/03/12 22:25:40 hno Exp $
+ * $Id: main.c,v 1.393.2.4 2007/08/31 13:52:10 hno Exp $
  *
  * DEBUG: section 1     Startup and Main Loop
  * AUTHOR: Harvest Derived
@@ -549,7 +549,7 @@ static void
 mainInitialize(void)
 {
     /* chroot if configured to run inside chroot */
-    if (Config.chroot_dir && chroot(Config.chroot_dir)) {
+    if (Config.chroot_dir && (chroot(Config.chroot_dir) != 0 || chdir("/") != 0)) {
 	fatal("failed to chroot");
     }
     if (opt_catch_signals) {
@@ -1084,6 +1084,10 @@ watch_child(char *argv[])
 	    case SIGKILL:
 		exit(0);
 		break;
+	    case SIGINT:
+	    case SIGTERM:
+		syslog(LOG_ALERT, "Exiting due to unexpected forced shutdown");
+		exit(1);
 	    default:
 		break;
 	    }

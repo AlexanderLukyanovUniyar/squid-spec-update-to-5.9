@@ -1,6 +1,6 @@
 
 /*
- * $Id: ftp.c,v 1.342.2.2 2007/03/26 23:41:43 hno Exp $
+ * $Id: ftp.c,v 1.342.2.4 2007/08/31 13:40:49 hno Exp $
  *
  * DEBUG: section 9     File Transfer Protocol (FTP)
  * AUTHOR: Harvest Derived
@@ -1033,7 +1033,7 @@ ftpCheckUrlpath(FtpStateData * ftpState)
     const char *t;
     if ((t = strRChr(request->urlpath, ';')) != NULL) {
 	if (strncasecmp(t + 1, "type=", 5) == 0) {
-	    ftpState->typecode = (char) toupper((int) *(t + 6));
+	    ftpState->typecode = (char) xtoupper(*(t + 6));
 	    strCutPtr(request->urlpath, t);
 	}
     }
@@ -1683,6 +1683,7 @@ ftpReadMdtm(FtpStateData * ftpState)
 	ftpUnhack(ftpState);
     } else if (code < 0) {
 	ftpFail(ftpState);
+	return;
     }
     ftpSendSize(ftpState);
 }
@@ -1719,6 +1720,7 @@ ftpReadSize(FtpStateData * ftpState)
 	}
     } else if (code < 0) {
 	ftpFail(ftpState);
+	return;
     }
     ftpSendPasv(ftpState);
 }

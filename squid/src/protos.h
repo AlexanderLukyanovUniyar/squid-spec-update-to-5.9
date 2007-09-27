@@ -1,6 +1,6 @@
 
 /*
- * $Id: protos.h,v 1.520.2.1 2007/03/26 23:14:09 hno Exp $
+ * $Id: protos.h,v 1.520.2.3 2007/07/15 09:52:17 hno Exp $
  *
  *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/
@@ -193,6 +193,8 @@ extern void comm_select_shutdown(void);
 extern int comm_select(int);
 extern void commUpdateEvents(int fd);
 extern void commSetEvents(int fd, int need_read, int need_write);
+extern void commClose(int fd);
+extern void commOpen(int fd);
 extern void commUpdateReadHandler(int, PF *, void *);
 extern void commUpdateWriteHandler(int, PF *, void *);
 extern void comm_quick_poll_required(void);
@@ -402,7 +404,7 @@ extern void httpHeaderAddContRange(HttpHeader *, HttpHdrRangeSpec, squid_off_t);
 extern void strListAdd(String * str, const char *item, char del);
 extern void strListAddUnique(String * str, const char *item, char del);
 extern int strListIsMember(const String * str, const char *item, char del);
-extern int strListIsSubstr(const String * list, const char *s, char del);
+extern int strIsSubstr(const String * list, const char *s);
 extern int strListGetItem(const String * str, char del, const char **item, int *ilen, const char **pos);
 extern const char *getStringPrefix(const char *str, const char *end);
 extern int httpHeaderParseInt(const char *start, int *val);

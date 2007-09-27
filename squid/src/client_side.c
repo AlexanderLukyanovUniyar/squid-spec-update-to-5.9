@@ -1,6 +1,6 @@
 
 /*
- * $Id: client_side.c,v 1.693.2.12 2007/03/20 21:26:34 hno Exp $
+ * $Id: client_side.c,v 1.693.2.20 2007/09/03 13:13:36 hno Exp $
  *
  * DEBUG: section 33    Client-side Routines
  * AUTHOR: Duane Wessels
@@ -427,7 +427,7 @@ clientAccessCheckDone(int answer, void *data)
 	http->redirect_state = REDIRECT_PENDING;
 	clientRedirectStart(http);
     } else {
-	int require_auth = (answer == ACCESS_REQ_PROXY_AUTH || aclIsProxyAuth(AclMatchedName));
+	int require_auth = (answer == ACCESS_REQ_PROXY_AUTH || aclIsProxyAuth(AclMatchedName)) && !http->request->flags.transparent;
 	debug(33, 5) ("Access Denied: %s\n", http->uri);
 	debug(33, 5) ("AclMatchedName = %s\n",
 	    AclMatchedName ? AclMatchedName : "<null>");
@@ -1539,16 +1539,19 @@ clientInterpretRequestHeaders(clientHttpRequest * http)
 	}
     }
     if (httpHeaderHas(req_hdr, HDR_VIA)) {
-	String s = httpHeaderGetList(req_hdr, HDR_VIA);
 	/*
 	 * ThisCache cannot be a member of Via header, "1.0 ThisCache" can.
 	 * Note ThisCache2 has a space prepended to the hostname so we don't
 	 * accidentally match super-domains.
 	 */
-	if (strListIsSubstr(&s, ThisCache2, ',')) {
+	String s = httpHeaderGetList(req_hdr, HDR_VIA);
+	int n = strIsSubstr(&s, ThisCache2);
+	if (n) {
 	    debugObj(33, 1, "WARNING: Forwarding loop detected for:\n",
 		request, (ObjPackMethod) & httpRequestPackDebug);
 	    request->flags.loopdetect = 1;
+	    if (n > 1)
+		request->flags.loopdetect_twice = 1;
 	}
 #if FORW_VIA_DB
 	fvdbCountVia(strBuf(s));
@@ -1634,6 +1637,8 @@ clientCachable(clientHttpRequest * http)
 {
     request_t *req = http->request;
     method_t method = req->method;
+    if (req->flags.loopdetect)
+	return 0;
     if (req->protocol == PROTO_HTTP)
 	return httpCachable(method);
     /* FTP is always cachable */
@@ -1853,6 +1858,7 @@ clientBuildRangeHeader(clientHttpRequest * http, HttpReply * rep)
 	assert(actual_clen >= 0);
 	httpHeaderDelById(hdr, HDR_CONTENT_LENGTH);
 	httpHeaderPutSize(hdr, HDR_CONTENT_LENGTH, actual_clen);
+	rep->content_length = actual_clen;
 	debug(33, 3) ("clientBuildRangeHeader: actual content length: %" PRINTF_OFF_T "\n", actual_clen);
     }
 }
@@ -1924,19 +1930,19 @@ clientBuildReplyHeader(clientHttpRequest * http, HttpReply * rep)
 	 * the objects age, so a Age: 0 header does not add any useful
 	 * information to the reply in any case.
 	 */
-	if (NULL == http->entry)
-	    (void) 0;
-	else if (http->entry->timestamp < 0)
-	    (void) 0;
-	if (EBIT_TEST(http->entry->flags, ENTRY_SPECIAL)) {
-	    httpHeaderDelById(hdr, HDR_DATE);
-	    httpHeaderInsertTime(hdr, 0, HDR_DATE, squid_curtime);
-	} else if (http->entry->timestamp < squid_curtime)
-	    httpHeaderPutInt(hdr, HDR_AGE,
-		squid_curtime - http->entry->timestamp);
-	if (!httpHeaderHas(hdr, HDR_CONTENT_LENGTH) && http->entry->mem_obj && http->entry->store_status == STORE_OK) {
-	    rep->content_length = contentLen(http->entry);
-	    httpHeaderPutSize(hdr, HDR_CONTENT_LENGTH, rep->content_length);
+	if (http->entry) {
+	    if (EBIT_TEST(http->entry->flags, ENTRY_SPECIAL)) {
+		httpHeaderDelById(hdr, HDR_DATE);
+		httpHeaderInsertTime(hdr, 0, HDR_DATE, squid_curtime);
+	    } else if (http->entry->timestamp < 0) {
+		(void) 0;
+	    } else if (http->entry->timestamp < squid_curtime)
+		httpHeaderPutInt(hdr, HDR_AGE,
+		    squid_curtime - http->entry->timestamp);
+	    if (!httpHeaderHas(hdr, HDR_CONTENT_LENGTH) && http->entry->mem_obj && http->entry->store_status == STORE_OK) {
+		rep->content_length = contentLen(http->entry);
+		httpHeaderPutSize(hdr, HDR_CONTENT_LENGTH, rep->content_length);
+	    }
 	}
     }
     /* Filter unproxyable authentication types */
@@ -2004,7 +2010,7 @@ clientBuildReplyHeader(clientHttpRequest * http, HttpReply * rep)
 	request->flags.proxy_keepalive = 0;
     }
     /* Append Via */
-    {
+    if (Config.onoff.via) {
 	char bbuf[MAX_URL + 32];
 	String strVia = httpHeaderGetList(hdr, HDR_VIA);
 	snprintf(bbuf, MAX_URL + 32, "%d.%d %s",
@@ -2141,6 +2147,11 @@ clientCacheHit(void *data, char *buf, ssize_t size)
 		clientCacheHit,
 		http);
 	}
+	return;
+    }
+    if (strcmp(mem->url, urlCanonical(r)) != 0) {
+	debug(33, 1) ("clientCacheHit: URL mismatch '%s' != '%s'?\n", e->mem_obj->url, urlCanonical(r));
+	clientProcessMiss(http);
 	return;
     }
     /*
@@ -2859,6 +2870,7 @@ clientCheckErrorMapDone(StoreEntry * e, int body_offset, squid_off_t content_len
 	if (content_length >= 0) {
 	    httpHeaderPutSize(&state->http->reply->header, HDR_CONTENT_LENGTH, content_length);
 	}
+	http->reply->content_length = content_length;
     }
     clientCheckHeaderDone(state);
 }
@@ -3123,10 +3135,7 @@ clientWriteComplete(int fd, char *bufnotused, size_t size, int errflag, void *da
     } else if ((done = clientCheckTransferDone(http)) != 0 || size == 0) {
 	debug(33, 5) ("clientWriteComplete: FD %d transfer is DONE\n", fd);
 	/* We're finished case */
-	if (httpReplyBodySize(http->request->method, entry->mem_obj->reply) < 0) {
-	    debug(33, 5) ("clientWriteComplete: closing, content_length < 0\n");
-	    comm_close(fd);
-	} else if (!done) {
+	if (!done) {
 	    debug(33, 5) ("clientWriteComplete: closing, !done\n");
 	    comm_close(fd);
 	} else if (clientGotNotEnough(http)) {
@@ -3439,11 +3448,11 @@ clientProcessMiss(clientHttpRequest * http)
 	return;
     }
     /*
-     * Deny loops when running in accelerator/transproxy mode.
+     * Deny double loops
      */
-    if (r->flags.loopdetect && (http->flags.accel || http->flags.transparent)) {
-	http->al.http.code = HTTP_FORBIDDEN;
-	err = errorCon(ERR_ACCESS_DENIED, HTTP_FORBIDDEN, http->orig_request);
+    if (r->flags.loopdetect_twice) {
+	http->al.http.code = HTTP_GATEWAY_TIMEOUT;
+	err = errorCon(ERR_CANNOT_FORWARD, HTTP_GATEWAY_TIMEOUT, http->orig_request);
 	http->log_type = LOG_TCP_DENIED;
 	http->entry = clientCreateStoreEntry(http, r->method, null_request_flags);
 	errorAppendEntry(http->entry, err);
@@ -4007,7 +4016,7 @@ clientReadRequest(int fd, void *data)
 	    if (conn->port->urlgroup)
 		request->urlgroup = xstrdup(conn->port->urlgroup);
 #if LINUX_TPROXY
-	    request->flags.tproxy = conn->port->tproxy;
+	    request->flags.tproxy = conn->port->tproxy && need_linux_tproxy;
 #endif
 	    request->flags.accelerated = http->flags.accel;
 	    request->flags.transparent = http->flags.transparent;
@@ -4203,7 +4212,6 @@ clientProcessBody(ConnStateData * conn)
 	assert(conn->body.size_left > 0);
 	assert(conn->in.offset > 0);
 	assert(callback != NULL);
-	assert(buf != NULL || !conn->body.request);
 	/* How much do we have to process? */
 	size = conn->in.offset;
 	if (size > conn->body.size_left)	/* only process the body part */
@@ -4241,10 +4249,8 @@ clientProcessBody(ConnStateData * conn)
 	/* Invoke callback function */
 	if (valid)
 	    callback(buf, size, cbdata);
-	if (request != NULL) {
+	if (request != NULL)
 	    requestUnlink(request);	/* Linked in clientReadBody */
-	    conn->body.request = NULL;
-	}
 	debug(33, 2) ("clientProcessBody: end fd=%d size=%d body_size=%lu in.offset=%ld cb=%p req=%p\n", conn->fd, size, (unsigned long int) conn->body.size_left, (long int) conn->in.offset, callback, request);
     }
 }

@@ -18,38 +18,15 @@ Group: System/Servers
 Url: http://www.squid-cache.org/
 Packager: Squid Development Team <squid@packages.altlinux.org>
 
-Source: %url/Versions/v2/%name-%version.tar.bz2
+Source: %url/Versions/v2/%name-%version.tar
 Source1: %url/Doc/FAQ/FAQ.sgml
 Source2: %name.init
 Source3: %name.logrotate
 Source4: wbinfo_group.sh
 Source5: squid-2.6.STABLE5-alt-errorlist
 
-# Other patches
-# rediffed for 2.6.S5
-Patch1: squid-2.6.STABLE5-alt-make.patch
-# rediffed for 2.6.S6
-Patch2: squid-2.6.STABLE6-alt-config.patch
-Patch3: squid-2.6.STABLE5-alt-default_port.patch
-Patch5: squid-2.6.STABLE6-alt-max_body_size.patch
-Patch6: squid-2.6.STABLE5-alt-errrors_belarusian.patch
-# See http://stc.nixdev.org/getstat.php
-# DISABLED for now
-Patch7: patch-aa.patch
-Patch9: squid-2.5.STABLE10-alt-sambaprefix.patch
-
-Patch8: squid-2.6.STABLE5-alt-feat_icap.patch
-# Official patches to Squid
-# See http://devel.squid-cache.org/projects.html#icap
-Patch10: squid-2.6.STABLE13-squid-icap.patch.bz2
-
-# Patches by other vendors
-Patch20: squid-2.6.STABLE5-deb-localhost.patch
-Patch21: squid-2.5.STABLE4-fc-location.patch
-Patch22: squid-2.6.STABLE5-fc-fdconfig.patch
-Patch23: squid-2.6.STABLE5-deb-unlinkd.patch
-Patch24: squid-2.6.STABLE5-deb-smb_auth.patch
-Patch25: squid-2.6.STABLE6-drweb-icap.patch
+# Cummulative ALT Linux patch, git.altlinux.org/people/bga/packages/squid.git
+Patch: %name-%version-alt.patch
 
 Obsoletes: %name-novm
 
@@ -174,23 +151,7 @@ Install squid package to get all Squid parts.
 
 %prep
 %setup -q
-%patch1 -p1
-%patch2 -p1
-%patch3 -p2
-%patch5 -p2
-%patch6 -p1
-%patch9 -p1
-
-%patch8 -p0
-install -m 644 %SOURCE5 errors/list
-%patch10 -p2
-
-%patch20 -p0
-%patch21 -p1
-%patch22 -p1
-%patch23 -p0
-%patch24 -p0
-#%patch25 -p2
+%patch -p1
 
 mkdir -p faq
 install -m644 %SOURCE1 FAQ.sgml

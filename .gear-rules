@@ -1,8 +1,6 @@
 copy: *.init
 copy: *.logrotate
-copy: *.patch
 copy: *.sgml
 copy: *.sh
-copy: *-alt-errorlist
-bzip2: *-squid-icap.patch
-tar.bz2: squid
+tar: @version@:squid
+diff: @version@:squid squid name=@name@-@version@-alt.patch

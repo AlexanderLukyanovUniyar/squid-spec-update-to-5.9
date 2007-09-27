@@ -1,4 +1,4 @@
-%def_enable poll
+%def_disable poll
 %def_enable epoll
 
 # epoll has higher priority if both specified, so disable it
@@ -7,7 +7,7 @@
 %endif
 
 Name: squid
-Version: 2.6.STABLE13
+Version: 2.6.STABLE16
 Release: alt1
 
 Summary: The Squid proxy caching server
@@ -23,9 +23,8 @@ Source1: %url/Doc/FAQ/FAQ.sgml
 Source2: %name.init
 Source3: %name.logrotate
 Source4: wbinfo_group.sh
-Source5: squid-2.6.STABLE5-alt-errorlist
 
-# Cummulative ALT Linux patch, git.altlinux.org/people/bga/packages/squid.git
+# Cumulative ALT Linux patch, see git.altlinux.org/people/bga/packages/squid.git
 Patch: %name-%version-alt.patch
 
 Obsoletes: %name-novm
@@ -33,11 +32,11 @@ Obsoletes: %name-novm
 BuildConflicts: bind-devel
 BuildPreReq: rpm-build >= 4.0.4-alt10, autoconf >= 2.54
 
-# Automatically added by buildreq on Fri Dec 15 2006
-BuildRequires: OpenSP libdb4-devel libldap-devel libpam-devel libsasl2-devel libssl-devel sgml-tools
-# Used by smb_auth.pl, required on find-requires stage:
-BuildRequires: perl-Authen-Smb
-BuildRequires: rpm-build-compat
+# Added on Fri Sep 28 2007
+BuildRequires: OpenSP libdb4-devel libkrb5-devel libldap-devel libpam-devel libsasl2-devel libssl-devel sgml-tools
+
+# Used by smb_auth.pl,pop3.pl and squid_db_auth, required on find-requires stage:
+BuildRequires: perl-Authen-Smb perl-libnet perl-DBI
 
 Requires: %name-common %name-server %name-helpers %name-helpers-perl %name-cachemgr
 
@@ -160,12 +159,15 @@ sed -i -e 's,url="/\(htpasswd/chpasswd-cgi.tar.gz\)",url="http://www.squid-cache
 find . -type f -name '*.pl' -print0 | \
 	xargs -r0 sed -ie 's,/usr/local/bin/perl,/usr/bin/perl,g'
 
+sed -i -e 's,^KERBINC = ,KERBINC = -I%_includedir/krb5,g' \
+	helpers/negotiate_auth/squid_kerb_auth/Makefile.am
+
 touch NEWS AUTHORS
 
 %build
 %set_autoconf_version 2.5
 
-%__autoreconf
+autoreconf -ifsv
 %configure \
 	--bindir=%_sbindir \
 	--libexecdir=%_libdir/%name \
@@ -195,10 +197,11 @@ touch NEWS AUTHORS
 	--enable-ntlm-fail-open \
 	--enable-cache-digests \
 	--enable-x-accelerator-vary \
-	--enable-auth="basic ntlm digest" \
-	--enable-basic-auth-helpers="LDAP MSNT NCSA PAM SASL SMB YP getpwnam multi-domain-NTLM" \
+	--enable-auth="basic ntlm digest negotiate" \
+	--enable-basic-auth-helpers="DB LDAP MSNT NCSA PAM POP3 SASL SMB YP getpwnam multi-domain-NTLM" \
 	--enable-ntlm-auth-helpers="SMB fakeauth no_check" \
-	--enable-digest-auth-helpers="ldap password" \
+	--enable-digest-auth-helpers="ldap password eDirectory" \
+	--enable-negotiate-auth-helpers="squid_kerb_auth" \
 	--enable-external-acl-helpers="ip_user ldap_group unix_group session wbinfo_group" \
 	--enable-storeio="aufs coss diskd null ufs" \
 	--enable-default-err-language="English" \
@@ -222,46 +225,46 @@ popd
 %make_build install DESTDIR=%buildroot
 %make_build install-pinger DESTDIR=%buildroot
 
-%__mkdir_p %buildroot%_initdir
-%__mkdir_p %buildroot%_sysconfdir/logrotate.d
-%__install -m 755 %SOURCE2 %buildroot%_initdir/%name
-%__install -m 644 %SOURCE3 %buildroot%_sysconfdir/logrotate.d/%name
+mkdir -p %buildroot%_initdir
+mkdir -p %buildroot%_sysconfdir/logrotate.d
+install -m 755 %SOURCE2 %buildroot%_initdir/%name
+install -m 644 %SOURCE3 %buildroot%_sysconfdir/logrotate.d/%name
 
-%__mkdir_p %buildroot%_logdir/%name
-%__mkdir_p %buildroot%_spooldir/%name
+mkdir -p %buildroot%_logdir/%name
+mkdir -p %buildroot%_spooldir/%name
 
-%__rm -f $RPM_BUILD_DIR/%name-%version/doc/Programming-Guide/Makefile
+rm -f $RPM_BUILD_DIR/%name-%version/doc/Programming-Guide/Makefile
 
-%__install -p -m644 $RPM_BUILD_DIR/%name-%version/helpers/basic_auth/PAM/pam_auth.8 %buildroot%_man8dir
-%__install -p -m644 $RPM_BUILD_DIR/%name-%version/helpers/external_acl/ldap_group/squid_ldap_group.8 %buildroot%_man8dir
-%__install -p -m644 $RPM_BUILD_DIR/%name-%version/helpers/basic_auth/LDAP/squid_ldap_auth.8 %buildroot%_man8dir
-%__install -p -m644 $RPM_BUILD_DIR/%name-%version/helpers/external_acl/unix_group/squid_unix_group.8 %buildroot%_man8dir
-%__install -p -m644 $RPM_BUILD_DIR/%name-%version/doc/squid.8 %buildroot%_man8dir
-%__install -p -m644 $RPM_BUILD_DIR/%name-%version/doc/cachemgr.cgi.8 %buildroot%_man8dir
+install -p -m644 $RPM_BUILD_DIR/%name-%version/helpers/basic_auth/PAM/pam_auth.8 %buildroot%_man8dir
+install -p -m644 $RPM_BUILD_DIR/%name-%version/helpers/external_acl/ldap_group/squid_ldap_group.8 %buildroot%_man8dir
+install -p -m644 $RPM_BUILD_DIR/%name-%version/helpers/basic_auth/LDAP/squid_ldap_auth.8 %buildroot%_man8dir
+install -p -m644 $RPM_BUILD_DIR/%name-%version/helpers/external_acl/unix_group/squid_unix_group.8 %buildroot%_man8dir
+install -p -m644 $RPM_BUILD_DIR/%name-%version/doc/squid.8 %buildroot%_man8dir
+install -p -m644 $RPM_BUILD_DIR/%name-%version/doc/cachemgr.cgi.8 %buildroot%_man8dir
 
-%__install -D -p -m644 $RPM_BUILD_DIR/%name-%version/helpers/basic_auth/SMB/COPYING-2.0 helpers/doc/SMB.COPYING-2.0
-%__install -D -p -m644 $RPM_BUILD_DIR/%name-%version/helpers/basic_auth/SMB/README helpers/doc/SMB.README
-%__install -D -p -m644 $RPM_BUILD_DIR/%name-%version/helpers/basic_auth/SMB/smb_auth.sh helpers/doc/smb_auth.sh
-%__install -D -p -m644 $RPM_BUILD_DIR/%name-%version/helpers/basic_auth/SMB/ChangeLog helpers/doc/SMB.ChangeLog
-%__install -D -p -m644 $RPM_BUILD_DIR/%name-%version/helpers/basic_auth/LDAP/README helpers/doc/LDAP.README
-%__install -D -p -m644 $RPM_BUILD_DIR/%name-%version/helpers/basic_auth/MSNT/COPYING-2.0 helpers/doc/MSNT.COPYING-2.0
-%__install -D -p -m644 $RPM_BUILD_DIR/%name-%version/helpers/basic_auth/MSNT/README.html helpers/doc/MSNT.README.html
-%__install -D -p -m644 $RPM_BUILD_DIR/%name-%version/helpers/basic_auth/MSNT/msntauth.conf.default helpers/doc/msntauth.conf.default
-%__install -D -p -m644 $RPM_BUILD_DIR/%name-%version/helpers/basic_auth/SASL/README helpers/doc/SASL.README
-%__install -D -p -m644 $RPM_BUILD_DIR/%name-%version/helpers/basic_auth/SASL/squid_sasl_auth helpers/doc/squid_sasl_auth
-%__install -D -p -m644 $RPM_BUILD_DIR/%name-%version/helpers/basic_auth/SASL/squid_sasl_auth.conf helpers/doc/squid_sasl_auth.conf
-%__install -D -p -m644 $RPM_BUILD_DIR/%name-%version/helpers/basic_auth/SMB/README helpers/doc/SASL.README
-%__install -D -p -m644 $RPM_BUILD_DIR/%name-%version/helpers/basic_auth/multi-domain-NTLM/README.txt helpers/doc/NTLM.README.txt
-%__install -D -p -m644 $RPM_BUILD_DIR/%name-%version/helpers/external_acl/ip_user/README helpers/doc/ip_user.README
-%__install -D -p -m644 $RPM_BUILD_DIR/%name-%version/helpers/external_acl/ip_user/example-deny_all_but.conf helpers/doc/ip_user.example-deny_all_but.conf
-%__install -D -p -m644 $RPM_BUILD_DIR/%name-%version/helpers/external_acl/ip_user/example.conf helpers/doc/ip_user.example.conf
-%__install -D -p -m644 $RPM_BUILD_DIR/%name-%version/helpers/external_acl/unix_group/README helpers/doc/unix_group.README
-#%__install -D -p -m644 $RPM_BUILD_DIR/%name-%version/helpers/external_acl/winbind_group/readme.txt helpers/doc/winbind_group.readme.txt
-%__install -D -p -m644 $RPM_BUILD_DIR/%name-%version/helpers/external_acl/unix_group/README helpers/doc/unix_group.README
-%__install -D -p -m644 $RPM_BUILD_DIR/%name-%version/helpers/ntlm_auth/no_check/README.no_check_ntlm_auth helpers/doc/README.no_check_ntlm_auth
-%__install -p -m755 %SOURCE4 %buildroot%_libdir/%name
-%__mkdir_p %buildroot%_datadir/snmp/mibs
-%__mv %buildroot%_datadir/%name/mib.txt %buildroot%_datadir/snmp/mibs/SQUID-MIB.txt
+install -D -p -m644 $RPM_BUILD_DIR/%name-%version/helpers/basic_auth/SMB/COPYING-2.0 helpers/doc/SMB.COPYING-2.0
+install -D -p -m644 $RPM_BUILD_DIR/%name-%version/helpers/basic_auth/SMB/README helpers/doc/SMB.README
+install -D -p -m644 $RPM_BUILD_DIR/%name-%version/helpers/basic_auth/SMB/smb_auth.sh helpers/doc/smb_auth.sh
+install -D -p -m644 $RPM_BUILD_DIR/%name-%version/helpers/basic_auth/SMB/ChangeLog helpers/doc/SMB.ChangeLog
+install -D -p -m644 $RPM_BUILD_DIR/%name-%version/helpers/basic_auth/LDAP/README helpers/doc/LDAP.README
+install -D -p -m644 $RPM_BUILD_DIR/%name-%version/helpers/basic_auth/MSNT/COPYING-2.0 helpers/doc/MSNT.COPYING-2.0
+install -D -p -m644 $RPM_BUILD_DIR/%name-%version/helpers/basic_auth/MSNT/README.html helpers/doc/MSNT.README.html
+install -D -p -m644 $RPM_BUILD_DIR/%name-%version/helpers/basic_auth/MSNT/msntauth.conf.default helpers/doc/msntauth.conf.default
+install -D -p -m644 $RPM_BUILD_DIR/%name-%version/helpers/basic_auth/SASL/README helpers/doc/SASL.README
+install -D -p -m644 $RPM_BUILD_DIR/%name-%version/helpers/basic_auth/SASL/squid_sasl_auth helpers/doc/squid_sasl_auth
+install -D -p -m644 $RPM_BUILD_DIR/%name-%version/helpers/basic_auth/SASL/squid_sasl_auth.conf helpers/doc/squid_sasl_auth.conf
+install -D -p -m644 $RPM_BUILD_DIR/%name-%version/helpers/basic_auth/SMB/README helpers/doc/SASL.README
+install -D -p -m644 $RPM_BUILD_DIR/%name-%version/helpers/basic_auth/multi-domain-NTLM/README.txt helpers/doc/NTLM.README.txt
+install -D -p -m644 $RPM_BUILD_DIR/%name-%version/helpers/external_acl/ip_user/README helpers/doc/ip_user.README
+install -D -p -m644 $RPM_BUILD_DIR/%name-%version/helpers/external_acl/ip_user/example-deny_all_but.conf helpers/doc/ip_user.example-deny_all_but.conf
+install -D -p -m644 $RPM_BUILD_DIR/%name-%version/helpers/external_acl/ip_user/example.conf helpers/doc/ip_user.example.conf
+install -D -p -m644 $RPM_BUILD_DIR/%name-%version/helpers/external_acl/unix_group/README helpers/doc/unix_group.README
+#install -D -p -m644 $RPM_BUILD_DIR/%name-%version/helpers/external_acl/winbind_group/readme.txt helpers/doc/winbind_group.readme.txt
+install -D -p -m644 $RPM_BUILD_DIR/%name-%version/helpers/external_acl/unix_group/README helpers/doc/unix_group.README
+install -D -p -m644 $RPM_BUILD_DIR/%name-%version/helpers/ntlm_auth/no_check/README.no_check_ntlm_auth helpers/doc/README.no_check_ntlm_auth
+install -p -m755 %SOURCE4 %buildroot%_libdir/%name
+mkdir -p %buildroot%_datadir/snmp/mibs
+mv %buildroot%_datadir/%name/mib.txt %buildroot%_datadir/snmp/mibs/SQUID-MIB.txt
 
 %pre
 %_sbindir/groupadd -r -f %name >/dev/null 2>&1
@@ -269,8 +272,8 @@ popd
 # fixing #6321, step 1/2
 %_bindir/gpasswd -a squid shadow
 
-%__chown %name:%name %_logdir/%name/*.log >/dev/null 2>&1 ||:
-%__chmod 660 %_logdir/%name/*.log >/dev/null 2>&1 ||:
+chown %name:%name %_logdir/%name/*.log >/dev/null 2>&1 ||:
+chmod 660 %_logdir/%name/*.log >/dev/null 2>&1 ||:
 
 %post server
 %post_service %name
@@ -280,7 +283,7 @@ popd
 
 %triggerpostun -- squid < 2.4.STABLE4-alt1
 [ $2 -gt 0 ] || exit 0
-%__chown -R %name:%name %_spooldir/%name >/dev/null 2>&1 ||:
+chown -R %name:%name %_spooldir/%name >/dev/null 2>&1 ||:
 
 %files
 %doc COPYRIGHT README ChangeLog QUICKSTART RELEASENOTES.html SPONSORS
@@ -302,7 +305,7 @@ popd
 #%_sbindir/RunAccel
 %_sbindir/RunCache
 %_sbindir/cossdump
-%_man8dir/squid.8.gz
+%_man8dir/squid.*
 %attr(4710,root,%name) %_libdir/%name/pinger
 %_libdir/%name/unlinkd
 %_libdir/%name/diskd-daemon
@@ -330,28 +333,33 @@ popd
 %_libdir/%name/squid_unix_group
 %_libdir/%name/digest_ldap_auth
 %_libdir/%name/squid_session
+%_libdir/%name/digest_edir_auth
+%_libdir/%name/squid_kerb_auth
 #%_libdir/%name/wb_auth
 #%_libdir/%name/wb_group
 #%_libdir/%name/wb_ntlmauth
 %_libdir/%name/wbinfo_group.sh
 %_libdir/%name/yp_auth
-%_man8dir/pam_auth.8.gz
-%_man8dir/ncsa_auth.8.gz
-%_man8dir/squid_ldap_auth.8.gz
-%_man8dir/squid_ldap_group.8.gz
-%_man8dir/squid_unix_group.8.gz
-%_man8dir/squid_session.8.gz
+%_man8dir/pam_auth.*
+%_man8dir/ncsa_auth.*
+%_man8dir/squid_ldap_auth.*
+%_man8dir/squid_ldap_group.*
+%_man8dir/squid_unix_group.*
+%_man8dir/squid_session.*
 
 %files helpers-perl
 %doc scripts/*.pl
 %_libdir/%name/no_check.pl
 %_libdir/%name/smb_auth.pl
 %_libdir/%name/wbinfo_group.pl
+%_libdir/%name/pop3.pl
+%_libdir/%name/squid_db_auth
+%_man8dir/squid_db_auth.*
 
 %files cachemgr
 %config(noreplace) %_sysconfdir/%name/cachemgr.conf
 %_libdir/%name/cachemgr.cgi
-%_man8dir/cachemgr.cgi.8.gz
+%_man8dir/cachemgr.cgi.*
 
 %files common
 %attr(750,root,%name) %dir %_sysconfdir/%name
@@ -359,6 +367,13 @@ popd
 
 
 %changelog
+* Fri Sep 28 2007 Grigory Batalov <bga@altlinux.ru> 2.6.STABLE16-alt1
+- New upstream release (#12920).
+- Cumulative patch from git.
+- Prefer epoll to poll (#12919).
+- More authentication helpers.
+- Specfile cleanup.
+
 * Sun May 13 2007 Grigory Batalov <bga@altlinux.ru> 2.6.STABLE13-alt1
 - New upstream release.
 - ICAP patch cleaned up.

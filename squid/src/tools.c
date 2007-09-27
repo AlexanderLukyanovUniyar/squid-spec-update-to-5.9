@@ -755,6 +755,21 @@ readPidFile(void)
 void
 setMaxFD(void)
 {
+
+/* Set up number of used filedescriptors from config file */
+/* Override the default settings Squid_MaxFD = FD_SETSIZE */
+#if FD_CONFIG
+    Squid_MaxFD = Config.max_filedesc;
+
+    /* don't exceed limit which was set during compilation */
+    if(SQUID_MAXFD < Squid_MaxFD)
+	Squid_MaxFD = SQUID_MAXFD;
+#else
+    /* don't exceed FD_SETSIZE */
+    if(FD_SETSIZE < Squid_MaxFD)
+	Squid_MaxFD = FD_SETSIZE;
+#endif
+
 #if HAVE_SETRLIMIT
     /* try to use as many file descriptors as possible */
     /* System V uses RLIMIT_NOFILE and BSD uses RLIMIT_OFILE */

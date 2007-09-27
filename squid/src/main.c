@@ -762,6 +762,8 @@ main(int argc, char **argv)
     /* Make sure the OS allows core dumps if enabled in squid.conf */
     enableCoredumps();
 
+    setMaxFD();
+
 #if TEST_ACCESS
     comm_init();
     comm_select_init();
@@ -795,7 +797,6 @@ main(int argc, char **argv)
     }
     if (!opt_no_daemon)
 	watch_child(argv);
-    setMaxFD();
 
     /* init comm module */
     comm_init();

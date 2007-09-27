@@ -2973,6 +2973,34 @@ else
   AMDEP_FALSE=
 fi
 
+if false; then
+  USE_FD_CONFIG_TRUE=
+  USE_FD_CONFIG_FALSE='#'
+else
+  USE_FD_CONFIG_TRUE='#'
+  USE_FD_CONFIG_FALSE=
+fi
+# Check whether --enable-fd-config or --disable-fd-config was given.
+if test "${enable_fd_config+set}" = set; then
+  enableval="$enable_fd_config"
+   if test "$enableval" = "yes" ; then
+    echo "File descriptor config enabled"
+    cat >> confdefs.h <<\EOF
+#define FD_CONFIG 1
+EOF
+
+
+
+if true; then
+  USE_FD_CONFIG_TRUE=
+  USE_FD_CONFIG_FALSE='#'
+else
+  USE_FD_CONFIG_TRUE='#'
+  USE_FD_CONFIG_FALSE=
+fi
+  fi
+
+fi
 
 
 

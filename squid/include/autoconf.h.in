@@ -36,6 +36,9 @@
 /* Traffic management via "delay pools". */
 #undef DELAY_POOLS
 
+/* Filedesc managment */
+#undef FD_CONFIG
+
 /* Enable following X-Forwarded-For headers */
 #undef FOLLOW_X_FORWARDED_FOR
 

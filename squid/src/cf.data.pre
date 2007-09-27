@@ -5351,4 +5351,23 @@ DOC_START
 	or response to be rejected.
 DOC_END
 
+NAME: max_filedesc
+IFDEF: FD_CONFIG
+TYPE: int
+DEFAULT: 1024
+LOC: Config.max_filedesc
+DOC_START
+	The maximum number of open file descriptors.
+
+	WARNING: Changes of this value isn't respected by reconfigure
+	command. This value should be changed only if there isn't
+	any active squid process.
+
+	NOTE: This option is only supported by system with poll()
+	or epoll(). You can set this value by --with-maxfd during
+	compilation on system whith uses select().
+
+	The maximum value for max_filedesc is set by --with-maxfd during
+	compilation.
+DOC_END
 EOF

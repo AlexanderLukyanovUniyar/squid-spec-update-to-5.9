@@ -825,6 +825,9 @@ struct _SquidConfig {
 	SSL_CTX *sslContext;
     } ssl_client;
 #endif
+#if FD_CONFIG
+    int max_filedesc;
+#endif
     time_t refresh_stale_window;
     int umask;
 #ifdef HS_FEAT_ICAP

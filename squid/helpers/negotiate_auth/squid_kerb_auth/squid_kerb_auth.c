@@ -31,6 +31,7 @@
 #include <unistd.h>
 #include <time.h>
 #include <sys/time.h>
+#include <sys/param.h>
 
 #include "base64.h"
 #ifndef HAVE_SPNEGO

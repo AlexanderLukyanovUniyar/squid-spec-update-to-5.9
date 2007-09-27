@@ -269,8 +269,8 @@ icapReqModParseHttpRequest(IcapStateData * icap)
     }
     method = urlParseMethod(mstr);
     if (method == METHOD_NONE) {
-	debug(81, 1) ("icapReqModParseHttpRequest: Unsupported method '%s'\n",
-	    mstr);
+	debug(81, 1) ("icapReqModParseHttpRequest: Unsupported method '%s' (%d)\n",
+	    mstr, strlen(mstr));
 	icapReqModParseHttpError(icap, "error:unsupported-request-method");
 	xfree(inbuf);
 	return;

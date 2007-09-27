@@ -460,6 +460,9 @@
 /* Define to 1 if you have the <stdlib.h> header file. */
 #undef HAVE_STDLIB_H
 
+/* Define to 1 if you have the `strcasestr' function. */
+#undef HAVE_STRCASESTR
+
 /* Define to 1 if you have the `strerror' function. */
 #undef HAVE_STRERROR
 
@@ -468,6 +471,9 @@
 
 /* Define to 1 if you have the <string.h> header file. */
 #undef HAVE_STRING_H
+
+/* Define to 1 if you have the `strnstr' function. */
+#undef HAVE_STRNSTR
 
 /* Define to 1 if you have the `strsep' function. */
 #undef HAVE_STRSEP
@@ -602,6 +608,9 @@
 
 /* Some systems support __va_copy */
 #undef HAVE___VA_COPY
+
+/*  ICAP - Internet Content Adaptation Protocol  */
+#undef HS_FEAT_ICAP
 
 /* By default (for now anyway) Squid includes options which allows the cache
    administrator to violate the HTTP protocol specification in terms of cache
@@ -851,9 +860,6 @@
 
 /* Enable support for the X-Accelerator-Vary HTTP header */
 #undef X_ACCELERATOR_VARY
-
-/*  ICAP - Internet Content Adaptation Protocol  */
-#undef HS_FEAT_ICAP
 
 /* Define to empty if `const' does not conform to ANSI C. */
 #undef const

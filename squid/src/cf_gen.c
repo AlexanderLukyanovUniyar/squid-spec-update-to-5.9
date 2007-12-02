@@ -1,6 +1,6 @@
 
 /*
- * $Id: cf_gen.c,v 1.50.2.1 2007/09/05 21:50:15 hno Exp $
+ * $Id: cf_gen.c,v 1.50.2.3 2007/09/17 20:24:15 hno Exp $
  *
  * DEBUG: none          Generate squid.conf.default and cf_parser.h
  * AUTHOR: Max Okumoto
@@ -177,12 +177,13 @@ main(int argc, char *argv[])
     while ((NULL != fgets(buff, MAX_LINE, fp))) {
 	const char *type = strtok(buff, WS);
 	const char *dep;
+	Type *t;
 	if (!type || type[0] == '#')
 	    continue;
-	Type *t = (Type *) xcalloc(1, sizeof(*t));
+	t = (Type *) xcalloc(1, sizeof(*t));
 	t->name = xstrdup(type);
 	while ((dep = strtok(NULL, WS)) != NULL) {
-	    TypeDep *d = (TypeDep *) xcalloc(1, sizeof(*dep));
+	    TypeDep *d = (TypeDep *) xcalloc(1, sizeof(*d));
 	    d->name = xstrdup(dep);
 	    d->next = t->depend;
 	    t->depend = d;

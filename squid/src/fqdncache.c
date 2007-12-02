@@ -1,6 +1,6 @@
 
 /*
- * $Id: fqdncache.c,v 1.156 2006/05/30 00:56:11 hno Exp $
+ * $Id: fqdncache.c,v 1.156.2.2 2007/11/26 10:59:09 adrian Exp $
  *
  * DEBUG: section 35    FQDN Cache
  * AUTHOR: Harvest Derived
@@ -211,7 +211,7 @@ fqdncacheCallback(fqdncache_entry * f)
     f->handlerData = NULL;
     if (cbdataValid(handlerData)) {
 	dns_error_message = f->error_message;
-	handler(f->flags.negcached ? NULL : f->names[0], handlerData);
+	handler(f->name_count ? f->names[0] : NULL, handlerData);
     }
     cbdataUnlock(handlerData);
     fqdncacheUnlockEntry(f);
@@ -316,7 +316,7 @@ fqdncacheParse(fqdncache_entry * f, rfc1035_rr * answers, int nr, const char *er
 	f->error_message = xstrdup("No PTR record");
 	return f;
     }
-    if (ttl == 0 || ttl > Config.positiveDnsTtl)
+    if (ttl > Config.positiveDnsTtl)
 	ttl = Config.positiveDnsTtl;
     if (ttl < Config.negativeDnsTtl)
 	ttl = Config.negativeDnsTtl;

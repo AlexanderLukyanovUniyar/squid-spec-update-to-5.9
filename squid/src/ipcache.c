@@ -1,6 +1,6 @@
 
 /*
- * $Id: ipcache.c,v 1.245.2.1 2007/08/31 13:46:25 hno Exp $
+ * $Id: ipcache.c,v 1.245.2.3 2007/11/26 10:59:09 adrian Exp $
  *
  * DEBUG: section 14    IP Cache
  * AUTHOR: Harvest Derived
@@ -223,7 +223,7 @@ ipcacheCallback(ipcache_entry * i)
     i->handlerData = NULL;
     if (cbdataValid(handlerData)) {
 	dns_error_message = i->error_message;
-	handler(i->flags.negcached ? NULL : &i->addrs, handlerData);
+	handler(i->addrs.count ? &i->addrs : NULL, handlerData);
     }
     cbdataUnlock(handlerData);
     ipcacheUnlockEntry(i);
@@ -369,7 +369,7 @@ ipcacheParse(ipcache_entry * i, rfc1035_rr * answers, int nr, const char *error_
 	i->addrs.count = (unsigned char) na;
     else
 	i->addrs.count = 255;
-    if (ttl == 0 || ttl > Config.positiveDnsTtl)
+    if (ttl > Config.positiveDnsTtl)
 	ttl = Config.positiveDnsTtl;
     if (ttl < Config.negativeDnsTtl)
 	ttl = Config.negativeDnsTtl;

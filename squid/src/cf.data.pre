@@ -1,6 +1,6 @@
 
 #
-# $Id: cf.data.pre,v 1.382.2.14 2007/09/05 21:50:15 hno Exp $
+# $Id: cf.data.pre,v 1.382.2.26 2007/11/26 11:03:45 adrian Exp $
 #
 # SQUID Web Proxy Cache          http://www.squid-cache.org/
 # ----------------------------------------------------------
@@ -771,6 +771,10 @@ DOC_START
 
 	See http_access for details
 
+	NOTE: The default if no htcp_access lines are present is to
+	deny all traffic. This default may cause problems with peers
+	using the htcp or htcp-oldsquid options.
+
 #Allow HTCP queries from everyone
 htcp_access allow all
 DOC_END
@@ -842,19 +846,6 @@ DOC_START
 	Only src type ACL checks are fully supported.  A src_domain
 	ACL might work at times, but it will not always provide
 	the correct result.
-DOC_END
-
-NAME: reply_header_max_size
-COMMENT: (KB)
-TYPE: b_size_t
-DEFAULT: 20 KB
-LOC: Config.maxReplyHeaderSize
-DOC_START
-	This specifies the maximum size for HTTP headers in a reply.
-	Reply headers are usually relatively small (about 512 bytes).
-	Placing a limit on the reply header size will catch certain
-	bugs (for example with persistent connections) and possibly
-	buffer-overflow or denial-of-service attacks.
 DOC_END
 
 NAME: reply_body_max_size
@@ -1175,7 +1166,7 @@ DOC_START
 
 	acl normal_service_net src 10.0.0.0/255.255.255.0
 	acl good_service_net src 10.0.1.0/255.255.255.0
-	tcp_outgoing_tos 0x00 normal_service_net 0x00
+	tcp_outgoing_tos 0x00 normal_service_net
 	tcp_outgoing_tos 0x20 good_service_net
 
 	TOS/DSCP values really only have local significance - so you should
@@ -1516,8 +1507,12 @@ DOC_START
 		     use 'htcp' to send HTCP, instead of ICP, queries
 		     to the neighbor.  You probably also want to
 		     set the "icp port" to 4827 instead of 3130.
+		     You must also allow this Squid htcp_access and
+		     http_access in the peer Squid configuration.
 
 		     use 'htcp-oldsquid' to send HTCP to old Squid versions
+		     You must also allow this Squid htcp_access and
+		     http_access in the peer Squid configuration.
 
 		     'originserver' causes this parent peer to be contacted as
 		     a origin server. Meant to be used in accelerator setups.
@@ -1684,7 +1679,7 @@ DOC_START
 	applies for hostnames which do not match domains listed here.
 
 EXAMPLE:
-	cache_peer  parent cache.foo.org 3128 3130
+	cache_peer cache.foo.org parent 3128 3130
 	neighbor_type_domain cache.foo.org sibling .com .net
 	neighbor_type_domain cache.foo.org sibling .au .de
 DOC_END
@@ -1724,26 +1719,6 @@ DOC_START
 NOCOMMENT_START
 #We recommend you to use at least the following line.
 hierarchy_stoplist cgi-bin ?
-NOCOMMENT_END
-DOC_END
-
-NAME: cache no_cache
-TYPE: acl_access
-DEFAULT: none
-LOC: Config.accessList.noCache
-DOC_START
-	A list of ACL elements which, if matched, cause the request to
-	not be satisfied from the cache and the reply to not be cached.
-	In other words, use this to force certain objects to never be cached.
-
-	You must use the word 'DENY' to indicate the ACL names which should
-	NOT be cached.
-
-	Default is to allow all to be cached
-NOCOMMENT_START
-#We recommend you to use the following two lines.
-acl QUERY urlpath_regex cgi-bin \?
-cache deny QUERY
 NOCOMMENT_END
 DOC_END
 
@@ -2565,7 +2540,7 @@ DOC_START
 
 	It can also return a "urlgroup" that can subsequently be matched
 	in cache_peer_access and similar ACL driven rules. An urlgroup is
-	returned by prefixing the returned url with "!urlgroup!"
+	returned by prefixing the returned URL with "!urlgroup!".
 
 	By default, a URL rewriter is not used.
 
@@ -2591,6 +2566,12 @@ DOC_START
 	The number of requests each redirector helper can handle in
 	parallel. Defaults to 0 which indicates the redirector
 	is a old-style single threaded redirector.
+
+	When this directive is set to a value >= 1 then the protocol
+	used to communicate with the helper is modified to include
+	a request ID in front of the request/response. The request
+	ID from the request must be echoed back with the response
+	to that request.
 DOC_END
 
 NAME: url_rewrite_host_header redirect_rewrites_host_header
@@ -2689,31 +2670,24 @@ COMMENT_START
  -----------------------------------------------------------------------------
 COMMENT_END
 
-NAME: request_header_max_size
-COMMENT: (KB)
-TYPE: b_size_t
-DEFAULT: 20 KB
-LOC: Config.maxRequestHeaderSize
+NAME: cache no_cache
+TYPE: acl_access
+DEFAULT: none
+LOC: Config.accessList.noCache
 DOC_START
-	This specifies the maximum size for HTTP headers in a request.
-	Request headers are usually relatively small (about 512 bytes).
-	Placing a limit on the request header size will catch certain
-	bugs (for example with persistent connections) and possibly
-	buffer-overflow or denial-of-service attacks.
-DOC_END
+	A list of ACL elements which, if matched, cause the request to
+	not be satisfied from the cache and the reply to not be cached.
+	In other words, use this to force certain objects to never be cached.
 
-NAME: request_body_max_size
-COMMENT: (KB)
-TYPE: b_size_t
-DEFAULT: 0 KB
-LOC: Config.maxRequestBodySize
-DOC_START
-	This specifies the maximum size for an HTTP request body.
-	In other words, the maximum size of a PUT/POST request.
-	A user who attempts to send a request with a body larger
-	than this limit receives an "Invalid Request" error message.
-	If you set this parameter to a zero (the default), there will
-	be no limit imposed.
+	You must use the word 'DENY' to indicate the ACL names which should
+	NOT be cached.
+
+	Default is to allow all to be cached
+NOCOMMENT_START
+#We recommend you to use the following two lines.
+acl QUERY urlpath_regex cgi-bin \?
+cache deny QUERY
+NOCOMMENT_END
 DOC_END
 
 NAME: refresh_pattern
@@ -2960,6 +2934,46 @@ COMMENT_START
  HTTP OPTIONS
  -----------------------------------------------------------------------------
 COMMENT_END
+
+NAME: request_header_max_size
+COMMENT: (KB)
+TYPE: b_size_t
+DEFAULT: 20 KB
+LOC: Config.maxRequestHeaderSize
+DOC_START
+	This specifies the maximum size for HTTP headers in a request.
+	Request headers are usually relatively small (about 512 bytes).
+	Placing a limit on the request header size will catch certain
+	bugs (for example with persistent connections) and possibly
+	buffer-overflow or denial-of-service attacks.
+DOC_END
+
+NAME: reply_header_max_size
+COMMENT: (KB)
+TYPE: b_size_t
+DEFAULT: 20 KB
+LOC: Config.maxReplyHeaderSize
+DOC_START
+	This specifies the maximum size for HTTP headers in a reply.
+	Reply headers are usually relatively small (about 512 bytes).
+	Placing a limit on the reply header size will catch certain
+	bugs (for example with persistent connections) and possibly
+	buffer-overflow or denial-of-service attacks.
+DOC_END
+
+NAME: request_body_max_size
+COMMENT: (KB)
+TYPE: b_size_t
+DEFAULT: 0 KB
+LOC: Config.maxRequestBodySize
+DOC_START
+	This specifies the maximum size for an HTTP request body.
+	In other words, the maximum size of a PUT/POST request.
+	A user who attempts to send a request with a body larger
+	than this limit receives an "Invalid Request" error message.
+	If you set this parameter to a zero (the default), there will
+	be no limit imposed.
+DOC_END
 
 NAME: broken_posts
 TYPE: acl_access
@@ -3388,9 +3402,10 @@ DEFAULT: mail
 LOC: Config.EmailProgram
 DOC_START
 	Email program used to send mail if the cache dies.
-	The default is "mail". The specified program must complain
+	The default is "mail". The specified program must comply
 	with the standard Unix mail syntax:
-	mail_program recipient < mailfile
+	  mail-program recipient < mailfile
+
 	Optional command line options can be specified.
 DOC_END
 
@@ -4156,8 +4171,7 @@ LOC: Config.onoff.digest_generation
 DEFAULT: on
 DOC_START
 	This controls whether the server will generate a Cache Digest
-	of its contents.  By default, Cache Digest generation is
-	enabled if Squid is compiled with USE_CACHE_DIGESTS defined.
+	of its contents.
 DOC_END
 
 NAME: digest_bits_per_entry
@@ -4178,7 +4192,7 @@ TYPE: time_t
 LOC: Config.digest.rebuild_period
 DEFAULT: 1 hour
 DOC_START
-	This is the number of seconds between Cache Digest rebuilds.
+	This is the wait time between Cache Digest rebuilds.
 DOC_END
 
 NAME: digest_rewrite_period
@@ -4188,8 +4202,7 @@ TYPE: time_t
 LOC: Config.digest.rewrite_period
 DEFAULT: 1 hour
 DOC_START
-	This is the number of seconds between Cache Digest writes to
-	disk.
+	This is the wait time between Cache Digest writes to disk.
 DOC_END
 
 NAME: digest_swapout_chunk_size
@@ -4323,31 +4336,46 @@ NAME: udp_incoming_address
 TYPE: address
 LOC:Config.Addrs.udp_incoming
 DEFAULT: 0.0.0.0
-DOC_NONE
+DOC_START
+	udp_incoming_address	is used for UDP packets received from other
+				caches.
+
+	The default behavior is to not bind to any specific address.
+
+	Only change this if you want to have all UDP queries received on
+	a specific interface/address.
+
+	NOTE: udp_incoming_address is used by the ICP, HTCP, and DNS
+	modules. Altering it will affect all of them in the same manner.
+
+	see also; udp_outgoing_address
+
+	NOTE, udp_incoming_address and udp_outgoing_address can not
+	have the same value since they both use the same port.
+DOC_END
 
 NAME: udp_outgoing_address
 TYPE: address
 LOC: Config.Addrs.udp_outgoing
 DEFAULT: 255.255.255.255
 DOC_START
-	udp_incoming_address	is used for the ICP socket receiving packets
-				from other caches.
-	udp_outgoing_address	is used for ICP packets sent out to other
+	udp_outgoing_address	is used for UDP packets sent out to other
 				caches.
 
 	The default behavior is to not bind to any specific address.
 
-	A udp_incoming_address value of 0.0.0.0 indicates Squid
-	should listen for UDP messages on all available interfaces.
-
-	If udp_outgoing_address is set to 255.255.255.255 (the default)
-	it will use the same socket as udp_incoming_address. Only
-	change this if you want to have ICP queries sent using another
-	address than where this Squid listens for ICP queries from other
+	Instead it will use the same socket as udp_incoming_address.
+	Only change this if you want to have UDP queries sent using another
+	address than where this Squid listens for UDP queries from other
 	caches.
 
+	NOTE: udp_outgoing_address is used by the ICP, HTCP, and DNS
+	modules. Altering it will affect all of them in the same manner.
+
+	see also; udp_incoming_address
+
 	NOTE, udp_incoming_address and udp_outgoing_address can not
-	have the same value since they both use port 3130.
+	have the same value since they both use the same port.
 DOC_END
 
 NAME: icp_hit_stale
@@ -5392,10 +5420,10 @@ DOC_END
 NAME: high_memory_warning
 TYPE: b_size_t
 LOC: Config.warnings.high_memory
-DEFAULT: 0
+DEFAULT: 0 KB
 DOC_START
 	If the memory usage (as determined by mallinfo) exceeds
-	value, Squid prints a WARNING with debug level 0 to get
+	this amount, Squid prints a WARNING with debug level 0 to get
 	the administrators attention.
 DOC_END
 

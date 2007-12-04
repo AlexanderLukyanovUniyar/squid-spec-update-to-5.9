@@ -7,7 +7,7 @@
 %endif
 
 Name: squid
-Version: 2.6.STABLE16
+Version: 2.6.STABLE17
 Release: alt1
 
 Summary: The Squid proxy caching server
@@ -266,12 +266,13 @@ install -p -m755 %SOURCE4 %buildroot%_libdir/%name
 mkdir -p %buildroot%_datadir/snmp/mibs
 mv %buildroot%_datadir/%name/mib.txt %buildroot%_datadir/snmp/mibs/SQUID-MIB.txt
 
-%pre
+%pre common
 %_sbindir/groupadd -r -f %name >/dev/null 2>&1
 %_sbindir/useradd -r -n -g %name -d %_spooldir/%name -s /dev/null %name >/dev/null 2>&1 ||:
 # fixing #6321, step 1/2
 %_bindir/gpasswd -a squid shadow
 
+%pre server
 chown %name:%name %_logdir/%name/*.log >/dev/null 2>&1 ||:
 chmod 660 %_logdir/%name/*.log >/dev/null 2>&1 ||:
 
@@ -281,7 +282,7 @@ chmod 660 %_logdir/%name/*.log >/dev/null 2>&1 ||:
 %preun server
 %preun_service %name
 
-%triggerpostun -- squid < 2.4.STABLE4-alt1
+%triggerpostun server -- squid < 2.4.STABLE4-alt1
 [ $2 -gt 0 ] || exit 0
 chown -R %name:%name %_spooldir/%name >/dev/null 2>&1 ||:
 
@@ -367,6 +368,11 @@ chown -R %name:%name %_spooldir/%name >/dev/null 2>&1 ||:
 
 
 %changelog
+* Sun Dec 02 2007 Grigory Batalov <bga@altlinux.ru> 2.6.STABLE17-alt1
+- New upstream release.
+  + security fix for SQUID-2007:2
+- Post-install scripts were moved to common and server packages.
+
 * Fri Sep 28 2007 Grigory Batalov <bga@altlinux.ru> 2.6.STABLE16-alt1
 - New upstream release (#12920).
 - Cumulative patch from git.

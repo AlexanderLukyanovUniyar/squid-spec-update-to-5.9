@@ -261,7 +261,7 @@ mkdir -p %buildroot%_datadir/snmp/mibs
 mv %buildroot%_datadir/%name/mib.txt %buildroot%_datadir/snmp/mibs/SQUID-MIB.txt
 
 %pre common
-%_sbindir/groupadd -r -f %name >/dev/null 2>&1
+%_sbindir/groupadd -r -f %name
 %_sbindir/useradd -r -n -g %name -d %_spooldir/%name -s /dev/null %name >/dev/null 2>&1 ||:
 # fixing #6321, step 1/2
 %_bindir/gpasswd -a squid shadow

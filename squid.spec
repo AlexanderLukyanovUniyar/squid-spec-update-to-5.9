@@ -8,7 +8,7 @@
 
 Name: squid
 Version: 2.6.STABLE17
-Release: alt1
+Release: alt2
 
 Summary: The Squid proxy caching server
 Summary(ru_RU.KOI8-R): Кэширующий прокси-сервер Squid
@@ -362,6 +362,9 @@ chown -R %name:%name %_spooldir/%name >/dev/null 2>&1 ||:
 
 
 %changelog
+* Sun Jan 27 2008 Dmitry V. Levin <ldv@altlinux.org> 2.6.STABLE17-alt2
+- Fixed build with fresh autotools.
+
 * Sun Dec 02 2007 Grigory Batalov <bga@altlinux.ru> 2.6.STABLE17-alt1
 - New upstream release.
   + security fix for SQUID-2007:2

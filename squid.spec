@@ -1,7 +1,7 @@
 %def_disable poll
 %def_enable epoll
 
-# epoll has higher priority if both specified, so disable it
+# epoll is enabled by default, so disable it if plain poll is enabled
 %if_enabled poll
 %force_disable epoll
 %endif
@@ -30,7 +30,7 @@ Patch: %name-%version-alt.patch
 Obsoletes: %name-novm
 
 BuildConflicts: bind-devel
-BuildPreReq: rpm-build >= 4.0.4-alt10, autoconf >= 2.54
+BuildPreReq: rpm-build >= 4.0.4-alt10
 
 # Added on Fri Sep 28 2007
 BuildRequires: OpenSP libdb4-devel libkrb5-devel libldap-devel libpam-devel libsasl2-devel libssl-devel sgml-tools
@@ -165,9 +165,7 @@ sed -i -e 's,^KERBINC = ,KERBINC = -I%_includedir/krb5,g' \
 touch NEWS AUTHORS
 
 %build
-%set_autoconf_version 2.5
-
-autoreconf -ifsv
+autoreconf -fisv
 %configure \
 	--bindir=%_sbindir \
 	--libexecdir=%_libdir/%name \

@@ -223,44 +223,40 @@ popd
 %make_build install DESTDIR=%buildroot
 %make_build install-pinger DESTDIR=%buildroot
 
-mkdir -p %buildroot%_initdir
-mkdir -p %buildroot%_sysconfdir/logrotate.d
-install -m 755 %SOURCE2 %buildroot%_initdir/%name
-install -m 644 %SOURCE3 %buildroot%_sysconfdir/logrotate.d/%name
+install -pD -m755 %SOURCE2 %buildroot%_initdir/%name
+install -pD -m644 %SOURCE3 %buildroot%_sysconfdir/logrotate.d/%name
 
 mkdir -p %buildroot%_logdir/%name
 mkdir -p %buildroot%_spooldir/%name
 
-rm -f $RPM_BUILD_DIR/%name-%version/doc/Programming-Guide/Makefile
+install -p -m644 helpers/basic_auth/PAM/pam_auth.8 %buildroot%_man8dir
+install -p -m644 helpers/external_acl/ldap_group/squid_ldap_group.8 %buildroot%_man8dir
+install -p -m644 helpers/basic_auth/LDAP/squid_ldap_auth.8 %buildroot%_man8dir
+install -p -m644 helpers/external_acl/unix_group/squid_unix_group.8 %buildroot%_man8dir
+install -p -m644 doc/squid.8 %buildroot%_man8dir
+install -p -m644 doc/cachemgr.cgi.8 %buildroot%_man8dir
 
-install -p -m644 $RPM_BUILD_DIR/%name-%version/helpers/basic_auth/PAM/pam_auth.8 %buildroot%_man8dir
-install -p -m644 $RPM_BUILD_DIR/%name-%version/helpers/external_acl/ldap_group/squid_ldap_group.8 %buildroot%_man8dir
-install -p -m644 $RPM_BUILD_DIR/%name-%version/helpers/basic_auth/LDAP/squid_ldap_auth.8 %buildroot%_man8dir
-install -p -m644 $RPM_BUILD_DIR/%name-%version/helpers/external_acl/unix_group/squid_unix_group.8 %buildroot%_man8dir
-install -p -m644 $RPM_BUILD_DIR/%name-%version/doc/squid.8 %buildroot%_man8dir
-install -p -m644 $RPM_BUILD_DIR/%name-%version/doc/cachemgr.cgi.8 %buildroot%_man8dir
+install -pD -m644 helpers/basic_auth/SMB/COPYING-2.0 helpers/doc/SMB.COPYING-2.0
+install -pD -m644 helpers/basic_auth/SMB/README helpers/doc/SMB.README
+install -pD -m644 helpers/basic_auth/SMB/smb_auth.sh helpers/doc/smb_auth.sh
+install -pD -m644 helpers/basic_auth/SMB/ChangeLog helpers/doc/SMB.ChangeLog
+install -pD -m644 helpers/basic_auth/LDAP/README helpers/doc/LDAP.README
+install -pD -m644 helpers/basic_auth/MSNT/COPYING-2.0 helpers/doc/MSNT.COPYING-2.0
+install -pD -m644 helpers/basic_auth/MSNT/README.html helpers/doc/MSNT.README.html
+install -pD -m644 helpers/basic_auth/MSNT/msntauth.conf.default helpers/doc/msntauth.conf.default
+install -pD -m644 helpers/basic_auth/SASL/README helpers/doc/SASL.README
+install -pD -m644 helpers/basic_auth/SASL/squid_sasl_auth helpers/doc/squid_sasl_auth
+install -pD -m644 helpers/basic_auth/SASL/squid_sasl_auth.conf helpers/doc/squid_sasl_auth.conf
+install -pD -m644 helpers/basic_auth/SMB/README helpers/doc/SASL.README
+install -pD -m644 helpers/basic_auth/multi-domain-NTLM/README.txt helpers/doc/NTLM.README.txt
+install -pD -m644 helpers/external_acl/ip_user/README helpers/doc/ip_user.README
+install -pD -m644 helpers/external_acl/ip_user/example-deny_all_but.conf helpers/doc/ip_user.example-deny_all_but.conf
+install -pD -m644 helpers/external_acl/ip_user/example.conf helpers/doc/ip_user.example.conf
+install -pD -m644 helpers/external_acl/unix_group/README helpers/doc/unix_group.README
+install -pD -m644 helpers/external_acl/unix_group/README helpers/doc/unix_group.README
+install -pD -m644 helpers/ntlm_auth/no_check/README.no_check_ntlm_auth helpers/doc/README.no_check_ntlm_auth
 
-install -D -p -m644 $RPM_BUILD_DIR/%name-%version/helpers/basic_auth/SMB/COPYING-2.0 helpers/doc/SMB.COPYING-2.0
-install -D -p -m644 $RPM_BUILD_DIR/%name-%version/helpers/basic_auth/SMB/README helpers/doc/SMB.README
-install -D -p -m644 $RPM_BUILD_DIR/%name-%version/helpers/basic_auth/SMB/smb_auth.sh helpers/doc/smb_auth.sh
-install -D -p -m644 $RPM_BUILD_DIR/%name-%version/helpers/basic_auth/SMB/ChangeLog helpers/doc/SMB.ChangeLog
-install -D -p -m644 $RPM_BUILD_DIR/%name-%version/helpers/basic_auth/LDAP/README helpers/doc/LDAP.README
-install -D -p -m644 $RPM_BUILD_DIR/%name-%version/helpers/basic_auth/MSNT/COPYING-2.0 helpers/doc/MSNT.COPYING-2.0
-install -D -p -m644 $RPM_BUILD_DIR/%name-%version/helpers/basic_auth/MSNT/README.html helpers/doc/MSNT.README.html
-install -D -p -m644 $RPM_BUILD_DIR/%name-%version/helpers/basic_auth/MSNT/msntauth.conf.default helpers/doc/msntauth.conf.default
-install -D -p -m644 $RPM_BUILD_DIR/%name-%version/helpers/basic_auth/SASL/README helpers/doc/SASL.README
-install -D -p -m644 $RPM_BUILD_DIR/%name-%version/helpers/basic_auth/SASL/squid_sasl_auth helpers/doc/squid_sasl_auth
-install -D -p -m644 $RPM_BUILD_DIR/%name-%version/helpers/basic_auth/SASL/squid_sasl_auth.conf helpers/doc/squid_sasl_auth.conf
-install -D -p -m644 $RPM_BUILD_DIR/%name-%version/helpers/basic_auth/SMB/README helpers/doc/SASL.README
-install -D -p -m644 $RPM_BUILD_DIR/%name-%version/helpers/basic_auth/multi-domain-NTLM/README.txt helpers/doc/NTLM.README.txt
-install -D -p -m644 $RPM_BUILD_DIR/%name-%version/helpers/external_acl/ip_user/README helpers/doc/ip_user.README
-install -D -p -m644 $RPM_BUILD_DIR/%name-%version/helpers/external_acl/ip_user/example-deny_all_but.conf helpers/doc/ip_user.example-deny_all_but.conf
-install -D -p -m644 $RPM_BUILD_DIR/%name-%version/helpers/external_acl/ip_user/example.conf helpers/doc/ip_user.example.conf
-install -D -p -m644 $RPM_BUILD_DIR/%name-%version/helpers/external_acl/unix_group/README helpers/doc/unix_group.README
-#install -D -p -m644 $RPM_BUILD_DIR/%name-%version/helpers/external_acl/winbind_group/readme.txt helpers/doc/winbind_group.readme.txt
-install -D -p -m644 $RPM_BUILD_DIR/%name-%version/helpers/external_acl/unix_group/README helpers/doc/unix_group.README
-install -D -p -m644 $RPM_BUILD_DIR/%name-%version/helpers/ntlm_auth/no_check/README.no_check_ntlm_auth helpers/doc/README.no_check_ntlm_auth
-install -p -m755 %SOURCE4 %buildroot%_libdir/%name
+install -p -m755 %SOURCE4 %buildroot%_libdir/%name/
 mkdir -p %buildroot%_datadir/snmp/mibs
 mv %buildroot%_datadir/%name/mib.txt %buildroot%_datadir/snmp/mibs/SQUID-MIB.txt
 

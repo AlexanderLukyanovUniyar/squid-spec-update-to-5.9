@@ -1,0 +1,13 @@
+object 0ae962d4c1dbd936c0b4818ceb00f81657700449
+type commit
+tag 2.6.STABLE18
+tagger Grigory Batalov <bga@altlinux.org> 1203177608 +0300
+
+squid 2.6.STABLE18
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1.2.5 (GNU/Linux)
+
+iD8DBQBHtwiPTSOu/blIq24RAtbVAKCME8Uto7MfN2xOyZL0y09mhEk8lQCffcaA
+QZG9N9L0JQuOJhAd06Y6pY4=
+=/SHV
+-----END PGP SIGNATURE-----

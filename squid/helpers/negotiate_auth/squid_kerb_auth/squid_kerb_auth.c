@@ -38,6 +38,9 @@
 #include "spnegohelp.h"
 #endif
 
+#ifndef HOST_NAME_MAX
+#define HOST_NAME_MAX 256
+#endif
 #ifndef MAXHOSTNAMELEN
 #define MAXHOSTNAMELEN HOST_NAME_MAX
 #endif

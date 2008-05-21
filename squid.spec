@@ -7,7 +7,7 @@
 %endif
 
 Name: squid
-Version: 2.6.STABLE18
+Version: 2.6.STABLE20
 Release: alt1
 
 Summary: The Squid proxy caching server
@@ -362,6 +362,9 @@ chown -R %name:%name %_spooldir/%name >/dev/null 2>&1 ||:
 
 
 %changelog
+* Wed May 21 2008 Grigory Batalov <bga@altlinux.ru> 2.6.STABLE20-alt1
+- New upstream release.
+
 * Sat Feb 16 2008 Grigory Batalov <bga@altlinux.ru> 2.6.STABLE18-alt1
 - New upstream release.
 

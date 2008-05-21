@@ -1,6 +1,6 @@
 
 /*
- * $Id: dns_internal.c,v 1.61.2.1 2007/06/23 21:34:09 hno Exp $
+ * $Id: dns_internal.c,v 1.61.2.3 2008/04/25 19:44:50 hno Exp $
  *
  * DEBUG: section 78    DNS lookups; interacts with lib/rfc1035.c
  * AUTHOR: Duane Wessels
@@ -248,7 +248,7 @@ idnsParseResolvConf(void)
 {
     FILE *fp;
     char buf[RESOLV_BUFSZ];
-    char *t;
+    const char *t;
     fp = fopen(_PATH_RESCONF, "r");
     if (fp == NULL) {
 	debug(78, 1) ("%s: %s\n", _PATH_RESCONF, xstrerror());
@@ -267,7 +267,15 @@ idnsParseResolvConf(void)
 		continue;
 	    debug(78, 1) ("Adding nameserver %s from %s\n", t, _PATH_RESCONF);
 	    idnsAddNameserver(t);
+	} else if (strcasecmp(t, "domain") == 0) {
+	    idnsFreeSearchpath();
+	    t = strtok(NULL, w_space);
+	    if (NULL == t)
+		continue;
+	    debug(78, 1) ("Adding domain %s from %s\n", t, _PATH_RESCONF);
+	    idnsAddPathComponent(t);
 	} else if (strcasecmp(t, "search") == 0) {
+	    idnsFreeSearchpath();
 	    while (NULL != t) {
 		t = strtok(NULL, w_space);
 		if (NULL == t)
@@ -292,6 +300,12 @@ idnsParseResolvConf(void)
 	}
     }
     fclose(fp);
+
+    if (npc == 0 && (t = getMyHostname())) {
+	t = strchr(t, '.');
+	if (t)
+	    idnsAddPathComponent(t + 1);
+    }
 }
 #endif
 
@@ -299,7 +313,7 @@ idnsParseResolvConf(void)
 static void
 idnsParseWIN32SearchList(const char *Separator)
 {
-    BYTE *t;
+    char *t;
     char *token;
     HKEY hndKey;
 
@@ -310,22 +324,41 @@ idnsParseWIN32SearchList(const char *Separator)
 	DWORD Size = 0;
 	LONG Result;
 	Result =
+	    RegQueryValueEx(hndKey, "Domain", NULL, &Type, NULL,
+	    &Size);
+
+	if (Result == ERROR_SUCCESS && Size) {
+	    t = (char *) xmalloc(Size);
+	    RegQueryValueEx(hndKey, "Domain", NULL, &Type, (LPBYTE) t,
+		&Size);
+	    debug(78, 1) ("Adding domain %s from Registry\n", t);
+	    idnsAddPathComponent(t);
+	    xfree(t);
+	}
+	Result =
 	    RegQueryValueEx(hndKey, "SearchList", NULL, &Type, NULL,
 	    &Size);
 
 	if (Result == ERROR_SUCCESS && Size) {
 	    t = (unsigned char *) xmalloc(Size);
-	    RegQueryValueEx(hndKey, "SearchList", NULL, &Type, t,
+	    RegQueryValueEx(hndKey, "SearchList", NULL, &Type, (LPBYTE) t,
 		&Size);
 	    token = strtok((char *) t, Separator);
+	    idnsFreeSearchpath();
 
 	    while (token) {
 		idnsAddPathComponent(token);
 		debug(78, 1) ("Adding domain %s from Registry\n", token);
 		token = strtok(NULL, Separator);
 	    }
+	    xfree(t);
 	}
 	RegCloseKey(hndKey);
+    }
+    if (npc == 0 && ((const char *) t = getMyHostname())) {
+	t = strchr(t, '.');
+	if (t)
+	    idnsAddPathComponent(t + 1);
     }
 }
 
@@ -336,7 +369,6 @@ idnsParseWIN32Registry(void)
     char *token;
     HKEY hndKey, hndKey2;
 
-    idnsFreeNameservers();
     switch (WIN32_OS_version) {
     case _WIN_OS_WINNT:
 	/* get nameservers from the Windows NT registry */
@@ -360,6 +392,7 @@ idnsParseWIN32Registry(void)
 			token);
 		    token = strtok(NULL, ", ");
 		}
+		xfree(t);
 	    }
 	    Result =
 		RegQueryValueEx(hndKey, "NameServer", NULL, &Type, NULL, &Size);
@@ -373,6 +406,7 @@ idnsParseWIN32Registry(void)
 		    idnsAddNameserver(token);
 		    token = strtok(NULL, ", ");
 		}
+		xfree(t);
 	    }
 	    RegCloseKey(hndKey);
 	}
@@ -417,6 +451,7 @@ idnsParseWIN32Registry(void)
 				idnsAddNameserver(token);
 				token = strtok(NULL, ", ");
 			    }
+			    xfree(t);
 			}
 			Result =
 			    RegQueryValueEx(hndKey2, "NameServer", NULL, &Type,
@@ -432,6 +467,7 @@ idnsParseWIN32Registry(void)
 				idnsAddNameserver(token);
 				token = strtok(NULL, ", ");
 			    }
+			    xfree(t);
 			}
 			RegCloseKey(hndKey2);
 		    }
@@ -463,6 +499,7 @@ idnsParseWIN32Registry(void)
 		    idnsAddNameserver(token);
 		    token = strtok(NULL, ", ");
 		}
+		xfree(t);
 	    }
 	    RegCloseKey(hndKey);
 	}

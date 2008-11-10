@@ -1,6 +1,6 @@
 
 /*
- * $Id: tools.c,v 1.250.2.4 2008/01/02 17:06:50 hno Exp $
+ * $Id: tools.c,v 1.250.2.6 2008/10/06 21:31:57 hno Exp $
  *
  * DEBUG: section 21    Misc Functions
  * AUTHOR: Harvest Derived
@@ -396,6 +396,7 @@ fatal_common(const char *message)
 void
 fatal(const char *message)
 {
+    leave_suid();
     releaseServerSockets();
     /* check for store_dirs_rebuilding because fatal() is often
      * used in early initialization phases, long before we ever
@@ -444,6 +445,7 @@ fatalvf(const char *fmt, va_list args)
 void
 fatal_dump(const char *message)
 {
+    leave_suid();
     failure_notify = NULL;
     releaseServerSockets();
     if (message)
@@ -1352,15 +1354,18 @@ static void
 restoreCapabilities(int keep)
 {
 #if defined(_SQUID_LINUX_) && HAVE_SYS_CAPABILITY_H
-    cap_user_header_t head = (cap_user_header_t) xcalloc(1, sizeof(cap_user_header_t));
-    cap_user_data_t cap = (cap_user_data_t) xcalloc(1, sizeof(cap_user_data_t));
+#ifndef _LINUX_CAPABILITY_VERSION_1
+#define _LINUX_CAPABILITY_VERSION_1 _LINUX_CAPABILITY_VERSION
+#endif
+    cap_user_header_t head = xcalloc(1, sizeof(*head));
+    cap_user_data_t cap = xcalloc(1, sizeof(*cap));
 
-    head->version = _LINUX_CAPABILITY_VERSION;
+    head->version = _LINUX_CAPABILITY_VERSION_1;
     if (capget(head, cap) != 0) {
 	debug(50, 1) ("Can't get current capabilities\n");
 	goto nocap;
     }
-    if (head->version != _LINUX_CAPABILITY_VERSION) {
+    if (head->version != _LINUX_CAPABILITY_VERSION_1) {
 	debug(50, 1) ("Invalid capability version %d (expected %d)\n", head->version, _LINUX_CAPABILITY_VERSION);
 	goto nocap;
     }

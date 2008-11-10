@@ -1,6 +1,6 @@
 
 /*
- * $Id: client_side.c,v 1.693.2.20 2007/09/03 13:13:36 hno Exp $
+ * $Id: client_side.c,v 1.693.2.24 2008/07/21 20:48:45 hno Exp $
  *
  * DEBUG: section 33    Client-side Routines
  * AUTHOR: Duane Wessels
@@ -92,6 +92,7 @@
 #endif
 
 #if LINUX_NETFILTER
+#include <linux/types.h>
 #include <linux/netfilter_ipv4.h>
 #endif
 
@@ -823,6 +824,7 @@ clientProcessExpired(void *data)
 	    entry = NULL;
 	}
 	if (entry) {
+	    http->request->flags.collapsed = 1;		/* Don't trust the store entry */
 	    storeLockObject(entry);
 	    hit = 1;
 	} else {
@@ -1035,6 +1037,11 @@ clientHandleIMSReply(void *data, char *buf, ssize_t size)
     }
     http->old_entry = NULL;	/* done with old_entry */
     http->old_sc = NULL;
+    if (http->request->flags.collapsed && !http->flags.hit && EBIT_TEST(entry->flags, RELEASE_REQUEST)) {
+	/* Collapsed request, but the entry is not good to be sent */
+	clientProcessMiss(http);
+	return;
+    }
     assert(!EBIT_TEST(entry->flags, ENTRY_ABORTED));
     if (recopy) {
 	storeClientCopy(http->sc, entry,
@@ -2337,6 +2344,13 @@ clientCacheHit(void *data, char *buf, ssize_t size)
 	storeComplete(e);
 	return;
     }
+    if (r->flags.collapsed && EBIT_TEST(e->flags, RELEASE_REQUEST)) {
+	/* collapsed_forwarding, but the joined request is not good
+	 * to be cached..
+	 */
+	clientProcessMiss(http);
+	return;
+    }
     /*
      * plain ol' cache hit
      */
@@ -2831,6 +2845,9 @@ clientHttpReplyAccessCheckDone(int answer, void *data)
 	err = errorCon(page_id, HTTP_FORBIDDEN, http->orig_request);
 	storeClientUnregister(http->sc, http->entry, http);
 	http->sc = NULL;
+	if (http->reply)
+	    httpReplyDestroy(http->reply);
+	http->reply = NULL;
 	storeUnlockObject(http->entry);
 	http->log_type = LOG_TCP_DENIED;
 	http->entry = clientCreateStoreEntry(http, http->request->method,
@@ -3421,6 +3438,7 @@ clientProcessMiss(clientHttpRequest * http)
     debug(33, 4) ("clientProcessMiss: '%s %s'\n",
 	RequestMethodStr[r->method], url);
     http->flags.hit = 0;
+    r->flags.collapsed = 0;
     /*
      * We might have a left-over StoreEntry from a failed cache hit
      * or IMS request.
@@ -4481,7 +4499,7 @@ clientNatLookup(ConnStateData * conn)
     static int pffd = -1;
     static time_t last_reported = 0;
     if (pffd < 0) {
-	pffd = open("/dev/pf", O_RDWR);
+	pffd = open("/dev/pf", O_RDONLY);
 	if (pffd >= 0)
 	    commSetCloseOnExec(pffd);
     }

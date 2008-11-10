@@ -2,12 +2,12 @@
 <HTML>
 <HEAD>
  <META NAME="GENERATOR" CONTENT="LinuxDoc-Tools 0.9.21">
- <TITLE>Squid 2.6.STABLE19 release notes</TITLE>
+ <TITLE>Squid 2.6.STABLE22 release notes</TITLE>
 </HEAD>
 <BODY>
-<H1>Squid 2.6.STABLE19 release notes</H1>
+<H1>Squid 2.6.STABLE22 release notes</H1>
 
-<H2>Squid Developers</H2>$Id: release-2.6.html,v 1.44.2.20 2008/04/25 19:49:06 hno Exp $
+<H2>Squid Developers</H2>$Id: release-2.6.html,v 1.44.2.22 2008/10/19 17:43:14 hno Exp $
 <HR>
 <EM>This document contains the release notes for version 2.6 of Squid.
 Squid is a WWW Cache application developed by the Web Caching community.</EM>
@@ -86,6 +86,12 @@ Squid is a WWW Cache application developed by the Web Caching community.</EM>
 
 <P>
 <H2><A NAME="toc25">25.</A> <A HREF="#s25">Key changes squid-2.6.STABLE19 to 2.6.STABLE20</A></H2>
+
+<P>
+<H2><A NAME="toc26">26.</A> <A HREF="#s26">Key changes squid-2.6.STABLE20 to 2.6.STABLE21</A></H2>
+
+<P>
+<H2><A NAME="toc27">27.</A> <A HREF="#s27">Key changes squid-2.6.STABLE21 to 2.6.STABLE22</A></H2>
 
 
 <HR>
@@ -381,7 +387,7 @@ redirect_program c:/winnt/system32/cmd.exe /C c:/squid/libexec/redir.cmd
 </P>
 <P>
 <DL>
-<DT><B>Known Limitations:</B><DD><P>
+<DT><B>Known Limitations</B><DD><P>
 <UL>
 <LI>Squid features not operational:<BR>
 <UL>
@@ -399,7 +405,7 @@ redirect_program c:/winnt/system32/cmd.exe /C c:/squid/libexec/redir.cmd
 </P>
 <P>
 <DL>
-<DT><B>Building Squid on Windows:</B><DD><P>A reasonably recent release of 
+<DT><B>Building Squid on Windows</B><DD><P>A reasonably recent release of 
 <A HREF="http://www.cygwin.com/">Cygwin</A> or 
 <A HREF="http://www.mingw.org/">MinGW</A> is needed.<BR>
 The usage of the Cygwin environment is very similar to other Unix/Linux environments, and -devel version of libraries must be installed.<BR>
@@ -818,6 +824,40 @@ automatically derived default domain</LI>
 <LI>And some other trivial/cosmetic changes</LI>
 <LI>See also the list of 
 <A HREF="http://www.squid-cache.org/Versions/v2/2.6/changesets/SQUID_2_6_STABLE20.html">squid-2.6.STABLE20 changes</A> and the 
+<A HREF="ChangeLog">ChangeLog</A> file for details.</LI>
+</UL>
+</P>
+
+<H2><A NAME="s26">26.</A> <A HREF="#toc26">Key changes squid-2.6.STABLE20 to 2.6.STABLE21</A></H2>
+
+<P>
+<UL>
+<LI>Reject ridiculously large ASN.1 lengths (SNMP)</LI>
+<LI>Fix SNMP reporting of counters with a value > 0xFF80000</LI>
+<LI>Bug <a href="http://www.squid-cache.org/bugs/show_bug.cgi?id=1993">#1993</a>: Memory leak in http_reply_access deny processing</LI>
+<LI>Bug <a href="http://www.squid-cache.org/bugs/show_bug.cgi?id=2122">#2122</a>: In some situations collapsed_forwarding could leak private information</LI>
+<LI>Bug <a href="http://www.squid-cache.org/bugs/show_bug.cgi?id=2393">#2393</a>: DNS requests retried indefinitely at full speed on failed TCP connection</LI>
+<LI>Bug <a href="http://www.squid-cache.org/bugs/show_bug.cgi?id=2393">#2393</a>: DNS retransmit queue could get hold up</LI>
+<LI>See also the list of 
+<A HREF="http://www.squid-cache.org/Versions/v2/2.6/changesets/SQUID_2_6_STABLE21.html">squid-2.6.STABLE21 changes</A> and the 
+<A HREF="ChangeLog">ChangeLog</A> file for details.</LI>
+</UL>
+</P>
+
+<H2><A NAME="s27">27.</A> <A HREF="#toc27">Key changes squid-2.6.STABLE21 to 2.6.STABLE22</A></H2>
+
+<P>
+<UL>
+<LI>Bug <a href="http://www.squid-cache.org/bugs/show_bug.cgi?id=2396">#2396</a>: Correct the opening of the PF device file.</LI>
+<LI>Make --with-large-files and --with-build-envirnment=default play nice together</LI>
+<LI>Workaround for Linux-2.6.24 &amp; 2.6.25 netfiler_ipv4.h include header __u32 problem</LI>
+<LI>Make dns_nameserver work when using --disable-internal-dns on glibc based systems</LI>
+<LI>Bug <a href="http://www.squid-cache.org/bugs/show_bug.cgi?id=2426">#2426</a>: Increase negotiate auth token buffer size</LI>
+<LI>Bug <a href="http://www.squid-cache.org/bugs/show_bug.cgi?id=2427">#2427</a>: squid_ldap_group -h reports the old % codes for -f</LI>
+<LI>Bug <a href="http://www.squid-cache.org/bugs/show_bug.cgi?id=2477">#2477</a>: swap.state permission issues if crashing during "squid -k reconfigure"</LI>
+<LI>Windows port: Fix build error using latest MinGW runtime.</LI>
+<LI>See also the list of 
+<A HREF="http://www.squid-cache.org/Versions/v2/2.6/changesets/SQUID_2_6_STABLE22.html">squid-2.6.STABLE22 changes</A> and the 
 <A HREF="ChangeLog">ChangeLog</A> file for details.</LI>
 </UL>
 </P>

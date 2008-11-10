@@ -1,6 +1,6 @@
 
 /*
- * $Id: neighbors.c,v 1.313.2.3 2008/04/21 02:56:24 hno Exp $
+ * $Id: neighbors.c,v 1.313.2.7 2008/06/27 21:53:17 hno Exp $
  *
  * DEBUG: section 15    Neighbor Routines
  * AUTHOR: Harvest Derived
@@ -265,11 +265,16 @@ getRoundRobinParent(request_t * request)
 	    continue;
 	if (!peerHTTPOkay(p, request))
 	    continue;
-	if (p->weight == 1) {
-	    if (q && q->rr_count < p->rr_count)
-		continue;
-	} else if (p->weight == 0 || (q && q->rr_count < (p->rr_count / p->weight))) {
+	if (p->weight == 0)
 	    continue;
+
+	if (q) {
+	    if (p->weight == q->weight) {
+		if (q->rr_count < p->rr_count)
+		    continue;
+	    } else if ((double) q->rr_count / q->weight < (double) p->rr_count / p->weight) {
+		continue;
+	    }
 	}
 	q = p;
     }
@@ -280,15 +285,30 @@ getRoundRobinParent(request_t * request)
 }
 
 /* This gets called every 5 minutes to clear the round-robin counter. */
-void
-peerClearRR(void *data)
+static void
+peerClearRRLoop(void *data)
 {
-    peer *p = data;
-    p->rr_count -= p->rr_lastcount;
-    if (p->rr_count < 0)
+    peerClearRR();
+    eventAdd("peerClearRR", peerClearRRLoop, data, 5 * 60.0, 0);
+}
+
+void
+peerClearRRStart(void)
+{
+    static int event_added = 0;
+    if (!event_added) {
+	peerClearRRLoop(NULL);
+    }
+}
+
+/* Actually clear the round-robin counter. */
+void
+peerClearRR(void)
+{
+    peer *p = NULL;
+    for (p = Config.peers; p; p = p->next) {
 	p->rr_count = 0;
-    p->rr_lastcount = p->rr_count;
-    eventAdd("peerClearRR", peerClearRR, p, 5 * 60.0, 0);
+    }
 }
 
 peer *
@@ -692,6 +712,7 @@ neighborAlive(peer * p, const MemObject * mem, const icp_common_t * header)
 	debug(15, 1) ("Detected REVIVED %s: %s\n",
 	    neighborTypeStr(p), p->name);
 	p->stats.logged_state = PEER_ALIVE;
+	peerClearRR();
     }
     p->stats.last_reply = squid_curtime;
     p->stats.probe_start = 0;
@@ -724,6 +745,7 @@ neighborAliveHtcp(peer * p, const MemObject * mem, const htcpReplyData * htcp)
 	debug(15, 1) ("Detected REVIVED %s: %s\n",
 	    neighborTypeStr(p), p->name);
 	p->stats.logged_state = PEER_ALIVE;
+	peerClearRR();
     }
     p->stats.last_reply = squid_curtime;
     p->stats.probe_start = 0;
@@ -975,11 +997,33 @@ peerDestroy(void *data)
     safe_free(p->host);
     safe_free(p->name);
     safe_free(p->domain);
+    safe_free(p->login);
 #if USE_CACHE_DIGESTS
     if (p->digest) {
 	PeerDigest *pd = p->digest;
 	p->digest = NULL;
 	cbdataUnlock(pd);
+    }
+    safe_free(p->digest_url);
+#endif
+    safe_free(p->monitor.url)
+#if USE_SSL
+	safe_free(p->sslcert);
+    safe_free(p->sslkey);
+    safe_free(p->ssloptions);
+    safe_free(p->sslcipher);
+    safe_free(p->sslcafile);
+    safe_free(p->sslcapath);
+    safe_free(p->sslcrlfile);
+    safe_free(p->sslflags);
+    safe_free(p->ssldomain);
+    if (p->sslContext) {
+	SSL_CTX_free(p->sslContext);
+	p->sslContext = NULL;
+    }
+    if (p->sslSession) {
+	SSL_SESSION_free(p->sslSession);
+	p->sslSession = NULL;
     }
 #endif
 }
@@ -1086,6 +1130,7 @@ peerConnectSucceded(peer * p)
 	    neighborTypeStr(p), p->name);
 	peerMonitorNow(p);
 	p->stats.logged_state = PEER_ALIVE;
+	peerClearRR();
 	if (!p->n_addresses)
 	    ipcache_nbgethostbyname(p->host, peerDNSConfigure, p);
     }

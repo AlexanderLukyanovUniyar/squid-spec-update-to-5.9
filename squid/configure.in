@@ -2,7 +2,7 @@
 dnl  Configuration input file for Squid
 dnl
 dnl
-AC_INIT(Squid Web Proxy, 3.0.STABLE11, http://www.squid-cache.org/bugs/, squid)
+AC_INIT(Squid Web Proxy, 3.0.STABLE12, http://www.squid-cache.org/bugs/, squid)
 AC_PREREQ(2.52)
 AM_CONFIG_HEADER(include/autoconf.h)
 AC_CONFIG_AUX_DIR(cfgaux)
@@ -1210,11 +1210,12 @@ dnl   For gcc "-xarch=generic64" must be replaced with "-m64"
 dnl   The 'sun' define is needed by ipfilter includes, so we must remove "-Usun"
 	    *-solaris*)
     		if test "$GCC" = "yes"; then
-		    echo "Removing -Xa for gcc on $host"
+		    echo "Removing -Xa for gcc/g++ on $host"
 		    CFLAGS="`echo $CFLAGS | sed -e 's/-Xa//'`"
 		    CXXFLAGS="`echo $CXXFLAGS | sed -e 's/-Xa//'`"
-		    echo "Replacing -xarch=generic64 with -m64 for gcc on $host"
+		    echo "Replacing -xarch=generic64 with -m64 for gcc/g++ on $host"
 		    CFLAGS="`echo $CFLAGS | sed -e 's/-xarch=generic64/-m64/'`"
+		    CXXFLAGS="`echo $CXXFLAGS | sed -e 's/-xarch=generic64/-m64/'`"
 		    LDFLAGS="`echo $LDFLAGS | sed -e 's/-xarch=generic64//'`"
 		fi
 		echo "Removing -Usun on $host"
@@ -1384,6 +1385,12 @@ AC_SUBST(AUTH_MODULES)
 AC_SUBST(AUTH_LIBS)
 AC_SUBST(AUTH_LINKOBJS)
 AC_SUBST(AUTH_OBJS)
+
+dnl bundled auth modules, in order to have handy defines for the cppunit testsuite
+test -n "$AUTH_MODULE_basic" && AC_DEFINE([HAVE_AUTH_MODULE_BASIC],1,[Basic auth module is built])
+test -n "$AUTH_MODULE_digest" && AC_DEFINE([HAVE_AUTH_MODULE_DIGEST],1,[Digest auth module is built])
+test -n "$AUTH_MODULE_ntlm" && AC_DEFINE([HAVE_AUTH_MODULE_NTLM],1,[NTLM auth module is built])
+test -n "$AUTH_MODULE_negotiate" && AC_DEFINE([HAVE_AUTH_MODULE_NEGOTIATE],1,[Negotiate auth module is built])
 
 dnl Select basic auth scheme helpers to build
 if test -n "$AUTH_MODULE_basic"; then

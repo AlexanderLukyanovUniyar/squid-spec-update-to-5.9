@@ -1,6 +1,6 @@
 
 /*
- * $Id: HttpHeader.h,v 1.24 2007/11/26 13:09:55 hno Exp $
+ * $Id: HttpHeader.h,v 1.24.2.1 2008/02/27 05:59:29 amosjeffries Exp $
  *
  *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/
@@ -246,6 +246,7 @@ public:
     TimeOrTag getTimeOrTag(http_hdr_type id) const;
     int hasListMember(http_hdr_type id, const char *member, const char separator) const;
     int hasByNameListMember(const char *name, const char *member, const char separator) const;
+    void removeHopByHopEntries();
     void removeConnectionHeaderEntries();
     /* protected, do not use these, use interface functions instead */
     Vector<HttpHeaderEntry *> entries;		/* parsed fields in raw format */

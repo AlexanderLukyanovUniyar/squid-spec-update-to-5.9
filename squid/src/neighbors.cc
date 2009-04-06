@@ -986,6 +986,7 @@ static void
 neighborAliveHtcp(peer * p, const MemObject * mem, const htcpReplyData * htcp)
 {
     peerAlive(p);
+    p->stats.pings_acked++;
     p->htcp.counts[htcp->hit ? 1 : 0]++;
     p->htcp.version = htcp->version;
 }
@@ -1609,8 +1610,10 @@ dump_peer_options(StoreEntry * sentry, peer * p)
     if (p->options.roundrobin)
         storeAppendPrintf(sentry, " round-robin");
 
+#if USE_CARP
     if (p->options.carp)
         storeAppendPrintf(sentry, " carp");
+#endif
 
     if (p->options.userhash)
         storeAppendPrintf(sentry, " userhash");

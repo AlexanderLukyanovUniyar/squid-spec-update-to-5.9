@@ -1,5 +1,5 @@
 #******************************************************************************
-# $Id: mk-string-arrays.pl,v 1.5 2007/01/19 00:19:26 hno Exp $
+# $Id: mk-string-arrays.pl,v 1.5 2003/01/23 00:37:23 robertc Exp $
 #
 # File:		mk-strs.pl
 #
@@ -16,11 +16,6 @@ $pat{'err_type'} = "err_type_str";
 $pat{'icp_opcode'} = "icp_opcode_str";
 $pat{'swap_log_op'} = "swap_log_op_str";
 $pat{'lookup_t'} = "lookup_t_str";
-$pat{'log_type'} = "log_tags";
-$pat{'icap_service_t'} = "icap_service_type_str";
-
-print "#include \"squid.h\"\n";
-
 
 $state = 0;	# start state
 while (<>) {
@@ -40,27 +35,19 @@ while (<>) {
 				print "const char *$pat{$t}\[\] = \n";
 				print "{\n";
 				for ($i = 0; $i < $count; $i++) {
-					if ($ea[$i] =~ /^#/) {
-						print $ea[$i];
-					} else {
-						printf "\t\"%s\"%s\n",
-							$ea[$i],
-							$i == $count - 1 ? '' : ',';
-					}
+					printf "\t\"%s\"%s\n",
+						$ea[$i],
+						$i == $count - 1 ? '' : ',';
 				}
 				print "};\n";
 				print "\n";
 			}
 			$state = 0;
-		} elsif (/^#/) {
-			$ea[$count++] = $_;
 		} else {
 			($e) = split(' ', $_);
 			$e =~ s/,//;
-			$e =~ s/^LOG_TAG_//;
-			$e =~ s/^LOG_//;
-			$e =~ s/^REFRESH_FAIL_HIT$/REF_FAIL_HIT/;
-			$ea[$count++] = $e;
+			$ea[$count] = $e;
+			$count++;
 		}
 		next;
 	}

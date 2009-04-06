@@ -1,5 +1,5 @@
 /*
- * $Id: version.h,v 1.133 2001/08/31 11:19:09 robertc Exp $
+ * $Id: version.h,v 1.134 2003/01/23 00:36:48 robertc Exp $
  *
  *  SQUID_VERSION - String for version id of this distribution
  */
@@ -9,5 +9,5 @@
  */
 
 #ifndef SQUID_RELEASE_TIME
-#define SQUID_RELEASE_TIME 1224438335
+#define SQUID_RELEASE_TIME 1233624970
 #endif

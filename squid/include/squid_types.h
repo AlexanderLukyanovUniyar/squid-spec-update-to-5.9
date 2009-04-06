@@ -1,5 +1,5 @@
 /*
- * $Id: squid_types.h,v 1.8 2006/05/23 14:51:36 hno Exp $
+ * $Id: squid_types.h,v 1.9 2007/08/14 19:17:43 serassio Exp $
  *
  * * * * * * * * Legal stuff * * * * * * *
  *
@@ -48,17 +48,18 @@
  * Here are defined several known-width types, obtained via autoconf
  * from system locations or various attempts. This is just a convenience
  * header to include which takes care of proper preprocessor stuff
+ *
+ * This file is only intended to be included via config.h, do
+ * not include directly.
  */
 
 #ifndef SQUID_TYPES_H
 #define SQUID_TYPES_H
 
-#ifndef AUTOCONF_H
-#define AUTOCONF_H 1
-#include "autoconf.h"
-#endif
-
 /* This should be in synch with what we have in acinclude.m4 */
+#if HAVE_SYS_TYPES_H
+#include <sys/types.h>
+#endif
 #if STDC_HEADERS
 #include <stdlib.h>
 #include <stddef.h>
@@ -66,11 +67,40 @@
 #if HAVE_INTTYPES_H
 #include <inttypes.h>
 #endif
-#if HAVE_SYS_TYPES_H
-#include <sys/types.h>
-#endif
 #if HAVE_SYS_BITYPES_H
 #include <sys/bitypes.h>
+#endif
+#if HAVE_SYS_SELECT_H
+#include <sys/select.h>
+#endif
+#if HAVE_NETINET_IN_SYSTM_H
+/* Several OS require types declared by in_systm.h without including it themselves. */
+#include <netinet/in_systm.h>
+#endif
+
+/* 
+ * ISO C99 Standard printf() macros for 64 bit integers
+ * On some 64 bit platform, HP Tru64 is one, for printf must be used
+ * "%lx" instead of "%llx" 
+ */
+#ifndef PRId64
+#ifdef _SQUID_MSWIN_		/* Windows native port using MSVCRT */
+#define PRId64 "I64d"
+#elif SIZEOF_INT64_T > SIZEOF_LONG
+#define PRId64 "lld"
+#else
+#define PRId64 "ld"
+#endif
+#endif
+
+#ifndef PRIu64
+#ifdef _SQUID_MSWIN_		/* Windows native port using MSVCRT */
+#define PRIu64 "I64u"
+#elif SIZEOF_INT64_T > SIZEOF_LONG
+#define PRIu64 "llu"
+#else
+#define PRIu64 "lu"
+#endif
 #endif
 
 #endif /* SQUID_TYPES_H */

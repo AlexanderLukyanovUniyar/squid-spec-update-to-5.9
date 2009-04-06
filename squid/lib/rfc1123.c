@@ -1,6 +1,6 @@
 
 /*
- * $Id: rfc1123.c,v 1.37 2007/01/18 23:25:41 hno Exp $
+ * $Id: rfc1123.c,v 1.41 2007/12/06 02:37:15 amosjeffries Exp $
  *
  * DEBUG: 
  * AUTHOR: Harvest Derived
@@ -64,12 +64,9 @@
 #include "assert.h"
 
 #include "util.h"
-#include "snprintf.h"
 
 #define RFC850_STRFTIME "%A, %d-%b-%y %H:%M:%S GMT"
 #define RFC1123_STRFTIME "%a, %d %b %Y %H:%M:%S GMT"
-
-static const char *const w_space = " \t\r\n";
 
 static int make_month(const char *s);
 static int make_num(const char *s);
@@ -155,14 +152,11 @@ parse_date_elements(const char *day, const char *month, const char *year,
     return tmSaneValues(&tm) ? &tm : NULL;
 }
 
-#define	TIMEBUFLEN	128
-
-/* This routine should be rewritten to not require copying the buffer - [ahc] */
 static struct tm *
-parse_date(const char *str, int len)
+parse_date(const char *str)
 {
     struct tm *tm;
-    char tmp[TIMEBUFLEN];
+    static char tmp[64];
     char *t;
     char *wday = NULL;
     char *day = NULL;
@@ -170,10 +164,8 @@ parse_date(const char *str, int len)
     char *year = NULL;
     char *time = NULL;
     char *zone = NULL;
-    int bl = MIN(len, TIMEBUFLEN - 1);
 
-    memcpy(tmp, str, bl);
-    tmp[bl] = '\0';
+    xstrncpy(tmp, str, 64);
 
     for (t = strtok(tmp, ", "); t; t = strtok(NULL, ", ")) {
 	if (xisdigit(*t)) {
@@ -201,23 +193,24 @@ parse_date(const char *str, int len)
 	    zone = t;
     }
     tm = parse_date_elements(day, month, year, time, zone);
+
     return tm;
 }
 
 time_t
-parse_rfc1123(const char *str, int len)
+parse_rfc1123(const char *str)
 {
     struct tm *tm;
     time_t t;
     if (NULL == str)
 	return -1;
-    tm = parse_date(str, len);
+    tm = parse_date(str);
     if (!tm)
 	return -1;
     tm->tm_isdst = -1;
 #ifdef HAVE_TIMEGM
     t = timegm(tm);
-#elif HAVE_TM_GMTOFF
+#elif HAVE_TM_TM_GMTOFF
     t = mktime(tm);
     if (t != -1) {
 	struct tm *local = localtime(&t);

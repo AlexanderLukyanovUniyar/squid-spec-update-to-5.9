@@ -7,10 +7,10 @@
 <H2>The requested URL could not be retrieved</H2>
 <HR noshade size="1px">
 <P>
-While attempting to retrieve the URL:
+While trying to retrieve the URL:
 <A HREF="%U">%U</A>
 <P>
-the following error was encountered:
+The following error was encountered:
 <UL>
 <LI>
 <STRONG>
@@ -19,13 +19,15 @@ ICAP protocol error.
 </UL>
 
 <P>
+The system returned:
+<PRE><I>    %E</I></PRE>
+
 <P>
+This means that:
 Some aspect of the ICAP communication failed. Possible problems:
 <UL>
 <LI>ICAP server is not reachable.
 <LI>Illegal response from ICAP server.
 </UL>
 </P>
-
-<P>Your cache administrator is <A HREF="mailto:%w">%w</A>. 
 

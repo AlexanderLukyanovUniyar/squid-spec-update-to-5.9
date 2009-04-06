@@ -1,33 +1,33 @@
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
 <HTML><HEAD>
-<TITLE>FEHLER: Der angeforderte URL konnte nicht geholt werden</TITLE>
+<TITLE>ERROR: The requested URL could not be retrieved</TITLE>
 <STYLE type="text/css"><!--BODY{background-color:#ffffff; font-family:verdana,sans-serif}--></STYLE>
 </HEAD><BODY>
-<H1>FEHLER</H1>
-<H2>Der angeforderte URL konnte nicht geholt werden</H2>
+<H1>ERROR</H1>
+<H2>The requested URL could not be retrieved</H2>
 <HR noshade size="1px">
 <P>
-W&auml;hrend des Versuches, den URL<BR>
+While trying to retrieve the URL:
 <A HREF="%U">%U</A>
-
-<BR>
-zu laden, trat der folgende Fehler auf:
+<P>
+The following error was encountered:
 <UL>
 <LI>
 <STRONG>
-ICAP-Protokollfehler
+ICAP protocol error.
 </STRONG>
 </UL>
 
 <P>
-<P>
-Es trat ein Problem bei der ICAP-Kommunikation auf. M&ouml;gliche Gr&uuml;nde:
-<UL>
-<LI>Nicht erreichbarer ICAP-Server
-<LI>Ung&uuml;ltige Antwort vom ICAP-Server
+The system returned:
+<PRE><I>    %E</I></PRE>
 
+<P>
+This means that:
+Some aspect of the ICAP communication failed. Possible problems:
+<UL>
+<LI>ICAP server is not reachable.
+<LI>Illegal response from ICAP server.
 </UL>
 </P>
-
-<P>Ihr Cache Administrator ist <A HREF="mailto:%w">%w</A>. 
 

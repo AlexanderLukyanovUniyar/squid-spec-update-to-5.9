@@ -1,6 +1,6 @@
 
 /*
- * $Id: hash.c,v 1.17 2006/06/02 17:32:44 serassio Exp $
+ * $Id: hash.c,v 1.18 2005/07/03 15:25:07 serassio Exp $
  *
  * DEBUG: section 0     Hash Tables
  * AUTHOR: Harvest Derived
@@ -61,6 +61,7 @@
 
 #include "hash.h"
 #include "util.h"
+#include "profiling.h"
 
 static void hash_next_bucket(hash_table * hid);
 
@@ -178,21 +179,22 @@ hash_join(hash_table * hid, hash_link * lnk)
  *  'hid'.  Returns a pointer to the hash bucket on success; otherwise
  *  returns NULL.
  */
-void *
+hash_link *
 hash_lookup(hash_table * hid, const void *k)
 {
     hash_link *walker;
     int b;
+    PROF_start(hash_lookup);
     assert(k != NULL);
     b = hid->hash(k, hid->size);
     for (walker = hid->buckets[b]; walker != NULL; walker = walker->next) {
-        /* strcmp of NULL is a SEGV */
-        if (NULL == walker->key)
-            return NULL;
-	if ((hid->cmp) (k, walker->key) == 0)
+	if ((hid->cmp) (k, walker->key) == 0) {
+	    PROF_stop(hash_lookup);
 	    return (walker);
+	}
 	assert(walker != walker->next);
     }
+    PROF_stop(hash_lookup);
     return NULL;
 }
 
@@ -223,7 +225,7 @@ hash_first(hash_table * hid)
  *
  *  MUST call hash_first() before hash_next().
  */
-void *
+hash_link *
 hash_next(hash_table * hid)
 {
     hash_link *this = hid->next;

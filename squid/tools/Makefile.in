@@ -17,7 +17,7 @@
 #
 #  Makefile for the Squid Object Cache server
 #
-#  $Id: Makefile.in,v 1.12.2.2 2007/08/12 12:41:09 hno Exp $
+#  $Id: Makefile.am,v 1.2 2006/05/11 12:25:39 hno Exp $
 #
 #  Uncomment and customize the following to suit your needs:
 #
@@ -45,7 +45,7 @@ POST_UNINSTALL = :
 build_triplet = @build@
 host_triplet = @host@
 check_PROGRAMS =
-bin_PROGRAMS = squidclient$(EXEEXT) $(am__EXEEXT_1)
+bin_PROGRAMS = squidclient$(EXEEXT)
 libexec_PROGRAMS = cachemgr$(CGIEXT)$(EXEEXT)
 subdir = tools
 DIST_COMMON = $(srcdir)/Makefile.am $(srcdir)/Makefile.in
@@ -57,7 +57,6 @@ am__configure_deps = $(am__aclocal_m4_deps) $(CONFIGURE_DEPENDENCIES) \
 mkinstalldirs = $(install_sh) -d
 CONFIG_HEADER = $(top_builddir)/include/autoconf.h
 CONFIG_CLEAN_FILES =
-@NEED_COSSDUMP_TRUE@am__EXEEXT_1 = cossdump$(EXEEXT)
 am__installdirs = "$(DESTDIR)$(bindir)" "$(DESTDIR)$(libexecdir)"
 binPROGRAMS_INSTALL = $(INSTALL_PROGRAM)
 libexecPROGRAMS_INSTALL = $(INSTALL_PROGRAM)
@@ -67,10 +66,6 @@ cachemgr__CGIEXT__OBJECTS = $(am_cachemgr__CGIEXT__OBJECTS)
 cachemgr__CGIEXT__LDADD = $(LDADD)
 am__DEPENDENCIES_1 =
 cachemgr__CGIEXT__DEPENDENCIES = $(am__DEPENDENCIES_1)
-am_cossdump_OBJECTS = cossdump.$(OBJEXT)
-cossdump_OBJECTS = $(am_cossdump_OBJECTS)
-cossdump_LDADD = $(LDADD)
-cossdump_DEPENDENCIES = $(am__DEPENDENCIES_1)
 am_squidclient_OBJECTS = squidclient.$(OBJEXT)
 squidclient_OBJECTS = $(am_squidclient_OBJECTS)
 squidclient_LDADD = $(LDADD)
@@ -78,14 +73,16 @@ squidclient_DEPENDENCIES = $(am__DEPENDENCIES_1)
 DEFAULT_INCLUDES = -I. -I$(srcdir) -I$(top_builddir)/include
 depcomp = $(SHELL) $(top_srcdir)/cfgaux/depcomp
 am__depfiles_maybe = depfiles
-COMPILE = $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) \
-	$(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS)
-CCLD = $(CC)
-LINK = $(CCLD) $(AM_CFLAGS) $(CFLAGS) $(AM_LDFLAGS) $(LDFLAGS) -o $@
-SOURCES = $(cachemgr__CGIEXT__SOURCES) $(cossdump_SOURCES) \
-	$(squidclient_SOURCES)
-DIST_SOURCES = $(cachemgr__CGIEXT__SOURCES) $(cossdump_SOURCES) \
-	$(squidclient_SOURCES)
+CXXCOMPILE = $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) \
+	$(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS)
+LTCXXCOMPILE = $(LIBTOOL) --tag=CXX --mode=compile $(CXX) $(DEFS) \
+	$(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) \
+	$(AM_CXXFLAGS) $(CXXFLAGS)
+CXXLD = $(CXX)
+CXXLINK = $(LIBTOOL) --tag=CXX --mode=link $(CXXLD) $(AM_CXXFLAGS) \
+	$(CXXFLAGS) $(AM_LDFLAGS) $(LDFLAGS) -o $@
+SOURCES = $(cachemgr__CGIEXT__SOURCES) $(squidclient_SOURCES)
+DIST_SOURCES = $(cachemgr__CGIEXT__SOURCES) $(squidclient_SOURCES)
 RECURSIVE_TARGETS = all-recursive check-recursive dvi-recursive \
 	html-recursive info-recursive install-data-recursive \
 	install-exec-recursive install-info-recursive \
@@ -104,6 +101,7 @@ AMTAR = @AMTAR@
 AR = @AR@
 AR_R = @AR_R@
 AUTH_LIBS = @AUTH_LIBS@
+AUTH_LINKOBJS = @AUTH_LINKOBJS@
 AUTH_MODULES = @AUTH_MODULES@
 AUTH_OBJS = @AUTH_OBJS@
 AUTOCONF = @AUTOCONF@
@@ -111,6 +109,7 @@ AUTOHEADER = @AUTOHEADER@
 AUTOMAKE = @AUTOMAKE@
 AWK = @AWK@
 BASIC_AUTH_HELPERS = @BASIC_AUTH_HELPERS@
+CACHE_EFFECTIVE_USER = @CACHE_EFFECTIVE_USER@
 CACHE_HTTP_PORT = @CACHE_HTTP_PORT@
 CACHE_ICP_PORT = @CACHE_ICP_PORT@
 CC = @CC@
@@ -119,19 +118,31 @@ CFLAGS = @CFLAGS@
 CGIEXT = @CGIEXT@
 CPP = @CPP@
 CPPFLAGS = @CPPFLAGS@
+CPPUNITCONFIG = @CPPUNITCONFIG@
 CRYPTLIB = @CRYPTLIB@
+CXX = @CXX@
+CXXCPP = @CXXCPP@
+CXXDEPMODE = @CXXDEPMODE@
+CXXFLAGS = @CXXFLAGS@
 CYGPATH_W = @CYGPATH_W@
 DEFS = @DEFS@
 DEPDIR = @DEPDIR@
 DIGEST_AUTH_HELPERS = @DIGEST_AUTH_HELPERS@
+DISK_LIBS = @DISK_LIBS@
+DISK_LINKOBJS = @DISK_LINKOBJS@
+DISK_PROGRAMS = @DISK_PROGRAMS@
+DSYMUTIL = @DSYMUTIL@
+ECHO = @ECHO@
 ECHO_C = @ECHO_C@
 ECHO_N = @ECHO_N@
 ECHO_T = @ECHO_T@
 EGREP = @EGREP@
+ENABLE_ARP_ACL_FALSE = @ENABLE_ARP_ACL_FALSE@
+ENABLE_ARP_ACL_TRUE = @ENABLE_ARP_ACL_TRUE@
 ENABLE_HTCP_FALSE = @ENABLE_HTCP_FALSE@
 ENABLE_HTCP_TRUE = @ENABLE_HTCP_TRUE@
-ENABLE_MINGW32SPECIFIC_FALSE = @ENABLE_MINGW32SPECIFIC_FALSE@
-ENABLE_MINGW32SPECIFIC_TRUE = @ENABLE_MINGW32SPECIFIC_TRUE@
+ENABLE_IDENT_FALSE = @ENABLE_IDENT_FALSE@
+ENABLE_IDENT_TRUE = @ENABLE_IDENT_TRUE@
 ENABLE_PINGER_FALSE = @ENABLE_PINGER_FALSE@
 ENABLE_PINGER_TRUE = @ENABLE_PINGER_TRUE@
 ENABLE_SSL_FALSE = @ENABLE_SSL_FALSE@
@@ -140,27 +151,32 @@ ENABLE_UNLINKD_FALSE = @ENABLE_UNLINKD_FALSE@
 ENABLE_UNLINKD_TRUE = @ENABLE_UNLINKD_TRUE@
 ENABLE_WIN32SPECIFIC_FALSE = @ENABLE_WIN32SPECIFIC_FALSE@
 ENABLE_WIN32SPECIFIC_TRUE = @ENABLE_WIN32SPECIFIC_TRUE@
+ENABLE_XPROF_STATS_FALSE = @ENABLE_XPROF_STATS_FALSE@
+ENABLE_XPROF_STATS_TRUE = @ENABLE_XPROF_STATS_TRUE@
+EPOLL_LIBS = @EPOLL_LIBS@
 ERR_DEFAULT_LANGUAGE = @ERR_DEFAULT_LANGUAGE@
 ERR_LANGUAGES = @ERR_LANGUAGES@
 EXEEXT = @EXEEXT@
 EXTERNAL_ACL_HELPERS = @EXTERNAL_ACL_HELPERS@
+F77 = @F77@
 FALSE = @FALSE@
+FFLAGS = @FFLAGS@
 GREP = @GREP@
+ICAP_LIBS = @ICAP_LIBS@
 INSTALL_DATA = @INSTALL_DATA@
 INSTALL_PROGRAM = @INSTALL_PROGRAM@
 INSTALL_SCRIPT = @INSTALL_SCRIPT@
 INSTALL_STRIP_PROGRAM = @INSTALL_STRIP_PROGRAM@
 LDFLAGS = @LDFLAGS@
-LIBDLMALLOC = @LIBDLMALLOC@
+LIBADD_DL = @LIBADD_DL@
 LIBOBJS = @LIBOBJS@
 LIBREGEX = @LIBREGEX@
 LIBS = @LIBS@
 LIBSASL = @LIBSASL@
+LIBTOOL = @LIBTOOL@
 LIB_DB = @LIB_DB@
-LIB_EPOLL = @LIB_EPOLL@
 LIB_LBER = @LIB_LBER@
 LIB_LDAP = @LIB_LDAP@
-LIB_MALLOC = @LIB_MALLOC@
 LN = @LN@
 LN_S = @LN_S@
 LTLIBOBJS = @LTLIBOBJS@
@@ -170,19 +186,15 @@ MAINTAINER_MODE_TRUE = @MAINTAINER_MODE_TRUE@
 MAKEINFO = @MAKEINFO@
 MAKE_LEAKFINDER_FALSE = @MAKE_LEAKFINDER_FALSE@
 MAKE_LEAKFINDER_TRUE = @MAKE_LEAKFINDER_TRUE@
+MINGW_LIBS = @MINGW_LIBS@
 MKDIR = @MKDIR@
 MV = @MV@
-NEED_COSSDUMP_FALSE = @NEED_COSSDUMP_FALSE@
-NEED_COSSDUMP_TRUE = @NEED_COSSDUMP_TRUE@
-NEED_DISKD_FALSE = @NEED_DISKD_FALSE@
-NEED_DISKD_TRUE = @NEED_DISKD_TRUE@
-NEED_OWN_MD5_FALSE = @NEED_OWN_MD5_FALSE@
-NEED_OWN_MD5_TRUE = @NEED_OWN_MD5_TRUE@
-NEED_OWN_SNPRINTF_FALSE = @NEED_OWN_SNPRINTF_FALSE@
-NEED_OWN_SNPRINTF_TRUE = @NEED_OWN_SNPRINTF_TRUE@
 NEED_OWN_STRSEP_FALSE = @NEED_OWN_STRSEP_FALSE@
 NEED_OWN_STRSEP_TRUE = @NEED_OWN_STRSEP_TRUE@
+NEED_OWN_STRTOLL_FALSE = @NEED_OWN_STRTOLL_FALSE@
+NEED_OWN_STRTOLL_TRUE = @NEED_OWN_STRTOLL_TRUE@
 NEGOTIATE_AUTH_HELPERS = @NEGOTIATE_AUTH_HELPERS@
+NMEDIT = @NMEDIT@
 NTLM_AUTH_HELPERS = @NTLM_AUTH_HELPERS@
 OBJEXT = @OBJEXT@
 OPT_DEFAULT_HOSTS = @OPT_DEFAULT_HOSTS@
@@ -194,25 +206,33 @@ PACKAGE_TARNAME = @PACKAGE_TARNAME@
 PACKAGE_VERSION = @PACKAGE_VERSION@
 PATH_SEPARATOR = @PATH_SEPARATOR@
 PERL = @PERL@
-PKGCONFIG = @PKGCONFIG@
 RANLIB = @RANLIB@
 REGEXLIB = @REGEXLIB@
 REPL_LIBS = @REPL_LIBS@
 REPL_OBJS = @REPL_OBJS@
 REPL_POLICIES = @REPL_POLICIES@
 RM = @RM@
+SED = @SED@
 SET_MAKE = @SET_MAKE@
 SH = @SH@
 SHELL = @SHELL@
 SNMPLIB = @SNMPLIB@
+SQUID_CFLAGS = @SQUID_CFLAGS@
+SQUID_CPPUNIT_INC = @SQUID_CPPUNIT_INC@
+SQUID_CPPUNIT_LA = @SQUID_CPPUNIT_LA@
+SQUID_CPPUNIT_LIBS = @SQUID_CPPUNIT_LIBS@
+SQUID_CXXFLAGS = @SQUID_CXXFLAGS@
 SSLLIB = @SSLLIB@
 STORE_LIBS = @STORE_LIBS@
-STORE_MODULES = @STORE_MODULES@
+STORE_LINKOBJS = @STORE_LINKOBJS@
 STORE_OBJS = @STORE_OBJS@
+STORE_TESTS = @STORE_TESTS@
 STRIP = @STRIP@
 TRUE = @TRUE@
 USE_AIOPS_WIN32_FALSE = @USE_AIOPS_WIN32_FALSE@
 USE_AIOPS_WIN32_TRUE = @USE_AIOPS_WIN32_TRUE@
+USE_AIO_WIN32_FALSE = @USE_AIO_WIN32_FALSE@
+USE_AIO_WIN32_TRUE = @USE_AIO_WIN32_TRUE@
 USE_DELAY_POOLS_FALSE = @USE_DELAY_POOLS_FALSE@
 USE_DELAY_POOLS_TRUE = @USE_DELAY_POOLS_TRUE@
 USE_DEVPOLL_FALSE = @USE_DEVPOLL_FALSE@
@@ -221,6 +241,12 @@ USE_DNSSERVER_FALSE = @USE_DNSSERVER_FALSE@
 USE_DNSSERVER_TRUE = @USE_DNSSERVER_TRUE@
 USE_EPOLL_FALSE = @USE_EPOLL_FALSE@
 USE_EPOLL_TRUE = @USE_EPOLL_TRUE@
+USE_ESI_FALSE = @USE_ESI_FALSE@
+USE_ESI_TRUE = @USE_ESI_TRUE@
+USE_ICAP_CLIENT_FALSE = @USE_ICAP_CLIENT_FALSE@
+USE_ICAP_CLIENT_TRUE = @USE_ICAP_CLIENT_TRUE@
+USE_IPC_WIN32_FALSE = @USE_IPC_WIN32_FALSE@
+USE_IPC_WIN32_TRUE = @USE_IPC_WIN32_TRUE@
 USE_KQUEUE_FALSE = @USE_KQUEUE_FALSE@
 USE_KQUEUE_TRUE = @USE_KQUEUE_TRUE@
 USE_POLL_FALSE = @USE_POLL_FALSE@
@@ -238,8 +264,12 @@ WIN32_PSAPI = @WIN32_PSAPI@
 XTRA_LIBS = @XTRA_LIBS@
 XTRA_OBJS = @XTRA_OBJS@
 ac_ct_CC = @ac_ct_CC@
+ac_ct_CXX = @ac_ct_CXX@
+ac_ct_F77 = @ac_ct_F77@
 am__fastdepCC_FALSE = @am__fastdepCC_FALSE@
 am__fastdepCC_TRUE = @am__fastdepCC_TRUE@
+am__fastdepCXX_FALSE = @am__fastdepCXX_FALSE@
+am__fastdepCXX_TRUE = @am__fastdepCXX_TRUE@
 am__include = @am__include@
 am__leading_dot = @am__leading_dot@
 am__quote = @am__quote@
@@ -279,23 +309,23 @@ program_transform_name = @program_transform_name@
 psdir = @psdir@
 sbindir = @sbindir@
 sharedstatedir = @sharedstatedir@
+subdirs = @subdirs@
 sysconfdir = @sysconfdir@
 target_alias = @target_alias@
 AUTOMAKE_OPTIONS = subdir-objects
-INCLUDES = -I. -I$(srcdir) -I$(top_builddir)/include -I$(top_srcdir)/include -I$(top_srcdir)/lib/libTrie/include
+INCLUDES = -I. -I$(srcdir) -I$(top_builddir)/include \
+	-I$(top_srcdir)/include -I$(top_srcdir)/lib/libTrie/include \
+	@SQUID_CPPUNIT_INC@ $(am__empty)
 TESTS = $(check_PROGRAMS)
 SUBDIRS = 
-@NEED_COSSDUMP_FALSE@COSSDUMP = 
-@NEED_COSSDUMP_TRUE@COSSDUMP = cossdump
-squidclient_SOURCES = squidclient.c
-cossdump_SOURCES = cossdump.c
-cachemgr__CGIEXT__SOURCES = cachemgr.c
-cachemgr__CGIEXT__CFLAGS = -DDEFAULT_CACHEMGR_CONFIG=\"$(DEFAULT_CACHEMGR_CONFIG)\" $(AM_CFLAGS)
+DEFAULT_CACHEMGR_CONFIG = $(sysconfdir)/cachemgr.conf
+squidclient_SOURCES = squidclient.cc
+cachemgr__CGIEXT__SOURCES = cachemgr.cc
+cachemgr__CGIEXT__CXXFLAGS = -DDEFAULT_CACHEMGR_CONFIG=\"$(DEFAULT_CACHEMGR_CONFIG)\" $(AM_CXXFLAGS)
 LDADD = -L../lib -lmiscutil $(XTRA_LIBS)
 EXTRA_DIST = \
 	cachemgr.conf
 
-DEFAULT_CACHEMGR_CONFIG = $(sysconfdir)/cachemgr.conf
 
 # Don't automatically uninstall config files
 #	@if test -f $(DESTDIR)$(DEFAULT_CONFIG_FILE) ; then \
@@ -306,7 +336,7 @@ DISTCLEANFILES =
 all: all-recursive
 
 .SUFFIXES:
-.SUFFIXES: .c .o .obj
+.SUFFIXES: .cc .lo .o .obj
 $(srcdir)/Makefile.in: @MAINTAINER_MODE_TRUE@ $(srcdir)/Makefile.am  $(am__configure_deps)
 	@for dep in $?; do \
 	  case '$(am__configure_deps)' in \
@@ -342,10 +372,11 @@ install-binPROGRAMS: $(bin_PROGRAMS)
 	@list='$(bin_PROGRAMS)'; for p in $$list; do \
 	  p1=`echo $$p|sed 's/$(EXEEXT)$$//'`; \
 	  if test -f $$p \
+	     || test -f $$p1 \
 	  ; then \
 	    f=`echo "$$p1" | sed 's,^.*/,,;$(transform);s/$$/$(EXEEXT)/'`; \
-	   echo " $(INSTALL_PROGRAM_ENV) $(binPROGRAMS_INSTALL) '$$p' '$(DESTDIR)$(bindir)/$$f'"; \
-	   $(INSTALL_PROGRAM_ENV) $(binPROGRAMS_INSTALL) "$$p" "$(DESTDIR)$(bindir)/$$f" || exit 1; \
+	   echo " $(INSTALL_PROGRAM_ENV) $(LIBTOOL) --mode=install $(binPROGRAMS_INSTALL) '$$p' '$(DESTDIR)$(bindir)/$$f'"; \
+	   $(INSTALL_PROGRAM_ENV) $(LIBTOOL) --mode=install $(binPROGRAMS_INSTALL) "$$p" "$(DESTDIR)$(bindir)/$$f" || exit 1; \
 	  else :; fi; \
 	done
 
@@ -358,20 +389,29 @@ uninstall-binPROGRAMS:
 	done
 
 clean-binPROGRAMS:
-	-test -z "$(bin_PROGRAMS)" || rm -f $(bin_PROGRAMS)
+	@list='$(bin_PROGRAMS)'; for p in $$list; do \
+	  f=`echo $$p|sed 's/$(EXEEXT)$$//'`; \
+	  echo " rm -f $$p $$f"; \
+	  rm -f $$p $$f ; \
+	done
 
 clean-checkPROGRAMS:
-	-test -z "$(check_PROGRAMS)" || rm -f $(check_PROGRAMS)
+	@list='$(check_PROGRAMS)'; for p in $$list; do \
+	  f=`echo $$p|sed 's/$(EXEEXT)$$//'`; \
+	  echo " rm -f $$p $$f"; \
+	  rm -f $$p $$f ; \
+	done
 install-libexecPROGRAMS: $(libexec_PROGRAMS)
 	@$(NORMAL_INSTALL)
 	test -z "$(libexecdir)" || $(mkdir_p) "$(DESTDIR)$(libexecdir)"
 	@list='$(libexec_PROGRAMS)'; for p in $$list; do \
 	  p1=`echo $$p|sed 's/$(EXEEXT)$$//'`; \
 	  if test -f $$p \
+	     || test -f $$p1 \
 	  ; then \
 	    f=`echo "$$p1" | sed 's,^.*/,,;$(transform);s/$$/$(EXEEXT)/'`; \
-	   echo " $(INSTALL_PROGRAM_ENV) $(libexecPROGRAMS_INSTALL) '$$p' '$(DESTDIR)$(libexecdir)/$$f'"; \
-	   $(INSTALL_PROGRAM_ENV) $(libexecPROGRAMS_INSTALL) "$$p" "$(DESTDIR)$(libexecdir)/$$f" || exit 1; \
+	   echo " $(INSTALL_PROGRAM_ENV) $(LIBTOOL) --mode=install $(libexecPROGRAMS_INSTALL) '$$p' '$(DESTDIR)$(libexecdir)/$$f'"; \
+	   $(INSTALL_PROGRAM_ENV) $(LIBTOOL) --mode=install $(libexecPROGRAMS_INSTALL) "$$p" "$(DESTDIR)$(libexecdir)/$$f" || exit 1; \
 	  else :; fi; \
 	done
 
@@ -384,16 +424,17 @@ uninstall-libexecPROGRAMS:
 	done
 
 clean-libexecPROGRAMS:
-	-test -z "$(libexec_PROGRAMS)" || rm -f $(libexec_PROGRAMS)
+	@list='$(libexec_PROGRAMS)'; for p in $$list; do \
+	  f=`echo $$p|sed 's/$(EXEEXT)$$//'`; \
+	  echo " rm -f $$p $$f"; \
+	  rm -f $$p $$f ; \
+	done
 cachemgr$(CGIEXT)$(EXEEXT): $(cachemgr__CGIEXT__OBJECTS) $(cachemgr__CGIEXT__DEPENDENCIES) 
 	@rm -f cachemgr$(CGIEXT)$(EXEEXT)
-	$(LINK) $(cachemgr__CGIEXT__LDFLAGS) $(cachemgr__CGIEXT__OBJECTS) $(cachemgr__CGIEXT__LDADD) $(LIBS)
-cossdump$(EXEEXT): $(cossdump_OBJECTS) $(cossdump_DEPENDENCIES) 
-	@rm -f cossdump$(EXEEXT)
-	$(LINK) $(cossdump_LDFLAGS) $(cossdump_OBJECTS) $(cossdump_LDADD) $(LIBS)
+	$(CXXLINK) $(cachemgr__CGIEXT__LDFLAGS) $(cachemgr__CGIEXT__OBJECTS) $(cachemgr__CGIEXT__LDADD) $(LIBS)
 squidclient$(EXEEXT): $(squidclient_OBJECTS) $(squidclient_DEPENDENCIES) 
 	@rm -f squidclient$(EXEEXT)
-	$(LINK) $(squidclient_LDFLAGS) $(squidclient_OBJECTS) $(squidclient_LDADD) $(LIBS)
+	$(CXXLINK) $(squidclient_LDFLAGS) $(squidclient_OBJECTS) $(squidclient_LDADD) $(LIBS)
 
 mostlyclean-compile:
 	-rm -f *.$(OBJEXT)
@@ -402,38 +443,54 @@ distclean-compile:
 	-rm -f *.tab.c
 
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/cachemgr__CGIEXT_-cachemgr.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/cossdump.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/squidclient.Po@am__quote@
 
-.c.o:
-@am__fastdepCC_TRUE@	depbase=`echo $@ | sed 's|[^/]*$$|$(DEPDIR)/&|;s|\.o$$||'`; \
-@am__fastdepCC_TRUE@	if $(COMPILE) -MT $@ -MD -MP -MF "$$depbase.Tpo" -c -o $@ $<; \
-@am__fastdepCC_TRUE@	then mv -f "$$depbase.Tpo" "$$depbase.Po"; else rm -f "$$depbase.Tpo"; exit 1; fi
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='$<' object='$@' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(COMPILE) -c -o $@ $<
+.cc.o:
+@am__fastdepCXX_TRUE@	depbase=`echo $@ | sed 's|[^/]*$$|$(DEPDIR)/&|;s|\.o$$||'`; \
+@am__fastdepCXX_TRUE@	if $(CXXCOMPILE) -MT $@ -MD -MP -MF "$$depbase.Tpo" -c -o $@ $<; \
+@am__fastdepCXX_TRUE@	then mv -f "$$depbase.Tpo" "$$depbase.Po"; else rm -f "$$depbase.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='$<' object='$@' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXXCOMPILE) -c -o $@ $<
 
-.c.obj:
-@am__fastdepCC_TRUE@	depbase=`echo $@ | sed 's|[^/]*$$|$(DEPDIR)/&|;s|\.obj$$||'`; \
-@am__fastdepCC_TRUE@	if $(COMPILE) -MT $@ -MD -MP -MF "$$depbase.Tpo" -c -o $@ `$(CYGPATH_W) '$<'`; \
-@am__fastdepCC_TRUE@	then mv -f "$$depbase.Tpo" "$$depbase.Po"; else rm -f "$$depbase.Tpo"; exit 1; fi
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='$<' object='$@' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(COMPILE) -c -o $@ `$(CYGPATH_W) '$<'`
+.cc.obj:
+@am__fastdepCXX_TRUE@	depbase=`echo $@ | sed 's|[^/]*$$|$(DEPDIR)/&|;s|\.obj$$||'`; \
+@am__fastdepCXX_TRUE@	if $(CXXCOMPILE) -MT $@ -MD -MP -MF "$$depbase.Tpo" -c -o $@ `$(CYGPATH_W) '$<'`; \
+@am__fastdepCXX_TRUE@	then mv -f "$$depbase.Tpo" "$$depbase.Po"; else rm -f "$$depbase.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='$<' object='$@' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXXCOMPILE) -c -o $@ `$(CYGPATH_W) '$<'`
 
-cachemgr__CGIEXT_-cachemgr.o: cachemgr.c
-@am__fastdepCC_TRUE@	if $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(cachemgr__CGIEXT__CFLAGS) $(CFLAGS) -MT cachemgr__CGIEXT_-cachemgr.o -MD -MP -MF "$(DEPDIR)/cachemgr__CGIEXT_-cachemgr.Tpo" -c -o cachemgr__CGIEXT_-cachemgr.o `test -f 'cachemgr.c' || echo '$(srcdir)/'`cachemgr.c; \
-@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/cachemgr__CGIEXT_-cachemgr.Tpo" "$(DEPDIR)/cachemgr__CGIEXT_-cachemgr.Po"; else rm -f "$(DEPDIR)/cachemgr__CGIEXT_-cachemgr.Tpo"; exit 1; fi
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='cachemgr.c' object='cachemgr__CGIEXT_-cachemgr.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(cachemgr__CGIEXT__CFLAGS) $(CFLAGS) -c -o cachemgr__CGIEXT_-cachemgr.o `test -f 'cachemgr.c' || echo '$(srcdir)/'`cachemgr.c
+.cc.lo:
+@am__fastdepCXX_TRUE@	depbase=`echo $@ | sed 's|[^/]*$$|$(DEPDIR)/&|;s|\.lo$$||'`; \
+@am__fastdepCXX_TRUE@	if $(LTCXXCOMPILE) -MT $@ -MD -MP -MF "$$depbase.Tpo" -c -o $@ $<; \
+@am__fastdepCXX_TRUE@	then mv -f "$$depbase.Tpo" "$$depbase.Plo"; else rm -f "$$depbase.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='$<' object='$@' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(LTCXXCOMPILE) -c -o $@ $<
 
-cachemgr__CGIEXT_-cachemgr.obj: cachemgr.c
-@am__fastdepCC_TRUE@	if $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(cachemgr__CGIEXT__CFLAGS) $(CFLAGS) -MT cachemgr__CGIEXT_-cachemgr.obj -MD -MP -MF "$(DEPDIR)/cachemgr__CGIEXT_-cachemgr.Tpo" -c -o cachemgr__CGIEXT_-cachemgr.obj `if test -f 'cachemgr.c'; then $(CYGPATH_W) 'cachemgr.c'; else $(CYGPATH_W) '$(srcdir)/cachemgr.c'; fi`; \
-@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/cachemgr__CGIEXT_-cachemgr.Tpo" "$(DEPDIR)/cachemgr__CGIEXT_-cachemgr.Po"; else rm -f "$(DEPDIR)/cachemgr__CGIEXT_-cachemgr.Tpo"; exit 1; fi
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='cachemgr.c' object='cachemgr__CGIEXT_-cachemgr.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(cachemgr__CGIEXT__CFLAGS) $(CFLAGS) -c -o cachemgr__CGIEXT_-cachemgr.obj `if test -f 'cachemgr.c'; then $(CYGPATH_W) 'cachemgr.c'; else $(CYGPATH_W) '$(srcdir)/cachemgr.c'; fi`
+cachemgr__CGIEXT_-cachemgr.o: cachemgr.cc
+@am__fastdepCXX_TRUE@	if $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(cachemgr__CGIEXT__CXXFLAGS) $(CXXFLAGS) -MT cachemgr__CGIEXT_-cachemgr.o -MD -MP -MF "$(DEPDIR)/cachemgr__CGIEXT_-cachemgr.Tpo" -c -o cachemgr__CGIEXT_-cachemgr.o `test -f 'cachemgr.cc' || echo '$(srcdir)/'`cachemgr.cc; \
+@am__fastdepCXX_TRUE@	then mv -f "$(DEPDIR)/cachemgr__CGIEXT_-cachemgr.Tpo" "$(DEPDIR)/cachemgr__CGIEXT_-cachemgr.Po"; else rm -f "$(DEPDIR)/cachemgr__CGIEXT_-cachemgr.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='cachemgr.cc' object='cachemgr__CGIEXT_-cachemgr.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(cachemgr__CGIEXT__CXXFLAGS) $(CXXFLAGS) -c -o cachemgr__CGIEXT_-cachemgr.o `test -f 'cachemgr.cc' || echo '$(srcdir)/'`cachemgr.cc
+
+cachemgr__CGIEXT_-cachemgr.obj: cachemgr.cc
+@am__fastdepCXX_TRUE@	if $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(cachemgr__CGIEXT__CXXFLAGS) $(CXXFLAGS) -MT cachemgr__CGIEXT_-cachemgr.obj -MD -MP -MF "$(DEPDIR)/cachemgr__CGIEXT_-cachemgr.Tpo" -c -o cachemgr__CGIEXT_-cachemgr.obj `if test -f 'cachemgr.cc'; then $(CYGPATH_W) 'cachemgr.cc'; else $(CYGPATH_W) '$(srcdir)/cachemgr.cc'; fi`; \
+@am__fastdepCXX_TRUE@	then mv -f "$(DEPDIR)/cachemgr__CGIEXT_-cachemgr.Tpo" "$(DEPDIR)/cachemgr__CGIEXT_-cachemgr.Po"; else rm -f "$(DEPDIR)/cachemgr__CGIEXT_-cachemgr.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='cachemgr.cc' object='cachemgr__CGIEXT_-cachemgr.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(cachemgr__CGIEXT__CXXFLAGS) $(CXXFLAGS) -c -o cachemgr__CGIEXT_-cachemgr.obj `if test -f 'cachemgr.cc'; then $(CYGPATH_W) 'cachemgr.cc'; else $(CYGPATH_W) '$(srcdir)/cachemgr.cc'; fi`
+
+mostlyclean-libtool:
+	-rm -f *.lo
+
+clean-libtool:
+	-rm -rf .libs _libs
+
+distclean-libtool:
+	-rm -f libtool
 uninstall-info-am:
 
 # This directory's subdirectories are mostly independent; you can cd
@@ -721,13 +778,13 @@ maintainer-clean-generic:
 clean: clean-recursive
 
 clean-am: clean-binPROGRAMS clean-checkPROGRAMS clean-generic \
-	clean-libexecPROGRAMS mostlyclean-am
+	clean-libexecPROGRAMS clean-libtool mostlyclean-am
 
 distclean: distclean-recursive
 	-rm -rf ./$(DEPDIR)
 	-rm -f Makefile
 distclean-am: clean-am distclean-compile distclean-generic \
-	distclean-tags
+	distclean-libtool distclean-tags
 
 dvi: dvi-recursive
 
@@ -756,7 +813,8 @@ maintainer-clean-am: distclean-am maintainer-clean-generic
 
 mostlyclean: mostlyclean-recursive
 
-mostlyclean-am: mostlyclean-compile mostlyclean-generic
+mostlyclean-am: mostlyclean-compile mostlyclean-generic \
+	mostlyclean-libtool
 
 pdf: pdf-recursive
 
@@ -773,8 +831,9 @@ uninstall-info: uninstall-info-recursive
 
 .PHONY: $(RECURSIVE_TARGETS) CTAGS GTAGS all all-am check check-TESTS \
 	check-am clean clean-binPROGRAMS clean-checkPROGRAMS \
-	clean-generic clean-libexecPROGRAMS clean-recursive ctags \
-	ctags-recursive distclean distclean-compile distclean-generic \
+	clean-generic clean-libexecPROGRAMS clean-libtool \
+	clean-recursive ctags ctags-recursive distclean \
+	distclean-compile distclean-generic distclean-libtool \
 	distclean-recursive distclean-tags distdir dvi dvi-am html \
 	html-am info info-am install install-am install-binPROGRAMS \
 	install-data install-data-am install-data-local install-exec \
@@ -783,14 +842,16 @@ uninstall-info: uninstall-info-recursive
 	installcheck-am installdirs installdirs-am maintainer-clean \
 	maintainer-clean-generic maintainer-clean-recursive \
 	mostlyclean mostlyclean-compile mostlyclean-generic \
-	mostlyclean-recursive pdf pdf-am ps ps-am tags tags-recursive \
-	uninstall uninstall-am uninstall-binPROGRAMS uninstall-info-am \
+	mostlyclean-libtool mostlyclean-recursive pdf pdf-am ps ps-am \
+	tags tags-recursive uninstall uninstall-am \
+	uninstall-binPROGRAMS uninstall-info-am \
 	uninstall-libexecPROGRAMS uninstall-local
 
 
 $(OBJS): $(top_srcdir)/include/version.h ../include/autoconf.h
 
 install-data-local:
+	$(INSTALL_DATA) $(srcdir)/cachemgr.conf $(DESTDIR)$(DEFAULT_CACHEMGR_CONFIG).default
 	@if test -f $(DESTDIR)$(DEFAULT_CACHEMGR_CONFIG) ; then \
 	        echo "$@ will not overwrite existing $(DESTDIR)$(DEFAULT_CACHEMGR_CONFIG)" ; \
 	else \

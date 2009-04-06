@@ -1,7 +1,7 @@
 /*
- * $Id: radix.c,v 1.21 2006/06/02 17:32:44 serassio Exp $
+ * $Id: radix.c,v 1.23 2007/04/25 11:30:16 adrian Exp $
  *
- * DEBUG: section 53     Radix tree data structure implementation
+ * DEBUG: section 53    Radix Tree data structure implementation
  * AUTHOR: NetBSD Derived
  *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/
@@ -45,11 +45,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *      This product includes software developed by the University of
- *      California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -113,15 +109,9 @@
 
 #include "radix.h"
 
-
 int squid_max_keylen;
 struct squid_radix_mask *squid_rn_mkfreelist;
-/* Silly construct to get rid of GCC-3.3 warning about type-punning */
-union {
-	struct squid_radix_node_head *rn;
-	void *ptr;
-} squid_mask_rnhead_u;
-#define squid_mask_rnhead squid_mask_rnhead_u.rn
+struct squid_radix_node_head *squid_mask_rnhead;
 static char *addmask_key;
 static unsigned char normal_chars[] =
 {0, 0x80, 0xc0, 0xe0, 0xf0, 0xf8, 0xfc, 0xfe, 0xFF};
@@ -134,7 +124,7 @@ static char *rn_zeros, *rn_ones;
 #define rn_l rn_u.rn_node.rn_L
 #define rn_r rn_u.rn_node.rn_R
 #define rm_mask rm_rmu.rmu_mask
-#define rm_leaf rm_rmu.rmu_leaf /* extra field would make 32 bytes */
+#define rm_leaf rm_rmu.rmu_leaf	/* extra field would make 32 bytes */
 
 
 /* Helper macros */
@@ -265,7 +255,7 @@ squid_rn_lookup(void *v_arg, void *m_arg, struct squid_radix_node_head *head)
 }
 
 static int
-rn_satsifies_leaf (char *trial, register struct squid_radix_node *leaf, int skip)
+rn_satsifies_leaf(char *trial, register struct squid_radix_node *leaf, int skip)
 {
     register char *cp = trial, *cp2 = leaf->rn_key, *cp3 = leaf->rn_mask;
     char *cplim;
@@ -920,7 +910,7 @@ squid_rn_delete(void *v_arg, void *netmask_arg, struct squid_radix_node_head *he
 }
 
 int
-squid_rn_walktree(struct squid_radix_node_head *h, int (*f)(struct squid_radix_node *, void *), void *w)
+squid_rn_walktree(struct squid_radix_node_head *h, int (*f) (struct squid_radix_node *, void *), void *w)
 {
     int error;
     struct squid_radix_node *base, *next;
@@ -956,7 +946,7 @@ squid_rn_walktree(struct squid_radix_node_head *h, int (*f)(struct squid_radix_n
 }
 
 int
-squid_rn_inithead(void **head, int off)
+squid_rn_inithead(struct squid_radix_node_head **head, int off)
 {
     register struct squid_radix_node_head *rnh;
     register struct squid_radix_node *t, *tt, *ttt;
@@ -1011,7 +1001,7 @@ squid_rn_init(void)
     addmask_key = cplim = rn_ones + squid_max_keylen;
     while (cp < cplim)
 	*cp++ = -1;
-    if (squid_rn_inithead(&squid_mask_rnhead_u.ptr, 0) == 0) {
+    if (squid_rn_inithead(&squid_mask_rnhead, 0) == 0) {
 	fprintf(stderr, "rn_init2 failed.\n");
 	exit(-1);
     }

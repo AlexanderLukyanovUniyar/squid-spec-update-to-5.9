@@ -1,140 +1,187 @@
-Changes to squid-2.6.STABLE22 (19 October 2008)
-	- Bug #2396: Correct the opening of the PF device file.
-	- Make --with-large-files and --with-build-envirnment=default play
-	  nice together
-	- Workaround for Linux-2.6.24 & 2.6.25 netfiler_ipv4.h include header
-	  __u32 problem
-	- Make dns_nameserver work when using --disable-internal-dns on glibc
-	  based systems
-	- Bug #2426: Increase negotiate auth token buffer size
-	- Bug #2427: squid_ldap_group -h reports the old % codes for -f
-	- Bug #2477: swap.state permission issues if crashing during "squid -k
-	  reconfigure"
-	- Windows port: Fix build error using latest MinGW runtime.
+Changes to squid-3.0.STABLE13 (03 Feb 2009):
 
-Changes to squid-2.6.STABLE21 (27 June 2008)
+	- Fix several issues in request parsing
+	- Fix memory leak from logformat parsing
+	- Fix various ESI build errors
+	- ... and some documentation updates
 
-	- Bug #2350: Bugs in Linux kernel capabilities code
-	- Bug #2241: weights not applied properly in round-robin peer
-	  selection
-	- Off by one error in DNS label decompression could cause valid DNS
-	  messages to be rejected
-	- logformat docs contain extra whitespace
-	- Reject ridiculously large ASN.1 lengths
-	- Fix SNMP reporting of counters with a value > 0xFF80000
-	- Correct spelling of WCCPv2 dst_port_hash to match the source
-	- Plug some "squid -k reconfigure" memory leaks. Mostly SSL related.
-	- Bug #1993: Memory leak in http_reply_access deny processing
-	- Bug #2122: In some situations collapsed_forwarding could leak
-	  private information
-	- Bug #2376: Round-Robin becomes unbalanced when a peer dies and comes
-	  back
-	- Bug #2387: The calculation of the number of hash buckets need to
-	  account for the memory size, not only disk size
-	- Bug #2393: DNS requests retried indefinitely at full speed on failed
-	  TCP connection
-	- Bug #2393: DNS retransmit queue could get hold up
-	- Correct socket syscalls statistics in commResetFD()
+Changes to squid-3.0.STABLE12 (21 Jan 2009):
 
-Changes to squid-2.6.STABLE20 (25 Apr 2008)
+	- Bug 2533: Solaris (sparc) 64-bit build breaks with gcc/g++
+	- Bug 2542: ICAP filters break download resume
+	- Bug 2556: HTCP fails without icp_port
+	- Bug 2564: logformat '%tl' field not working as advertised
+	- Port from 3.1: TestBed basic build consistency checks
+	- Policy: Change half_closed_clients default to off
+	- Policy: Removed -V command line option, deprecated by 2.6
+	- ... and several other minor code cleanups
 
-	- Bug #2263: Custom log formats fail to log file sizes >2GB properly
-	  on 32-bit platforms
-	- Fix stripping NT domain in squid_ldap_group
-	- Bug #2278: Cache-Control: max-stale=0 forwarded wrongly as max-stale
-	(without delta)
-	- Bug #2283: Fails to parse chunked encoding using chunk extensions
-	- Bug #420: Deal properly with empty list HTTP header members
-	- Windows Server 2008 support
-	- Bug #1886: tcp_outgoing_address acl doesn't work with indirect
-	  source address (follow-x-forwarded-for)
-	- Bug #2296: Stuck in 100% CPU when fetching an corrupt peer digest
-	- Add support for the resolv.conf domain directive, and also
-	  automatically derived default domain
-	- minimum_icp_query_timeout directive
-	- Bug #2329: Range header ignored on HIT
+Changes to squid-3.0.STABLE11 (24 Dec 2008):
 
-Changes to squid-2.6.STABLE19 (19 Mar 2008)
+	- Bug 2424: filedescriptors being left unnecessary opened
+	- Bug 2545: fault passing ICAP filtered traffic to peers
+	- Bug 2227: Sefgaults in MemBuf::reset during idnsSendQuery
+	- ... and some minor admin and debug cleanups.
 
-	- Fix tcp_outgoing_address example config to match its description
-	- Bug #2198: assertion failed sc != NULL when using peer monitor
-	  function
-	- Fix missing default disk store type into QUICKSTART example.
-	- Bugzilla #761 : Handle recursive completion operations in diskd.
-	- documentation bugfix for tcp_outgoing_tos directive
-	- Sort cache list in wccpv2 to ensure a consistent hash allocation
-	  across all services
-	- Updated Ukrainan error pages
-	- Compile error in squid_kerb_auth under Mac OS X 10.5.2
-	- squid_radius_auth failed ro process more than 256 requests
-	- Clarified description of 'cache_vary' directive
-	- Make range_offset_limit 0 disable local range processing as
-	  documented, even if the first range starts at 0
+Changes to squid-3.0.STABLE11-RC1 (3 Dec 2008):
 
-Changes to squid-2.6.STABLE18 (10 Jan 2008)
+        - Removes patch causing cache of bad objects 
+        - Bug 2526: bad security default in ACLChecklist
+        - Fixes regression: access.log request size tag
+        - Fixes cache_peer forceddomainname=X option
+        - ... and many minor documentation cleanups
 
-	- Fix 2 assertion failures related to the fix for SQUID-2007:2
-	- GPL license cleanup to GPLv2 or later. One file in edir_digest_auth
-	  was GPLv2 only, now replaced with a GPLv2 or later licensed vesion.
-	- Minor cleanups to make certain 64-bit platforms happier
-	- Several Digest authentication bugs fixed wich was causing random
-	  authenitcation popups or failures.
-	- --with-valgrind-debug updated for valgrind-3.3.0.
+Changes to squid-3.0.STABLE10 (14 Oct 2008):
 
-Changes to squid-2.6.STABLE17 (26 Nov 2007)
+	- Bug 2391: Regression: bad assert in forwarding
+	- Bug 2447: Segfault on failed TCP DNS query
+	- Bug 2393: DNS requests getting stuck in idns queue
+	- Bug 2433: FTP PUT gives bad gateway
+	- Bug 2465: Limited DragonflyBSD support
+	- ... and other minor bugs and documentation
 
-	- Fix compile error with old GCC 2.x or other ANSI-C compilers before
-	  C99
-	- Mention the login= cache_peer option in release notes
-	- Fix bad cache_peer example in squid.conf
-	- Bug #2086: Fix a compile-time memory corruption error causing cf_gen
-	  to fail
-	- Bug #2048: Clarify high_memory_warning usage
-	- Reject DNS responses which result in no data
-	- Fix version number in configuration manual
-	- Move cache and request/reply_header_max_size to their proper
-	  sections
-	- Bug #2088: sbrk statistics broken when process size >2GB
-	- Move logopen() much earlier to have fatal startup errors sent to the
-	  proper syslog facility
-	- Fix HTTP/0.9 responses
-	- Correct bad example config for tos_outgoing_tos
-	- Fix grammar in description of mail_program squid.conf option
-	- Ignore Content-Length in chunked responses instead of rejecting the
-	  response as invalid
-	- Documented that http_port no longer have a default
-	- Cleanup of cache digest documentation
-	- Make aufs store rebuilding back off a little if I/O load too high
-	- Bug #2100: Respect DNS ttl=0
-	- Update udp_(incoming|outgoing)_address documentation to reflect
-	  current bahaviour.
-	- Update HTCP documentation
-	- Document the overlapping helper request format
-	- Change priority of proxy auth and extacl provided username in
-	  login=*:pass
-	- pack header entries on cache updates
-	- Make squid_db_auth reopen the database connection on each query by
-	  default
-	- Improve helper debug ouput, including the channel number
-	- Update cachePeerEntry MIB description to mention what is used as
-	  index key
-	- Import squid_radius_auth for authenticating to RADIUS
+Changes to squid-3.0.STABLE9 (9 Sep 2008):
 
-Changes to squid-2.6.STABLE16 (5 Sep 2007)
+	- Policy Enforcement: COSS is unusable in 3.0
+	- Port from 3.1: Language Pack compatibility
+	- Port from 2.6: Windows Support Notes
+	- Fix several minor regressions:
+	    HTCP stats reporting
+	    cachemgr delay pool config
+	    CARP build error
+	- Bug 2340: uudecode dependency for icons removed
+	- Bug 2352: no_check.pl ntlm challenge fix
+	- Bug 2426: buffer increase for kerberos auth fields
+	- Bug 2427: squid_ldap_group codes fix
+	- Bug 2437: peer name now shown in access.log
+	- Add sane display of unsupported method errors
+	- ... and various other code cleanups
 
-	- Test for sys/capability.h linux include file to avoid failing on
-	  linux systems missing libcap
-	- Release private objects on cache rebuild
-	- Segfault in clientBuildReplyHeader when http->entry == NULL
-	- Bug #2072: digest_pw_auth fails when using plaintext passwords
-	- Bug #2073: assertion failed: client_side.c:4175: "buf != NULL ||
-	  !conn->body.request on POST
-	- Adjust default pconn timeouts to avoid shutting down connection while
-	  child sends request
-	- Bug #1980: cache_peer monitortimeout not working
-	- Bug #1882: Parent responses are not cached if sibling returns 504
-	- More squid.conf reordering to get the dependencies between options
-	  sorted proper
+Changes to squid-3.0.STABLE8 (18 Jul 2008):
+
+	- Port from 2.6: Support for cachemgr sub-actions
+	- Port from 2.6: userhash peer selection method
+	- Port from 2.6: sourcehash peer selection method
+	- Bug 2376: round-robin balancing fixes
+	- Bug 2388: acl documentation cleanup
+	- Bug 2365: cachemgr.cgi HTML output encoding
+	- Bug 2301: Regression: Log format size options
+	- Bug 2396: Correct the opening of PF device file.
+	- Bug 2400: ICAP accept mechanism
+	- Bug 2411: Regression: fakeauth_auth crashes
+	- Many fixes to the Windows support (not complete yet).
+	- Boost error pages HTML standards.
+	- Fixes several issues on 64-bit systems
+	- Fixes several issues on older or stricter compilers
+	- Linux-2.6.24/2.6.25 netfilter_ipv4.h __u32 workaround
+	- Update Release Notes: 'all' ACL is built-in since 3.0.STABLE1
+
+Changes to squid-3.0.STABLE7 (22 Jun 2008):
+
+	- Fix several ASN issues
+	- Fix SNMP reporting of counters
+	- Fix round-robin algorithms
+	- GCC 4.3 support
+	- Netfilter v1.4.0 bug workaround
+	- Bugs 2350 and 2323: memory issues
+	- Bugs 2384, 951, 1566: ESI assertions
+	- Various minor debug and documentation cleanups
+
+Changes to squid-3.0.STABLE6 (20 May 2008):
+
+	- Bug 2254: umask Feature from 2.6 added
+	- cachemgr.cgi default config file added
+	- Several authentication bug fixes
+	- Improved Windows Support
+	- better DNS lookup methods for unqualified hostames
+	- better support for 64-bit environments
+	- Bug 2332: Crash when tunnelling
+	- Removed the advertisement clause from BSD licenses
+	  according to the GPLv2+ changes in BSD
+	- ... and other bugs and minor cleanups
+
+Changes to squid-3.0.STABLE5 (28 Apr 2008):
+
+	- Support for resolv.conf 'domain' option
+	- Improved URI support, including
+		longer URI up to 8192 bytes accepted
+		better handling of intercepted URI
+		better port for non-FQDN URI lookups
+	- Improved logging, including
+		Bug 3210 fixed: incorrect timestamp format in earlier 3.0 releases.
+		Fixed 'log_ip_on_direct' option behaviour
+	- Support for profiling on x86 64-bit systems
+	- .. and other bugs and minor code cleanups.
+
+Changes to squid-3.0.STABLE4 (2 Apr 2008):
+
+	- Bug 2288: compile error slipped into STABLE3.
+
+Changes to squid-3.0.STABLE3 (31 Mar 2008):
+
+	- Improved HTTP 1.1 support.
+	- Improved MacOSX (Leopard) support
+	- Bug 2206: Proxy-Authentication regression in STABLE2.
+	- Strip Domain from NTLM usernames for use in class 4 Delay Pools
+	- ... and other bugs and minor code cleanup
+
+Changes to squid-3.0.STABLE2 (1 Mar 2008):
+
+	- Add myportname ACL for matching the accepting port name (see release notes)
+	- Add include directive for squid.conf (see release notes)
+	- Add ability to strip kerberos realm from usernames during Auth
+	- License cleanup to comply with GPLv2 or later
+	- Updated Error Pages and Translations
+	- Updated configuration examples
+	- Updated valgrind support for valgrind-3.3.0
+	- Improved support for Windows and MacOS X Leopard
+	- Improved support for files larger than 2GB
+	- Improved support for CARP arrays and WCCPv2
+	- Improved cachmgr, SNMP, and log reporting
+	- ... and as usual Many bug fixes since STABLE 1
+
+Changes to squid-3.0.STABLE1 (13 Dec 2007):
+
+	- Major rewrite translating the code to C++, originally based on
+	  Squid-2.5.STABLE1
+	- Internal client streams concept for content adaptation
+	- ICAP (Internet Content Adaptation Protocol) client support
+	- ESI (Edge Side Includes) support added
+	- Improved support for files larger than 2GB.
+	- And a lot more. Most features from Squid-2.6 is supported, but not
+	  all. See the release notes for details.
+
+Older ChangeLog follows. The sections relating to Squid-2.6 is not entirely
+authorative for this release and mirrored here for reference only.
+	
+	- CARP now plays well with the other peering algorithms,
+	  and support for CARP peerings is compiled by default. Can be
+	  disabled by --disable-carp
+	- Configuration file can be read from an external program
+	  or preprocessor. See squid.8 man page.
+	- http_port is now optional, allowing for SSL only operation
+	- Satellite and other high latency peering relations enhancements
+	  (Robert Cohren)
+	- Nuked num32 types, and made type detection more robust by the
+	  use of typedefs rather than #defines.
+	- the mailto links on Squid's ERR pages now contain data about the
+	  occurred error by default, so that the email will contain this data in
+	  its body. This feature can be disabled via the email_err_data directive.
+	  (Clemens Löser)
+	- COSS now uses a file called stripe and the path in squid.conf is the
+	  directory this is placed in. Additionally squid -z will create the
+	  COSS swapfile.
+	- WCCPv2 support, including mask assignment support
+	- HTCP support for access control and the CRL operation for
+	  purgeing of cache content
+	- ICAP related fixes
+	- Windows-related fixes, including Vista and Longhorn identification
+	- Client-side parsing and some string use optimisations
+	- Lots of off-by-one and memory leaks in corner cases have been fixed
+	  thanks to valgrind
+	- Improved high-resolution profiling
+	- Windows overlapped-IO and thread support added to the Async IO disk code
+	- Improvements for handling large DNS replies
 
 Changes to squid-2.6.STABLE15 (31 Aug 2007)
 

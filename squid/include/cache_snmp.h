@@ -1,5 +1,5 @@
 /*
- * $Id: cache_snmp.h,v 1.29 2006/09/22 02:49:24 hno Exp $
+ * $Id: cache_snmp.h,v 1.29 2006/09/22 02:48:51 hno Exp $
  */
 
 #ifndef SQUID_CACHE_SNMP_H
@@ -124,8 +124,6 @@ enum {				/* cachePeerTable */
     MESH_PTBL_IGN,
     MESH_PTBL_KEEPAL_S,
     MESH_PTBL_KEEPAL_R,
-    MESH_PTBL_INDEX,
-    MESH_PTBL_HOST,
     MESH_PTBL_END
 };
 

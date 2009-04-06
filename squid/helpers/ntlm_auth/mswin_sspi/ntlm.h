@@ -1,5 +1,5 @@
 /*
- * (C) 2002 Guido Serassio <serassio@libero.it>
+ * (C) 2002,2005 Guido Serassio <guido.serassio@acmeconsulting.it>
  * Based on previous work of Francesco Chemolli, Robert Collins and Andrew Doran
  *
  * Distributed freely under the terms of the GNU General Public License,
@@ -52,7 +52,7 @@ extern int fail_debug_enabled;
 #include <unistd.h>
 static char *__foo;
 #define debug(X...) if (debug_enabled) { \
-                    fprintf(stderr,"mswin_ntlm_auth[%d](%s:%d): ", getpid(), \
+                    fprintf(stderr,"ntlm-auth[%d](%s:%d): ", getpid(), \
                     ((__foo=strrchr(__FILE__,'/'))==NULL?__FILE__:__foo+1),\
                     __LINE__);\
                     fprintf(stderr,X); }
@@ -61,7 +61,7 @@ static char *__foo;
 #endif /* DEBUG */
 #else /* __GNUC__ */
 static void
-debug(char *format,...)
+debug(char *format,...) 
 {
 #ifdef DEBUG
 #ifdef _SQUID_MSWIN_
@@ -72,12 +72,12 @@ debug(char *format,...)
 #endif
 	va_list args;
 
-	va_start(args, format);
-	fprintf(stderr, "mswin_ntlm_auth[%d]: ", getpid());
+	va_start(args,format);
+	fprintf(stderr, "ntlm-auth[%d]: ",getpid());
 	vfprintf(stderr, format, args);
 	va_end(args);
 #if FAIL_DEBUG
-	fail_debug_enabled = 0;
+        fail_debug_enabled = 0;
 #endif
     }
 #endif /* _SQUID_MSWIN_ */
@@ -95,8 +95,8 @@ debug(char *format,...)
 #define SEND2(X,Y) debug("sending '" X "' to squid\n",Y); printf(X "\n",Y);
 #endif
 
-extern char *NTAllowedGroup;
-extern char *NTDisAllowedGroup;
+extern char * NTAllowedGroup;
+extern char * NTDisAllowedGroup;
 extern int UseDisallowedGroup;
 extern int UseAllowedGroup;
 extern int ntlm_errno;
@@ -110,7 +110,7 @@ extern int ntlm_errno;
 
 extern void uc(char *);
 
-extern const char *ntlm_make_negotiate(void);
+extern const char * ntlm_make_negotiate(void);
 extern char *ntlm_check_auth(ntlm_authenticate * auth, int auth_length);
 extern void hex_dump(void *, int);
 

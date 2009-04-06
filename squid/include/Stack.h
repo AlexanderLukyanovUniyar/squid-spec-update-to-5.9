@@ -1,5 +1,5 @@
 /*
- * $Id: Stack.h,v 1.11 2001/10/08 16:18:31 hno Exp $
+ * $Id: Stack.h,v 1.18 2004/12/20 16:30:29 robertc Exp $
  *
  * AUTHOR: Alex Rousskov
  *
@@ -36,15 +36,36 @@
 
 #include "Array.h"
 
-typedef Array Stack;
+/* RBC: 20030714 Composition might be better long-term, but for now,
+ * there's no reason to do so.
+ */
 
-#define stackCreate arrayCreate
-#define stackInit arrayInit
-#define stackClean arrayClean
-#define stackDestroy arrayDestroy
-extern void *stackPop(Stack * s);
-#define stackPush arrayAppend
-#define stackPrePush arrayPreAppend
-extern void *stackTop(Stack * s);
+template <class S = void *>
+
+class Stack : public Vector<S>
+{
+public:
+    using Vector<S>::count;
+    using Vector<S>::items;
+    typedef typename Vector<S>::value_type value_type;
+    typedef typename Vector<S>::pointer pointer;
+    value_type pop()
+    {
+        if (!count)
+            return value_type();
+
+        value_type result = items[--count];
+
+        this->items[count] = value_type();
+
+        return result;
+    }
+
+    /* todo, fatal on empty Top call */
+    value_type top() const
+    {
+        return count ? items[count - 1] : value_type();
+    }
+};
 
 #endif /* SQUID_STACK_H */

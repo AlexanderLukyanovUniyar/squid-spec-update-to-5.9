@@ -31,21 +31,21 @@
 #include <unistd.h>
 #include <time.h>
 #include <sys/time.h>
-#include <sys/param.h>
 
 #include "base64.h"
 #ifndef HAVE_SPNEGO
 #include "spnegohelp.h"
 #endif
 
+// AYJ: must match the definition in src/auth/negotiate/auth_negotiate.cc
+#define MAX_AUTHTOKEN_LEN	32768
+
+// AYJ: match define in include/rfc2181.h
 #ifndef HOST_NAME_MAX
 #define HOST_NAME_MAX 256
 #endif
 #ifndef MAXHOSTNAMELEN
 #define MAXHOSTNAMELEN HOST_NAME_MAX
-#endif
-#ifndef MAX_AUTHTOKEN_LEN
-#define MAX_AUTHTOKEN_LEN   65535
 #endif
 
 #define PROGRAM "squid_kerb_auth"
@@ -175,7 +175,6 @@ int check_gss_err(OM_uint32 major_status, OM_uint32 minor_status, const char* fu
   }
   return(0);
 }
-
 
 int main(int argc, char * const argv[])
 {

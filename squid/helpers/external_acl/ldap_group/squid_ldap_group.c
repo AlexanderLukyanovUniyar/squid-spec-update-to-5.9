@@ -85,13 +85,13 @@ PFldap_start_tls_s Win32_ldap_start_tls_s;
 
 /* Globals */
 
-static char *basedn = NULL;
-static char *searchfilter = NULL;
-static char *userbasedn = NULL;
-static char *userdnattr = NULL;
-static char *usersearchfilter = NULL;
-static char *binddn = NULL;
-static char *bindpasswd = NULL;
+static const char *basedn = NULL;
+static const char *searchfilter = NULL;
+static const char *userbasedn = NULL;
+static const char *userdnattr = NULL;
+static const char *usersearchfilter = NULL;
+static const char *binddn = NULL;
+static const char *bindpasswd = NULL;
 static int searchscope = LDAP_SCOPE_SUBTREE;
 static int persistent = 0;
 static int noreferrals = 0;
@@ -112,7 +112,7 @@ static int version = -1;
 
 static int searchLDAP(LDAP * ld, char *group, char *user, char *extension_dn);
 
-static int readSecret(char *filename);
+static int readSecret(const char *filename);
 
 /* Yuck.. we need to glue to different versions of the API */
 
@@ -217,12 +217,13 @@ main(int argc, char **argv)
     int port = LDAP_PORT;
     int use_extension_dn = 0;
     int strip_nt_domain = 0;
+    int strip_kerberos_realm = 0;
     int err = 0;
 
     setbuf(stdout, NULL);
 
     while (argc > 1 && argv[1][0] == '-') {
-	char *value = "";
+	const char *value = "";
 	char option = argv[1][1];
 	switch (option) {
 	case 'P':
@@ -372,6 +373,9 @@ main(int argc, char **argv)
 	case 'S':
 	    strip_nt_domain = 1;
 	    break;
+	case 'K':
+	    strip_kerberos_realm = 1;
+	    break;
 	default:
 	    fprintf(stderr, PROGRAM_NAME " ERROR: Unknown command line option '%c'\n", option);
 	    exit(1);
@@ -394,13 +398,13 @@ main(int argc, char **argv)
     }
 
     if (!ldapServer)
-	ldapServer = "localhost";
+	ldapServer = (char *) "localhost";
 
     if (!basedn || !searchfilter) {
 	fprintf(stderr, "\n" PROGRAM_NAME " version " PROGRAM_VERSION "\n\n");
 	fprintf(stderr, "Usage: " PROGRAM_NAME " -b basedn -f filter [options] ldap_server_name\n\n");
 	fprintf(stderr, "\t-b basedn (REQUIRED)\tbase dn under where to search for groups\n");
-	fprintf(stderr, "\t-f filter (REQUIRED)\tgroup search filter pattern. %%u = user,\n\t\t\t\t%%g = group\n");
+	fprintf(stderr, "\t-f filter (REQUIRED)\tgroup search filter pattern. %%u = user,\n\t\t\t\t%%v = group\n");
 	fprintf(stderr, "\t-B basedn (REQUIRED)\tbase dn under where to search for users\n");
 	fprintf(stderr, "\t-F filter (REQUIRED)\tuser search filter pattern. %%s = login\n");
 	fprintf(stderr, "\t-s base|one|sub\t\tsearch scope\n");
@@ -426,6 +430,7 @@ main(int argc, char **argv)
 #endif
 	fprintf(stderr, "\t-g\t\t\tfirst query parameter is base DN extension\n\t\t\t\tfor this query\n");
 	fprintf(stderr, "\t-S\t\t\tStrip NT domain from usernames\n");
+	fprintf(stderr, "\t-K\t\t\tStrip Kerberos realm from usernames\n");
 	fprintf(stderr, "\n");
 	fprintf(stderr, "\tIf you need to bind as a user to perform searches then use the\n\t-D binddn -w bindpasswd or -D binddn -W secretfile options\n\n");
 	exit(1);
@@ -465,11 +470,17 @@ main(int argc, char **argv)
 	}
 	rfc1738_unescape(user);
 	if (strip_nt_domain) {
-	    char *u = strrchr(user, '\\');
+	    char *u = strchr(user, '\\');
 	    if (!u)
-		u = strrchr(user, '/');
+		u = strchr(user, '/');
 	    if (u && u[1])
 		user = u + 1;
+	}
+	if (strip_kerberos_realm) {
+	    char *u = strchr(user, '@');
+	    if (u != NULL) {
+		*u = '\0';
+	    }
 	}
 	if (use_extension_dn) {
 	    extension_dn = strtok(NULL, " \n");
@@ -680,7 +691,7 @@ searchLDAPGroup(LDAP * ld, char *group, char *member, char *extension_dn)
     LDAPMessage *entry;
     int rc;
     char *searchattr[] =
-    {LDAP_NO_ATTRS, NULL};
+    {(char *) LDAP_NO_ATTRS, NULL};
 
     if (extension_dn && *extension_dn)
 	snprintf(searchbase, sizeof(searchbase), "%s,%s", extension_dn, basedn);
@@ -734,7 +745,7 @@ searchLDAP(LDAP * ld, char *group, char *login, char *extension_dn)
 	int rc;
 	char *userdn;
 	char *searchattr[] =
-	{LDAP_NO_ATTRS, NULL};
+	{(char *) LDAP_NO_ATTRS, NULL};
 	if (extension_dn && *extension_dn)
 	    snprintf(searchbase, sizeof(searchbase), "%s,%s", extension_dn, userbasedn ? userbasedn : basedn);
 	else
@@ -785,8 +796,8 @@ searchLDAP(LDAP * ld, char *group, char *login, char *extension_dn)
 }
 
 
-int 
-readSecret(char *filename)
+int
+readSecret(const char *filename)
 {
     char buf[BUFSIZ];
     char *e = 0;
@@ -807,13 +818,10 @@ readSecret(char *filename)
     if ((e = strrchr(buf, '\r')))
 	*e = 0;
 
-    bindpasswd = (char *) calloc(sizeof(char), strlen(buf) + 1);
-    if (bindpasswd) {
-	strcpy(bindpasswd, buf);
-    } else {
+    bindpasswd = strdup(buf);
+    if (!bindpasswd) {
 	fprintf(stderr, PROGRAM_NAME " ERROR: can not allocate memory\n");
     }
-
     fclose(f);
 
     return 0;

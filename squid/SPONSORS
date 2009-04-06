@@ -31,22 +31,39 @@ SGI - http://www.sgi.com/
 
 	SGI has provided hardware donations for Squid developers.
 
+Zope Corporation - http://www.zope.com/
+
+	Zope Corporation funded the development of the ESI protocol
+	(http://www.esi.org) in Squid to provide greater cachability
+	of dynamic and personalized pages by caching common page
+	components. Zope engaged one of the core Squid developers
+	for the project.
+
 craigslist - http://www.craigslist.org/
 
-	craigslist has provided funding in recognition of the
-	vital role squid plays in their web serving architecture.
+	craigslist has provided funding in recognition of the vital
+	role squid plays in their web serving architecture.
 
 webwasher AG - http://www.webwasher.com/
 
 	webwasher AG paid for improvements to Squid's iCAP client
-	implementation.  You can find the results of this work at
-	http://devel.squid-cache.org/icap/
+	implementation.  You can find the results of this work
+	at http://devel.squid-cache.org/icap/
 
 iiNet Ltd - http://www.iinet.net.au/
 
-	iiNet Ltd contributed significant development resources to
-	Squid during its early stages and was instrumental in its
-	early adoption in the local internet community. iiNet has also
-	recently supplied equipment to help develop and test the WCCPv2
-	implementation in Squid-2.6 and Squid-3.
+        iiNet Ltd contributed significant development resources to
+        Squid during its early stages and was instrumental in its
+        early adoption in the local internet community. iiNet has also
+        recently supplied equipment to help develop and test the WCCPv2
+        implementation in Squid-2.6 and Squid-3.
 
+Kaspersky Lab - http://www.kaspersky.com/
+
+	Kaspersky Lab funded initial development of ICAP support in
+	Squid-3.
+
+Barefruit - http://www.barefruit.com/
+
+	Barefruit has funded Squid3 development and maintenance,
+	with a focus on the ICAP client support.

@@ -1,6 +1,6 @@
 
 /*
- * $Id: ssl_support.h,v 1.6 2006/09/08 19:41:24 serassio Exp $
+ * $Id: ssl_support.h,v 1.13 2006/09/02 15:40:03 serassio Exp $
  *
  * AUTHOR: Benno Rice
  *
@@ -50,18 +50,36 @@ SSL_CTX *sslCreateServerContext(const char *certfile, const char *keyfile, int v
 SSL_CTX *sslCreateClientContext(const char *certfile, const char *keyfile, int version, const char *cipher, const char *options, const char *flags, const char *CAfile, const char *CApath, const char *CRLfile);
 int ssl_read_method(int, char *, int);
 int ssl_write_method(int, const char *, int);
-int ssl_shutdown_method(int);
-int ssl_verify_domain(const char *host, SSL *);
+void ssl_shutdown_method(int);
 
-const char *sslGetUserEmail(SSL * ssl);
-const char *sslGetUserAttribute(SSL * ssl, const char *attribute);
-const char *sslGetCAAttribute(SSL * ssl, const char *attribute);
-const char *sslGetUserCertificatePEM(SSL * ssl);
-const char *sslGetUserCertificateChainPEM(SSL * ssl);
+const char *sslGetUserEmail(SSL *ssl);
+typedef char const *SSLGETATTRIBUTE(SSL *, const char *);
+SSLGETATTRIBUTE sslGetUserAttribute;
+SSLGETATTRIBUTE sslGetCAAttribute;
+const char *sslGetUserCertificatePEM(SSL *ssl);
+const char *sslGetUserCertificateChainPEM(SSL *ssl);
 
 #ifdef _SQUID_MSWIN_
 
-#define SSL_set_fd(s,f) (SSL_set_fd(s,fd_table[fd].win32.handle))
+#ifdef __cplusplus
+
+namespace Squid {
+
+inline
+int SSL_set_fd(SSL *ssl, int fd)
+{
+    return ::SSL_set_fd(ssl, _get_osfhandle(fd));
+}
+
+#define SSL_set_fd(ssl,fd) Squid::SSL_set_fd(ssl,fd)
+
+} /* namespace Squid */
+
+#else
+
+#define SSL_set_fd(s,f) (SSL_set_fd(s, _get_osfhandle(f)))
+
+#endif /* __cplusplus */
 
 #endif /* _SQUID_MSWIN_ */
 

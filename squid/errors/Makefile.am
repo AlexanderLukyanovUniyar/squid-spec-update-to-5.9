@@ -1,6 +1,6 @@
 ## Process this file with automake to produce Makefile.in
 #
-# $Id: Makefile.am,v 1.12.2.2 2008/02/23 02:42:22 hno Exp $
+# $Id: Makefile.am,v 1.14.2.1 2008/02/27 10:55:13 amosjeffries Exp $
 #
 
 errordir = $(datadir)/errors
@@ -10,7 +10,7 @@ errordir = $(datadir)/errors
 
 DEFAULT_ERROR_DIR	= $(errordir)
 
-INSTALL_LANGUAGES	= @ERR_LANGUAGES@
+INSTALL_LANGUAGES	= templates @ERR_LANGUAGES@
 LANGUAGES	= \
 		Armenian \
 		Azerbaijani \
@@ -43,12 +43,11 @@ LANGUAGES	= \
 		Swedish \
 		Traditional_Chinese \
 		Turkish \
-		Belarusian \
 		Ukrainian-1251 \
 		Ukrainian-koi8-u \
 		Ukrainian-utf8
 
-install-data-local:
+install-data-local: 
 	@for l in $(INSTALL_LANGUAGES); do \
 		$(mkinstalldirs) $(DESTDIR)$(DEFAULT_ERROR_DIR)/$$l && \
 		for f in $(srcdir)/$$l/ERR_*; do \
@@ -86,17 +85,12 @@ addlang: all
 	fi
 
 dist-hook:
-	@ for lang in $(LANGUAGES); do \
+	@ for lang in $(LANGUAGES) templates; do \
 	  if test "$$lang" = .; then :; else \
 	    test -d $(distdir)/$$lang \
 	    || mkdir $(distdir)/$$lang \
 	    || exit 1; \
-	    cp -p $(srcdir)/$$lang/ERR_* $(distdir)/$$lang \
-	    || exit 1; \
-	    if test -f $(srcdir)/$$lang/README; then \
-	      cp -p $(srcdir)/$$lang/README $(distdir)/$$lang \
+	    cp -p $(srcdir)/$$lang/ERR_*  $(distdir)/$$lang \
 	      || exit 1; \
-	    fi; \
 	  fi; \
 	done
-

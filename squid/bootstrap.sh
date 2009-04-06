@@ -7,9 +7,9 @@
 # Autotool versions preferred. To override either edit the script
 # to match the versions you want to use, or set the variables on
 # the command line like "env acver=.. amver=... ./bootstrap.sh"
-acversions="${acver}" # ${acver:-2.59 2.57 2.53 2.52}"
-amversions="${amver}" # ${amver:-1.9 1.8 1.7 1.6}"
-SUBDIRS=""
+acversions="${acver:-2.62 2.61 2.59 2.57 2.53 2.52}"
+amversions="${amver:-1.10 1.9 1.7 1.6 1.5}"
+ltversions="${ltver:-1.5 1.4}"
 
 check_version()
 {
@@ -22,9 +22,6 @@ find_version()
   found="NOT_FOUND"
   shift
   versions="$*"
-  if [ -z "$versions" ]; then
-    found=""
-  fi
   for version in $versions; do
     for variant in "" "-${version}" "`echo $version | sed -e 's/\.//g'`"; do
       if check_version $tool ${tool}${variant} $version; then
@@ -58,14 +55,19 @@ bootstrap() {
 # Adjust paths of required autool packages
 amver=`find_version automake ${amversions}`
 acver=`find_version autoconf ${acversions}`
+ltver=`find_version libtool ${ltversions}`
 
 # Set environment variable to tell automake which autoconf to use.
 AUTOCONF="autoconf${acver}" ; export AUTOCONF
 
 echo "automake : $amver"
 echo "autoconfg: $acver"
+echo "libtool  : $ltver"
 
-for dir in "" $SUBDIRS; do
+for dir in \
+	"" \
+	lib/libTrie
+do
     if [ -z "$dir" ] || [ -d $dir ]; then
 	if (
 	echo "Bootstrapping $dir"
@@ -79,6 +81,7 @@ for dir in "" $SUBDIRS; do
 	    # Bootstrap the autotool subsystems
 	    bootstrap aclocal$amver
 	    bootstrap autoheader$acver
+	    bootstrap libtoolize$ltver --force --copy --automake
 	    bootstrap automake$amver --foreign --add-missing --copy -f
 	    bootstrap autoconf$acver --force
 	fi ); then
@@ -92,12 +95,9 @@ done
 # Fixup autoconf recursion using --silent/--quiet option
 # autoconf should inherit this option whe recursing into subdirectories
 # but it currently doesn't for some reason.
-if grep ac_sub_configure_args configure >/dev/null; then
-  if grep  "ac_sub_configure_args" configure | grep quiet >/dev/null; then
-    : # OK
-  else
-    echo "Fixing configure recursion"
-    ed -s configure <<'EOS' >/dev/null || true
+if ! grep  "configure_args --quiet" configure >/dev/null; then
+echo "Fixing configure recursion"
+ed -s configure <<'EOS' >/dev/null || true
 /ac_sub_configure_args=/
 +1
 i
@@ -107,7 +107,6 @@ i
 .
 w
 EOS
-  fi
 fi
 
 echo "Autotool bootstrapping complete."

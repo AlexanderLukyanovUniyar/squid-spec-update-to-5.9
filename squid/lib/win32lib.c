@@ -1,6 +1,6 @@
 
 /*
- * $Id: win32lib.c,v 1.3.2.2 2008/04/25 19:44:20 hno Exp $
+ * $Id: win32lib.c,v 1.5 2007/08/17 18:56:26 serassio Exp $
  *
  * Windows support
  * AUTHOR: Guido Serassio <serassio@squid-cache.org>
@@ -46,9 +46,8 @@
 #undef assert
 #include <assert.h>
 #include <stdio.h>
-#include <limits.h>
-#include <errno.h>
-#include <windows.h>
+#include <fcntl.h>
+#include "squid_windows.h"
 #include <string.h>
 #include <sys/timeb.h>
 #if HAVE_WIN32_PSAPI
@@ -56,45 +55,12 @@
 #endif
 
 THREADLOCAL int ws32_result;
-THREADLOCAL int _so_err;
-THREADLOCAL int _so_err_siz = sizeof(int);
 LPCRITICAL_SECTION dbg_mutex = NULL;
 
-/* internal to Microsoft CRTLIB */
-#define FPIPE           0x08	/* file handle refers to a pipe */
-typedef struct {
-    long osfhnd;		/* underlying OS file HANDLE */
-    char osfile;		/* attributes of file (e.g., open in text mode?) */
-    char pipech;		/* one char buffer for handles opened on pipes */
-#ifdef _MT
-    int lockinitflag;
-    CRITICAL_SECTION lock;
-#endif				/* _MT */
-} ioinfo;
-
-#define IOINFO_L2E          5
-#define IOINFO_ARRAY_ELTS   (1 << IOINFO_L2E)
-#define _pioinfo(i) ( __pioinfo[(i) >> IOINFO_L2E] + ((i) & (IOINFO_ARRAY_ELTS - 1)) )
-#define _osfile(i)  ( _pioinfo(i)->osfile )
-#define _osfhnd(i)  ( _pioinfo(i)->osfhnd )
+void GetProcessName(pid_t, char *);
 
 #if defined(_MSC_VER)		/* Microsoft C Compiler ONLY */
-
-extern _CRTIMP ioinfo *__pioinfo[];
-int __cdecl _free_osfhnd(int);
-#define FOPEN           0x01	/* file handle open */
-
-#elif defined(__MINGW32__)	/* MinGW environment */
-
-#define FOPEN           0x01	/* file handle open */
-__MINGW_IMPORT ioinfo *__pioinfo[];
-int _free_osfhnd(int);
-
-#endif
-
-
-#if defined(_MSC_VER)		/* Microsoft C Compiler ONLY */
-size_t
+size_t 
 getpagesize()
 {
     static DWORD system_pagesize = 0;
@@ -105,142 +71,57 @@ getpagesize()
     }
     return system_pagesize;
 }
-
-int64_t
-WIN32_strtoll(const char *nptr, char **endptr, int base)
-{
-    const char *s;
-    int64_t acc;
-    int64_t val;
-    int neg, any;
-    char c;
-
-    /*
-     * Skip white space and pick up leading +/- sign if any.
-     * If base is 0, allow 0x for hex and 0 for octal, else
-     * assume decimal; if base is already 16, allow 0x.
-     */
-    s = nptr;
-    do {
-	c = *s++;
-    } while (xisspace(c));
-    if (c == '-') {
-	neg = 1;
-	c = *s++;
-    } else {
-	neg = 0;
-	if (c == '+')
-	    c = *s++;
-    }
-    if ((base == 0 || base == 16) &&
-	c == '0' && (*s == 'x' || *s == 'X')) {
-	c = s[1];
-	s += 2;
-	base = 16;
-    }
-    if (base == 0)
-	base = c == '0' ? 8 : 10;
-    acc = any = 0;
-    if (base < 2 || base > 36) {
-	errno = EINVAL;
-	if (endptr != NULL)
-	    *endptr = (char *) (any ? s - 1 : nptr);
-	return acc;
-    }
-    /* The classic bsd implementation requires div/mod operators
-     * to compute a cutoff.  Benchmarking proves that is very, very
-     * evil to some 32 bit processors.  Instead, look for underflow
-     * in both the mult and add/sub operation.  Unlike the bsd impl,
-     * we also work strictly in a signed int64 word as we haven't
-     * implemented the unsigned type in win32.
-     * 
-     * Set 'any' if any `digits' consumed; make it negative to indicate
-     * overflow.
-     */
-    val = 0;
-    for (;; c = *s++) {
-	if (c >= '0' && c <= '9')
-	    c -= '0';
-	else if (c >= 'A' && c <= 'Z')
-	    c -= 'A' - 10;
-	else if (c >= 'a' && c <= 'z')
-	    c -= 'a' - 10;
-	else
-	    break;
-	if (c >= base)
-	    break;
-	val *= base;
-	if ((any < 0)		/* already noted an over/under flow - short circuit */
-	    ||(neg && (val > acc || (val -= c) > acc))	/* underflow */
-	    ||(!neg && (val < acc || (val += c) < acc))) {	/* overflow */
-	    any = -1;		/* once noted, over/underflows never go away */
-	} else {
-	    acc = val;
-	    any = 1;
-	}
-    }
-
-    if (any < 0) {
-	acc = neg ? INT64_MIN : INT64_MAX;
-	errno = ERANGE;
-    } else if (!any) {
-	errno = EINVAL;
-    }
-    if (endptr != NULL)
-	*endptr = (char *) (any ? s - 1 : nptr);
-    return (acc);
-}
 #endif
 
-uid_t
+uid_t 
 geteuid(void)
 {
     return 100;
 }
 
-uid_t
+uid_t 
 getuid(void)
 {
     return 100;
 }
 
-int
+int 
 setuid(uid_t uid)
 {
     return 0;
 }
 
-int
+int 
 seteuid(uid_t euid)
 {
     return 0;
 }
 
-gid_t
+gid_t 
 getegid(void)
 {
     return 100;
 }
 
-gid_t
+gid_t 
 getgid(void)
 {
     return 100;
 }
 
-int
+int 
 setgid(gid_t gid)
 {
     return 0;
 }
 
-int
+int 
 setegid(gid_t egid)
 {
     return 0;
 }
 
-int
+int 
 chroot(const char *dirname)
 {
     if (SetCurrentDirectory(dirname))
@@ -249,21 +130,7 @@ chroot(const char *dirname)
 	return GetLastError();
 }
 
-/* Convert from "a.b.c.d" IP address string into
- * an in_addr structure.  Returns 0 on failure,
- * and 1 on success.
- */
-int
-inet_aton(const char *cp, struct in_addr *addr)
-{
-    if (cp == NULL || addr == NULL) {
-	return (0);
-    }
-    addr->s_addr = inet_addr(cp);
-    return (addr->s_addr == INADDR_NONE) ? 0 : 1;
-}
-
-void
+void 
 GetProcessName(pid_t pid, char *ProcessName)
 {
     HANDLE hProcess;
@@ -291,7 +158,7 @@ GetProcessName(pid_t pid, char *ProcessName)
 #endif
 }
 
-int
+int 
 kill(pid_t pid, int sig)
 {
     HANDLE hProcess;
@@ -316,11 +183,11 @@ kill(pid_t pid, int sig)
 }
 
 #ifndef HAVE_GETTIMEOFDAY
-int
-gettimeofday(struct timeval *pcur_time, struct timezone *tz)
+int 
+gettimeofday(struct timeval *pcur_time, void *tzp)
 {
-
     struct _timeb current;
+    struct timezone *tz = (struct timezone *) tzp;
 
     _ftime(&current);
 
@@ -334,7 +201,7 @@ gettimeofday(struct timeval *pcur_time, struct timezone *tz)
 }
 #endif
 
-int
+int 
 statfs(const char *path, struct statfs *sfs)
 {
     char drive[4];
@@ -368,53 +235,37 @@ statfs(const char *path, struct statfs *sfs)
     return 0;
 }
 
-#if USE_TRUNCATE
 int
 WIN32_ftruncate(int fd, off_t size)
 {
-    HANDLE file;
-    DWORD error;
-    LARGE_INTEGER size64;
-    LARGE_INTEGER test64;
+    HANDLE hfile;
+    unsigned int curpos;
 
-    if (fd < 0) {
-	errno = EBADF;
+    if (fd < 0)
+	return -1;
+
+    hfile = (HANDLE) _get_osfhandle(fd);
+    curpos = SetFilePointer(hfile, 0, NULL, FILE_CURRENT);
+    if (curpos == 0xFFFFFFFF
+	|| SetFilePointer(hfile, size, NULL, FILE_BEGIN) == 0xFFFFFFFF
+	|| !SetEndOfFile(hfile)) {
+	int error = GetLastError();
+
+	switch (error) {
+	case ERROR_INVALID_HANDLE:
+	    errno = EBADF;
+	    break;
+	default:
+	    errno = EIO;
+	    break;
+	}
+
 	return -1;
     }
-    size64.QuadPart = (__int64) size;
-    test64.QuadPart = 0;
-
-    file = (HANDLE) _get_osfhandle(fd);
-
-    /* Get current file position to check File Handle */
-    test64.LowPart = SetFilePointer(file, test64.LowPart, &test64.HighPart, FILE_CURRENT);
-    if ((test64.LowPart == INVALID_SET_FILE_POINTER) && ((error = GetLastError()) != NO_ERROR))
-	goto WIN32_ftruncate_error;
-
-    /* Set the current File Pointer position */
-    size64.LowPart = SetFilePointer(file, size64.LowPart, &size64.HighPart, FILE_BEGIN);
-    if ((size64.LowPart == INVALID_SET_FILE_POINTER) && ((error = GetLastError()) != NO_ERROR))
-	goto WIN32_ftruncate_error;
-    else if (!SetEndOfFile(file)) {
-	int error = GetLastError();
-	goto WIN32_ftruncate_error;
-    }
     return 0;
-
-  WIN32_ftruncate_error:
-    switch (error) {
-    case ERROR_INVALID_HANDLE:
-	errno = EBADF;
-	break;
-    default:
-	errno = EIO;
-	break;
-    }
-
-    return -1;
 }
 
-int
+int 
 WIN32_truncate(const char *pathname, off_t length)
 {
     int fd;
@@ -431,7 +282,6 @@ WIN32_truncate(const char *pathname, off_t length)
 
     return res;
 }
-#endif
 
 static struct _wsaerrtext {
     int err;
@@ -670,22 +520,8 @@ WIN32_strerror(int err)
     return xbstrerror_buf;
 }
 
-int
-WIN32_Close_FD_Socket(int fd)
-{
-    int result = 0;
-
-    if (closesocket(_get_osfhandle(fd)) == SOCKET_ERROR) {
-	errno = WSAGetLastError();
-	result = 1;
-    }
-    _free_osfhnd(fd);
-    _osfile(fd) = 0;
-    return result;
-}
-
 #if defined(__MINGW32__)	/* MinGW environment */
-int
+int 
 _free_osfhnd(int filehandle)
 {
     if (((unsigned) filehandle < SQUID_MAXFD) &&
@@ -772,7 +608,7 @@ static struct errorentry errortable[] =
 #define MIN_EACCES_RANGE ERROR_WRITE_PROTECT
 #define MAX_EACCES_RANGE ERROR_SHARING_BUFFER_EXCEEDED
 
-void
+void 
 WIN32_maperror(unsigned long WIN32_oserrno)
 {
     int i;

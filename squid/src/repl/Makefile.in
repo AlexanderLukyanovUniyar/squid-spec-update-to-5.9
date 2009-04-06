@@ -16,7 +16,7 @@
 
 #  Makefile for storage modules in the Squid Object Cache server
 #
-#  $Id: Makefile.in,v 1.38.2.2 2007/08/12 12:41:09 hno Exp $
+#  $Id: Makefile.am,v 1.7 2005/08/20 21:08:38 serassio Exp $
 #
 
 srcdir = @srcdir@
@@ -66,10 +66,22 @@ liblru_a_OBJECTS = $(am_liblru_a_OBJECTS)
 DEFAULT_INCLUDES = -I. -I$(srcdir) -I$(top_builddir)/include
 depcomp = $(SHELL) $(top_srcdir)/cfgaux/depcomp
 am__depfiles_maybe = depfiles
+CXXCOMPILE = $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) \
+	$(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS)
+LTCXXCOMPILE = $(LIBTOOL) --tag=CXX --mode=compile $(CXX) $(DEFS) \
+	$(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) \
+	$(AM_CXXFLAGS) $(CXXFLAGS)
+CXXLD = $(CXX)
+CXXLINK = $(LIBTOOL) --tag=CXX --mode=link $(CXXLD) $(AM_CXXFLAGS) \
+	$(CXXFLAGS) $(AM_LDFLAGS) $(LDFLAGS) -o $@
 COMPILE = $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) \
 	$(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS)
+LTCOMPILE = $(LIBTOOL) --tag=CC --mode=compile $(CC) $(DEFS) \
+	$(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) \
+	$(AM_CFLAGS) $(CFLAGS)
 CCLD = $(CC)
-LINK = $(CCLD) $(AM_CFLAGS) $(CFLAGS) $(AM_LDFLAGS) $(LDFLAGS) -o $@
+LINK = $(LIBTOOL) --tag=CC --mode=link $(CCLD) $(AM_CFLAGS) $(CFLAGS) \
+	$(AM_LDFLAGS) $(LDFLAGS) -o $@
 SOURCES = $(libheap_a_SOURCES) $(liblru_a_SOURCES)
 DIST_SOURCES = $(libheap_a_SOURCES) $(liblru_a_SOURCES)
 ETAGS = etags
@@ -83,6 +95,7 @@ AMTAR = @AMTAR@
 AR = @AR@
 AR_R = @AR_R@
 AUTH_LIBS = @AUTH_LIBS@
+AUTH_LINKOBJS = @AUTH_LINKOBJS@
 AUTH_MODULES = @AUTH_MODULES@
 AUTH_OBJS = @AUTH_OBJS@
 AUTOCONF = @AUTOCONF@
@@ -90,6 +103,7 @@ AUTOHEADER = @AUTOHEADER@
 AUTOMAKE = @AUTOMAKE@
 AWK = @AWK@
 BASIC_AUTH_HELPERS = @BASIC_AUTH_HELPERS@
+CACHE_EFFECTIVE_USER = @CACHE_EFFECTIVE_USER@
 CACHE_HTTP_PORT = @CACHE_HTTP_PORT@
 CACHE_ICP_PORT = @CACHE_ICP_PORT@
 CC = @CC@
@@ -98,19 +112,31 @@ CFLAGS = @CFLAGS@
 CGIEXT = @CGIEXT@
 CPP = @CPP@
 CPPFLAGS = @CPPFLAGS@
+CPPUNITCONFIG = @CPPUNITCONFIG@
 CRYPTLIB = @CRYPTLIB@
+CXX = @CXX@
+CXXCPP = @CXXCPP@
+CXXDEPMODE = @CXXDEPMODE@
+CXXFLAGS = @CXXFLAGS@
 CYGPATH_W = @CYGPATH_W@
 DEFS = @DEFS@
 DEPDIR = @DEPDIR@
 DIGEST_AUTH_HELPERS = @DIGEST_AUTH_HELPERS@
+DISK_LIBS = @DISK_LIBS@
+DISK_LINKOBJS = @DISK_LINKOBJS@
+DISK_PROGRAMS = @DISK_PROGRAMS@
+DSYMUTIL = @DSYMUTIL@
+ECHO = @ECHO@
 ECHO_C = @ECHO_C@
 ECHO_N = @ECHO_N@
 ECHO_T = @ECHO_T@
 EGREP = @EGREP@
+ENABLE_ARP_ACL_FALSE = @ENABLE_ARP_ACL_FALSE@
+ENABLE_ARP_ACL_TRUE = @ENABLE_ARP_ACL_TRUE@
 ENABLE_HTCP_FALSE = @ENABLE_HTCP_FALSE@
 ENABLE_HTCP_TRUE = @ENABLE_HTCP_TRUE@
-ENABLE_MINGW32SPECIFIC_FALSE = @ENABLE_MINGW32SPECIFIC_FALSE@
-ENABLE_MINGW32SPECIFIC_TRUE = @ENABLE_MINGW32SPECIFIC_TRUE@
+ENABLE_IDENT_FALSE = @ENABLE_IDENT_FALSE@
+ENABLE_IDENT_TRUE = @ENABLE_IDENT_TRUE@
 ENABLE_PINGER_FALSE = @ENABLE_PINGER_FALSE@
 ENABLE_PINGER_TRUE = @ENABLE_PINGER_TRUE@
 ENABLE_SSL_FALSE = @ENABLE_SSL_FALSE@
@@ -119,27 +145,32 @@ ENABLE_UNLINKD_FALSE = @ENABLE_UNLINKD_FALSE@
 ENABLE_UNLINKD_TRUE = @ENABLE_UNLINKD_TRUE@
 ENABLE_WIN32SPECIFIC_FALSE = @ENABLE_WIN32SPECIFIC_FALSE@
 ENABLE_WIN32SPECIFIC_TRUE = @ENABLE_WIN32SPECIFIC_TRUE@
+ENABLE_XPROF_STATS_FALSE = @ENABLE_XPROF_STATS_FALSE@
+ENABLE_XPROF_STATS_TRUE = @ENABLE_XPROF_STATS_TRUE@
+EPOLL_LIBS = @EPOLL_LIBS@
 ERR_DEFAULT_LANGUAGE = @ERR_DEFAULT_LANGUAGE@
 ERR_LANGUAGES = @ERR_LANGUAGES@
 EXEEXT = @EXEEXT@
 EXTERNAL_ACL_HELPERS = @EXTERNAL_ACL_HELPERS@
+F77 = @F77@
 FALSE = @FALSE@
+FFLAGS = @FFLAGS@
 GREP = @GREP@
+ICAP_LIBS = @ICAP_LIBS@
 INSTALL_DATA = @INSTALL_DATA@
 INSTALL_PROGRAM = @INSTALL_PROGRAM@
 INSTALL_SCRIPT = @INSTALL_SCRIPT@
 INSTALL_STRIP_PROGRAM = @INSTALL_STRIP_PROGRAM@
 LDFLAGS = @LDFLAGS@
-LIBDLMALLOC = @LIBDLMALLOC@
+LIBADD_DL = @LIBADD_DL@
 LIBOBJS = @LIBOBJS@
 LIBREGEX = @LIBREGEX@
 LIBS = @LIBS@
 LIBSASL = @LIBSASL@
+LIBTOOL = @LIBTOOL@
 LIB_DB = @LIB_DB@
-LIB_EPOLL = @LIB_EPOLL@
 LIB_LBER = @LIB_LBER@
 LIB_LDAP = @LIB_LDAP@
-LIB_MALLOC = @LIB_MALLOC@
 LN = @LN@
 LN_S = @LN_S@
 LTLIBOBJS = @LTLIBOBJS@
@@ -149,19 +180,15 @@ MAINTAINER_MODE_TRUE = @MAINTAINER_MODE_TRUE@
 MAKEINFO = @MAKEINFO@
 MAKE_LEAKFINDER_FALSE = @MAKE_LEAKFINDER_FALSE@
 MAKE_LEAKFINDER_TRUE = @MAKE_LEAKFINDER_TRUE@
+MINGW_LIBS = @MINGW_LIBS@
 MKDIR = @MKDIR@
 MV = @MV@
-NEED_COSSDUMP_FALSE = @NEED_COSSDUMP_FALSE@
-NEED_COSSDUMP_TRUE = @NEED_COSSDUMP_TRUE@
-NEED_DISKD_FALSE = @NEED_DISKD_FALSE@
-NEED_DISKD_TRUE = @NEED_DISKD_TRUE@
-NEED_OWN_MD5_FALSE = @NEED_OWN_MD5_FALSE@
-NEED_OWN_MD5_TRUE = @NEED_OWN_MD5_TRUE@
-NEED_OWN_SNPRINTF_FALSE = @NEED_OWN_SNPRINTF_FALSE@
-NEED_OWN_SNPRINTF_TRUE = @NEED_OWN_SNPRINTF_TRUE@
 NEED_OWN_STRSEP_FALSE = @NEED_OWN_STRSEP_FALSE@
 NEED_OWN_STRSEP_TRUE = @NEED_OWN_STRSEP_TRUE@
+NEED_OWN_STRTOLL_FALSE = @NEED_OWN_STRTOLL_FALSE@
+NEED_OWN_STRTOLL_TRUE = @NEED_OWN_STRTOLL_TRUE@
 NEGOTIATE_AUTH_HELPERS = @NEGOTIATE_AUTH_HELPERS@
+NMEDIT = @NMEDIT@
 NTLM_AUTH_HELPERS = @NTLM_AUTH_HELPERS@
 OBJEXT = @OBJEXT@
 OPT_DEFAULT_HOSTS = @OPT_DEFAULT_HOSTS@
@@ -173,25 +200,33 @@ PACKAGE_TARNAME = @PACKAGE_TARNAME@
 PACKAGE_VERSION = @PACKAGE_VERSION@
 PATH_SEPARATOR = @PATH_SEPARATOR@
 PERL = @PERL@
-PKGCONFIG = @PKGCONFIG@
 RANLIB = @RANLIB@
 REGEXLIB = @REGEXLIB@
 REPL_LIBS = @REPL_LIBS@
 REPL_OBJS = @REPL_OBJS@
 REPL_POLICIES = @REPL_POLICIES@
 RM = @RM@
+SED = @SED@
 SET_MAKE = @SET_MAKE@
 SH = @SH@
 SHELL = @SHELL@
 SNMPLIB = @SNMPLIB@
+SQUID_CFLAGS = @SQUID_CFLAGS@
+SQUID_CPPUNIT_INC = @SQUID_CPPUNIT_INC@
+SQUID_CPPUNIT_LA = @SQUID_CPPUNIT_LA@
+SQUID_CPPUNIT_LIBS = @SQUID_CPPUNIT_LIBS@
+SQUID_CXXFLAGS = @SQUID_CXXFLAGS@
 SSLLIB = @SSLLIB@
 STORE_LIBS = @STORE_LIBS@
-STORE_MODULES = @STORE_MODULES@
+STORE_LINKOBJS = @STORE_LINKOBJS@
 STORE_OBJS = @STORE_OBJS@
+STORE_TESTS = @STORE_TESTS@
 STRIP = @STRIP@
 TRUE = @TRUE@
 USE_AIOPS_WIN32_FALSE = @USE_AIOPS_WIN32_FALSE@
 USE_AIOPS_WIN32_TRUE = @USE_AIOPS_WIN32_TRUE@
+USE_AIO_WIN32_FALSE = @USE_AIO_WIN32_FALSE@
+USE_AIO_WIN32_TRUE = @USE_AIO_WIN32_TRUE@
 USE_DELAY_POOLS_FALSE = @USE_DELAY_POOLS_FALSE@
 USE_DELAY_POOLS_TRUE = @USE_DELAY_POOLS_TRUE@
 USE_DEVPOLL_FALSE = @USE_DEVPOLL_FALSE@
@@ -200,6 +235,12 @@ USE_DNSSERVER_FALSE = @USE_DNSSERVER_FALSE@
 USE_DNSSERVER_TRUE = @USE_DNSSERVER_TRUE@
 USE_EPOLL_FALSE = @USE_EPOLL_FALSE@
 USE_EPOLL_TRUE = @USE_EPOLL_TRUE@
+USE_ESI_FALSE = @USE_ESI_FALSE@
+USE_ESI_TRUE = @USE_ESI_TRUE@
+USE_ICAP_CLIENT_FALSE = @USE_ICAP_CLIENT_FALSE@
+USE_ICAP_CLIENT_TRUE = @USE_ICAP_CLIENT_TRUE@
+USE_IPC_WIN32_FALSE = @USE_IPC_WIN32_FALSE@
+USE_IPC_WIN32_TRUE = @USE_IPC_WIN32_TRUE@
 USE_KQUEUE_FALSE = @USE_KQUEUE_FALSE@
 USE_KQUEUE_TRUE = @USE_KQUEUE_TRUE@
 USE_POLL_FALSE = @USE_POLL_FALSE@
@@ -217,8 +258,12 @@ WIN32_PSAPI = @WIN32_PSAPI@
 XTRA_LIBS = @XTRA_LIBS@
 XTRA_OBJS = @XTRA_OBJS@
 ac_ct_CC = @ac_ct_CC@
+ac_ct_CXX = @ac_ct_CXX@
+ac_ct_F77 = @ac_ct_F77@
 am__fastdepCC_FALSE = @am__fastdepCC_FALSE@
 am__fastdepCC_TRUE = @am__fastdepCC_TRUE@
+am__fastdepCXX_FALSE = @am__fastdepCXX_FALSE@
+am__fastdepCXX_TRUE = @am__fastdepCXX_TRUE@
 am__include = @am__include@
 am__leading_dot = @am__leading_dot@
 am__quote = @am__quote@
@@ -258,20 +303,25 @@ program_transform_name = @program_transform_name@
 psdir = @psdir@
 sbindir = @sbindir@
 sharedstatedir = @sharedstatedir@
+subdirs = @subdirs@
 sysconfdir = @sysconfdir@
 target_alias = @target_alias@
 AUTOMAKE_OPTIONS = subdir-objects
+AM_CFLAGS = @SQUID_CFLAGS@
+AM_CXXFLAGS = @SQUID_CXXFLAGS@
+
+# No recursion is needed for the subdirs, we build from here. // @REPL_POLICIES@
 EXTRA_LIBRARIES = liblru.a libheap.a
 noinst_LIBRARIES = @REPL_LIBS@
-liblru_a_SOURCES = lru/store_repl_lru.c
-libheap_a_SOURCES = heap/store_heap_replacement.h heap/store_heap_replacement.c heap/store_repl_heap.c
+liblru_a_SOURCES = lru/store_repl_lru.cc
+libheap_a_SOURCES = heap/store_heap_replacement.h heap/store_heap_replacement.cc heap/store_repl_heap.cc
 INCLUDES = -I. -I$(top_builddir)/include -I$(top_srcdir)/include \
 	-I$(top_srcdir)/src
 
 all: all-am
 
 .SUFFIXES:
-.SUFFIXES: .c .o .obj
+.SUFFIXES: .cc .lo .o .obj
 $(srcdir)/Makefile.in: @MAINTAINER_MODE_TRUE@ $(srcdir)/Makefile.am  $(am__configure_deps)
 	@for dep in $?; do \
 	  case '$(am__configure_deps)' in \
@@ -344,21 +394,38 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@heap/$(DEPDIR)/store_repl_heap.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lru/$(DEPDIR)/store_repl_lru.Po@am__quote@
 
-.c.o:
-@am__fastdepCC_TRUE@	depbase=`echo $@ | sed 's|[^/]*$$|$(DEPDIR)/&|;s|\.o$$||'`; \
-@am__fastdepCC_TRUE@	if $(COMPILE) -MT $@ -MD -MP -MF "$$depbase.Tpo" -c -o $@ $<; \
-@am__fastdepCC_TRUE@	then mv -f "$$depbase.Tpo" "$$depbase.Po"; else rm -f "$$depbase.Tpo"; exit 1; fi
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='$<' object='$@' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(COMPILE) -c -o $@ $<
+.cc.o:
+@am__fastdepCXX_TRUE@	depbase=`echo $@ | sed 's|[^/]*$$|$(DEPDIR)/&|;s|\.o$$||'`; \
+@am__fastdepCXX_TRUE@	if $(CXXCOMPILE) -MT $@ -MD -MP -MF "$$depbase.Tpo" -c -o $@ $<; \
+@am__fastdepCXX_TRUE@	then mv -f "$$depbase.Tpo" "$$depbase.Po"; else rm -f "$$depbase.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='$<' object='$@' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXXCOMPILE) -c -o $@ $<
 
-.c.obj:
-@am__fastdepCC_TRUE@	depbase=`echo $@ | sed 's|[^/]*$$|$(DEPDIR)/&|;s|\.obj$$||'`; \
-@am__fastdepCC_TRUE@	if $(COMPILE) -MT $@ -MD -MP -MF "$$depbase.Tpo" -c -o $@ `$(CYGPATH_W) '$<'`; \
-@am__fastdepCC_TRUE@	then mv -f "$$depbase.Tpo" "$$depbase.Po"; else rm -f "$$depbase.Tpo"; exit 1; fi
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='$<' object='$@' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(COMPILE) -c -o $@ `$(CYGPATH_W) '$<'`
+.cc.obj:
+@am__fastdepCXX_TRUE@	depbase=`echo $@ | sed 's|[^/]*$$|$(DEPDIR)/&|;s|\.obj$$||'`; \
+@am__fastdepCXX_TRUE@	if $(CXXCOMPILE) -MT $@ -MD -MP -MF "$$depbase.Tpo" -c -o $@ `$(CYGPATH_W) '$<'`; \
+@am__fastdepCXX_TRUE@	then mv -f "$$depbase.Tpo" "$$depbase.Po"; else rm -f "$$depbase.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='$<' object='$@' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXXCOMPILE) -c -o $@ `$(CYGPATH_W) '$<'`
+
+.cc.lo:
+@am__fastdepCXX_TRUE@	depbase=`echo $@ | sed 's|[^/]*$$|$(DEPDIR)/&|;s|\.lo$$||'`; \
+@am__fastdepCXX_TRUE@	if $(LTCXXCOMPILE) -MT $@ -MD -MP -MF "$$depbase.Tpo" -c -o $@ $<; \
+@am__fastdepCXX_TRUE@	then mv -f "$$depbase.Tpo" "$$depbase.Plo"; else rm -f "$$depbase.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='$<' object='$@' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(LTCXXCOMPILE) -c -o $@ $<
+
+mostlyclean-libtool:
+	-rm -f *.lo
+
+clean-libtool:
+	-rm -rf .libs _libs
+
+distclean-libtool:
+	-rm -f libtool
 uninstall-info-am:
 
 ID: $(HEADERS) $(SOURCES) $(LISP) $(TAGS_FILES)
@@ -470,13 +537,14 @@ maintainer-clean-generic:
 	@echo "it deletes files that may require special tools to rebuild."
 clean: clean-am
 
-clean-am: clean-generic clean-noinstLIBRARIES mostlyclean-am
+clean-am: clean-generic clean-libtool clean-noinstLIBRARIES \
+	mostlyclean-am
 
 distclean: distclean-am
 	-rm -rf heap/$(DEPDIR) lru/$(DEPDIR)
 	-rm -f Makefile
 distclean-am: clean-am distclean-compile distclean-generic \
-	distclean-tags
+	distclean-libtool distclean-tags
 
 dvi: dvi-am
 
@@ -505,7 +573,8 @@ maintainer-clean-am: distclean-am maintainer-clean-generic
 
 mostlyclean: mostlyclean-am
 
-mostlyclean-am: mostlyclean-compile mostlyclean-generic
+mostlyclean-am: mostlyclean-compile mostlyclean-generic \
+	mostlyclean-libtool
 
 pdf: pdf-am
 
@@ -518,15 +587,16 @@ ps-am:
 uninstall-am: uninstall-info-am
 
 .PHONY: CTAGS GTAGS all all-am check check-am clean clean-generic \
-	clean-noinstLIBRARIES ctags distclean distclean-compile \
-	distclean-generic distclean-tags distdir dvi dvi-am html \
-	html-am info info-am install install-am install-data \
-	install-data-am install-exec install-exec-am install-info \
-	install-info-am install-man install-strip installcheck \
-	installcheck-am installdirs maintainer-clean \
-	maintainer-clean-generic mostlyclean mostlyclean-compile \
-	mostlyclean-generic pdf pdf-am ps ps-am tags uninstall \
-	uninstall-am uninstall-info-am
+	clean-libtool clean-noinstLIBRARIES ctags distclean \
+	distclean-compile distclean-generic distclean-libtool \
+	distclean-tags distdir dvi dvi-am html html-am info info-am \
+	install install-am install-data install-data-am install-exec \
+	install-exec-am install-info install-info-am install-man \
+	install-strip installcheck installcheck-am installdirs \
+	maintainer-clean maintainer-clean-generic mostlyclean \
+	mostlyclean-compile mostlyclean-generic mostlyclean-libtool \
+	pdf pdf-am ps ps-am tags uninstall uninstall-am \
+	uninstall-info-am
 
 # Tell versions [3.59,3.63) of GNU make to not export all variables.
 # Otherwise a system limit (for SysV at least) may be exceeded.

@@ -1,6 +1,6 @@
 
 /*
- * $Id: squid.h,v 1.244.2.1 2008/01/09 13:58:12 hno Exp $
+ * $Id: squid.h,v 1.268 2007/12/04 13:31:11 hno Exp $
  *
  * AUTHOR: Duane Wessels
  *
@@ -35,93 +35,18 @@
 #ifndef SQUID_H
 #define SQUID_H
 
+/*
+ * On linux this must be defined to get PRId64 and friends
+ */
+#define __STDC_FORMAT_MACROS
+
 #include "config.h"
 
-/*
- * experimental defines for ICAP
- */
-#ifdef HS_FEAT_ICAP
-#define ICAP_PREVIEW 1
-#define SUPPORT_ICAP_204 0
+#ifdef _SQUID_MSWIN_
+using namespace Squid;
 #endif
 
-/*
- * On some systems, FD_SETSIZE is set to something lower than the
- * actual number of files which can be opened.  IRIX is one case,
- * NetBSD is another.  So here we increase FD_SETSIZE to our
- * configure-discovered maximum *before* any system includes.
- */
-#define CHANGE_FD_SETSIZE 1
-
-/*
- * Cannot increase FD_SETSIZE on Linux, but we can increase __FD_SETSIZE
- * with glibc 2.2 (or later? remains to be seen). We do this by including
- * bits/types.h which defines __FD_SETSIZE first, then we redefine
- * __FD_SETSIZE. Ofcourse a user program may NEVER include bits/whatever.h
- * directly, so this is a dirty hack!
- */
-#if defined(_SQUID_LINUX_)
-#undef CHANGE_FD_SETSIZE
-#define CHANGE_FD_SETSIZE 0
-#include <features.h>
-#if (__GLIBC__ > 2) || (__GLIBC__ == 2 && __GLIBC_MINOR__ >= 2)
-#if SQUID_MAXFD > DEFAULT_FD_SETSIZE
-#include <bits/types.h>
-#undef __FD_SETSIZE
-#define __FD_SETSIZE SQUID_MAXFD
-#endif
-#endif
-#endif
-
-/*
- * Cannot increase FD_SETSIZE on FreeBSD before 2.2.0, causes select(2)
- * to return EINVAL.
- * --Marian Durkovic <marian@svf.stuba.sk>
- * --Peter Wemm <peter@spinner.DIALix.COM>
- */
-#if defined(_SQUID_FREEBSD_)
-#include <osreldate.h>
-#if __FreeBSD_version < 220000
-#undef CHANGE_FD_SETSIZE
-#define CHANGE_FD_SETSIZE 0
-#endif
-#endif
-
-/*
- * Trying to redefine CHANGE_FD_SETSIZE causes a slew of warnings
- * on Mac OS X Server.
- */
-#if defined(_SQUID_APPLE_)
-#undef CHANGE_FD_SETSIZE
-#define CHANGE_FD_SETSIZE 0
-#endif
-
-/* Increase FD_SETSIZE if SQUID_MAXFD is bigger */
-#if CHANGE_FD_SETSIZE && SQUID_MAXFD > DEFAULT_FD_SETSIZE
-#define FD_SETSIZE SQUID_MAXFD
-#endif
-
-#if PURIFY
-#define LEAK_CHECK_MODE 1
-#elif WITH_VALGRIND
-#define LEAK_CHECK_MODE 1
-#elif XMALLOC_TRACE
-#define LEAK_CHECK_MODE 1
-#endif
-
-#if defined(NODEBUG)
-#define assert(EX) ((void)0)
-#elif STDC_HEADERS
-#define assert(EX)  ((EX)?((void)0):xassert( # EX , __FILE__, __LINE__))
-#else
-#define assert(EX)  ((EX)?((void)0):xassert("EX", __FILE__, __LINE__))
-#endif
-
-
-/* 32 bit integer compatability */
-#include "squid_types.h"
-#define num32 int32_t
-#define u_num32 u_int32_t
+#include "assert.h"
 
 #if HAVE_UNISTD_H
 #include <unistd.h>
@@ -216,6 +141,9 @@
 #if HAVE_BSTRING_H
 #include <bstring.h>
 #endif
+#if HAVE_SYS_SELECT_H
+#include <sys/select.h>
+#endif
 #if HAVE_GETOPT_H
 #include <getopt.h>
 #endif
@@ -249,6 +177,47 @@
 
 #if HAVE_SYS_MOUNT_H
 #include <sys/mount.h>
+#endif
+
+/*
+ * We require poll.h before using poll().  If the symbols used
+ * by poll() are defined elsewhere, we will need to make this
+ * a more sophisticated test.
+ *  -- Oskar Pearson <oskar@is.co.za>
+ *  -- Stewart Forster <slf@connect.com.au>
+ */
+#if USE_POLL
+#if HAVE_POLL_H
+#include <poll.h>
+#endif /* HAVE_POLL_H */
+#endif /* USE_POLL */
+
+/*
+ * Filedescriptor limits in the different select loops
+ */
+#if defined(USE_SELECT) || defined(USE_SELECT_WIN32)
+/* Limited by design */
+# define SQUID_MAXFD_LIMIT FD_SETSIZE
+#elif defined(USE_POLL)
+/* Limited due to delay pools */
+# define SQUID_MAXFD_LIMIT FD_SETSIZE
+#elif defined(USE_KQUEUE) || defined(USE_EPOLL)
+# define SQUID_FDSET_NOUSE 1
+#else
+# error Unknown select loop model!
+#endif
+
+
+/*
+ * Trap unintentional use of fd_set. Must not be used outside the
+ * select code as it only supports FD_SETSIZE number of filedescriptors
+ * and Squid may be running with a lot more..
+ * But only for code linked into Squid, not the helpers.. (unlinkd, pinger)
+ */
+#ifdef SQUID_FDSET_NOUSE
+# ifndef SQUID_HELPER
+#  define fd_set ERROR_FD_SET_USED
+# endif
 #endif
 
 #if defined(HAVE_STDARG_H)
@@ -305,8 +274,12 @@
  * source code cleaner, so we don't need lots of #ifdefs in other
  * places
  */
-struct rusage {
+
+struct rusage
+{
+
     struct timeval ru_stime;
+
     struct timeval ru_utime;
     int ru_maxrss;
     int ru_majflt;
@@ -318,6 +291,11 @@ struct rusage {
 #define HAVE_GETPAGESIZE
 #define getpagesize( )   sysconf(_SC_PAGE_SIZE)
 #endif
+
+#if defined(_SQUID_MSWIN_) && !defined(getpagesize) 
+/* Windows may lack getpagesize() prototype */
+SQUIDCEXTERN size_t getpagesize(void);
+#endif /* _SQUID_MSWIN_ */
 
 #ifndef BUFSIZ
 #define BUFSIZ  4096		/* make reasonable guess */
@@ -347,53 +325,20 @@ struct rusage {
 #define LOCAL_ARRAY(type,name,size) static type name[size]
 #endif
 
-#if CBDATA_DEBUG
-#define cbdataAlloc(a,b)	cbdataAllocDbg(a,b,__FILE__,__LINE__)
-#define cbdataLock(a)		cbdataLockDbg(a,__FILE__,__LINE__)
-#define cbdataUnlock(a)		cbdataUnlockDbg(a,__FILE__,__LINE__)
-#endif
-
-#if USE_LEAKFINDER
-#define leakAdd(p) leakAddFL(p,__FILE__,__LINE__)
-#define leakTouch(p) leakTouchFL(p,__FILE__,__LINE__)
-#define leakFree(p) leakFreeFL(p,__FILE__,__LINE__)
-#else
-#define leakAdd(p) p
-#define leakTouch(p) p
-#define leakFree(p) p
-#endif
-
 #if defined(_SQUID_NEXT_) && !defined(S_ISDIR)
 #define S_ISDIR(mode) (((mode) & (_S_IFMT)) == (_S_IFDIR))
 #endif
 
-/* 
- * ISO C99 Standard printf() macros for 64 bit integers
- * On some 64 bit platform, HP Tru64 is one, for printf must be used
- * "%lx" instead of "%llx" 
- */
-#ifndef PRId64
-#ifdef _SQUID_MSWIN_		/* Windows native port using MSVCRT */
-#define PRId64 "I64d"
-#elif SIZEOF_INT64_T > SIZEOF_LONG
-#define PRId64 "lld"
-#else
-#define PRId64 "ld"
-#endif
-#endif
-
-#ifndef PRIu64
-#ifdef _SQUID_MSWIN_		/* Windows native port using MSVCRT */
-#define PRIu64 "I64u"
-#elif SIZEOF_INT64_T > SIZEOF_LONG
-#define PRIu64 "llu"
-#else
-#define PRIu64 "lu"
-#endif
-#endif
-
 #ifdef USE_GNUREGEX
+#ifdef __cplusplus
+extern "C"
+{
+#endif
 #include "GNUregex.h"
+#ifdef __cplusplus
+}
+
+#endif
 #elif HAVE_REGEX_H
 #include <regex.h>
 #endif
@@ -403,8 +348,6 @@ struct rusage {
 #if USE_SSL
 #include "ssl_support.h"
 #endif
-
-#include "Stack.h"
 
 /* Needed for poll() on Linux at least */
 #if USE_POLL
@@ -423,34 +366,67 @@ struct rusage {
 #include "hash.h"
 #include "rfc1035.h"
 
+
 #include "defines.h"
 #include "enums.h"
 #include "typedefs.h"
-#include "structs.h"
-#include "protos.h"
-#include "globals.h"
-
 #include "util.h"
+#include "profiling.h"
+#include "MemPool.h"
 
 #if !HAVE_TEMPNAM
 #include "tempnam.h"
-#endif
-
-#if !HAVE_SNPRINTF
-#include "snprintf.h"
 #endif
 
 #if !HAVE_STRSEP
 #include "strsep.h"
 #endif
 
+#if !HAVE_STRTOLL
+#include "strtoll.h"
+#endif
+
 #if !HAVE_INITGROUPS
 #include "initgroups.h"
 #endif
 
-#define XMIN(x,y) ((x)<(y)? (x) : (y))
-#define XMAX(a,b) ((a)>(b)? (a) : (b))
+#ifndef min
 
+template<class A>
+inline A const &
+min(A const & lhs, A const & rhs)
+{
+    if (rhs < lhs)
+        return rhs;
+
+    return lhs;
+}
+
+#endif
+
+#define XMIN(x,y) (min (x,y))
+#ifndef max
+template<class A>
+inline A const &
+max(A const & lhs, A const & rhs)
+{
+    if (rhs > lhs)
+        return rhs;
+
+    return lhs;
+}
+
+#endif
+
+#define XMAX(a,b) (max (a,b))
+
+#include "structs.h"
+#include "protos.h"
+#include "globals.h"
+
+/* Exclude CPPUnit tests from the below restriction. */
+/* BSD implementation uses these still */
+#if !defined(SQUID_UNIT_TEST)
 /*
  * Squid source files should not call these functions directly.
  * Use xmalloc, xfree, xcalloc, snprintf, and xstrdup instead.
@@ -459,9 +435,8 @@ struct rusage {
 #ifndef malloc
 #define malloc +
 #endif
-#ifndef free
-#define free +
-#endif
+template <class V>
+void free(V x) { fatal("Do not use ::free()"); }
 #ifndef calloc
 #define calloc +
 #endif
@@ -471,6 +446,7 @@ struct rusage {
 #ifndef strdup
 #define strdup +
 #endif
+#endif /* !SQUID_UNIT_TEST */
 
 /*
  * Hey dummy, don't be tempted to move this to lib/config.h.in
@@ -484,15 +460,15 @@ struct rusage {
 #define SQUID_NONBLOCK O_NDELAY
 #elif defined(O_NONBLOCK)
 /*
- * We used to assume O_NONBLOCK was broken on Solaris, but evidence
- * now indicates that its fine on Solaris 8, and in fact required for
- * properly detecting EOF on FIFOs.  So now we assume that if 
- * its defined, it works correctly on all operating systems.
- */
+* We used to assume O_NONBLOCK was broken on Solaris, but evidence
+* now indicates that its fine on Solaris 8, and in fact required for
+* properly detecting EOF on FIFOs.  So now we assume that if
+* its defined, it works correctly on all operating systems.
+*/
 #define SQUID_NONBLOCK O_NONBLOCK
 /*
- * O_NDELAY is our fallback.
- */
+* O_NDELAY is our fallback.
+*/
 #else
 #define SQUID_NONBLOCK O_NDELAY
 #endif
@@ -500,7 +476,7 @@ struct rusage {
 /*
  * I'm sick of having to keep doing this ..
  */
-#define INDEXSD(i)   (&Config.cacheSwap.swapDirs[(i)])
+#define INDEXSD(i)   (Config.cacheSwap.swapDirs[(i)].getRaw())
 
 #define FD_READ_METHOD(fd, buf, len) (*fd_table[fd].read_method)(fd, buf, len)
 #define FD_WRITE_METHOD(fd, buf, len) (*fd_table[fd].write_method)(fd, buf, len)
@@ -512,47 +488,5 @@ struct rusage {
 #ifndef IPPROTO_TCP
 #define IPPROTO_TCP 0
 #endif
-
-
-#if defined(_SQUID_MSWIN_)
-/* Windows lacks getpagesize() prototype */
-#ifndef getpagesize
-extern size_t getpagesize(void);
-#endif
-#if defined(_MSC_VER)		/* Microsoft C Compiler ONLY */
-#define strtoll WIN32_strtoll
-#endif
-#endif /* _SQUID_MSWIN_ */
-
-/*
- * Trap attempts to build large file cache support without support for
- * large objects
- */
-#if LARGE_CACHE_FILES && SIZEOF_SQUID_OFF_T <= 4
-#error Your platform does not support large integers. Can not build with --enable-large-cache-files
-#endif
-
-/*
- * valgrind debug support
- */
-#if WITH_VALGRIND
-#include <valgrind/memcheck.h>
-#ifndef VALGRIND_MAKE_MEM_NOACCESS
-/* A little glue for older valgrind version prior to 3.2.0 */
-#define VALGRIND_MAKE_MEM_NOACCESS VALGRIND_MAKE_NOACCESS
-#define VALGRIND_MAME_MEM_UNDEFINED VALGRIND_MAME_WRITABLE
-#define VALGRIND_MAKE_MEM_DEFINED VALGRIND_MAKE_READABLE
-#define VALGRIND_CHECK_MEM_IS_ADDRESSABLE VALGRIND_CHECK_WRITABLE
-#endif
-#else
-#define VALGRIND_MAKE_MEM_NOACCESS(a,b) (0)
-#define VALGRIND_MAKE_MEM_UNDEFINED(a,b) (0)
-#define VALGRIND_MAKE_MEM_DEFINED(a,b) (0)
-#define VALGRIND_CHECK_MEM_IS_ADDRESSABLE(a,b) (0)
-#define VALGRIND_CHECK_MEM_IS_DEFINED(a,b) (0)
-#define VALGRIND_MALLOCLIKE_BLOCK(a,b,c,d)
-#define VALGRIND_FREELIKE_BLOCK(a,b)
-#define RUNNING_ON_VALGRIND 0
-#endif /* WITH_VALGRIND */
 
 #endif /* SQUID_H */

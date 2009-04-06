@@ -1,5 +1,5 @@
 /*
- * $Id: rfc1738.c,v 1.24.2.1 2007/06/03 00:36:50 hno Exp $
+ * $Id: rfc1738.c,v 1.28 2007/12/06 02:37:15 amosjeffries Exp $
  *
  * DEBUG: 
  * AUTHOR: Harvest Derived
@@ -42,7 +42,6 @@
 #endif
 
 #include "util.h"
-#include "snprintf.h"
 
 /*  
  *  RFC 1738 defines that these characters should be escaped, as well
@@ -99,7 +98,7 @@ rfc1738_do_escape(const char *url, int encode_reserved)
 	bufsize = strlen(url) * 3 + 1;
 	buf = xcalloc(bufsize, 1);
     }
-    for (p = url, q = buf; *p != '\0'; p++, q++) {
+    for (p = url, q = buf; *p != '\0' && q < (buf + bufsize - 1); p++, q++) {
 	do_escape = 0;
 
 	/* RFC 1738 defines these chars as unsafe */
@@ -128,7 +127,7 @@ rfc1738_do_escape(const char *url, int encode_reserved)
 	    do_escape = 1;
 	}
 	/* RFC 1738 says any non-US-ASCII are encoded */
-	if (((unsigned char) *p >= (unsigned char) 0x80)) {
+	if (((unsigned char) *p >= (unsigned char) 0x80)) { 
 	    do_escape = 1;
 	}
 	/* Do the triplet encoding, or just copy the char */

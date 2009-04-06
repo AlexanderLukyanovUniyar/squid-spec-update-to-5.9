@@ -1,11 +1,11 @@
 /*
- * $Id: stub_memaccount.c,v 1.6 2006/09/18 22:54:38 hno Exp $
+ * $Id: stub_memaccount.c,v 1.6 2003/01/23 00:37:02 robertc Exp $
  */
 
 /* Stub function for programs not implementing statMemoryAccounted */
 #include "config.h"
 #include "util.h"
-size_t
+int
 statMemoryAccounted(void)
 {
     return -1;

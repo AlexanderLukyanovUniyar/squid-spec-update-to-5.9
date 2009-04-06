@@ -91,3 +91,11 @@ may be returned instead of ERR.
 Test that entering an valid username and password results in an OK message.
 Test that entering a guest username and password returns the correct
 response for the site's access policy.
+
+
+===============
+Contact details
+===============
+
+To contact the maintainer of this package, e-mail on squidnt@acmeconsulting.it.
+

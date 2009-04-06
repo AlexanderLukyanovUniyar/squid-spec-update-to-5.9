@@ -32,3 +32,10 @@ http_access allow password
 http_access deny all
 
 Refer to Squid documentation for more details.
+
+Currently Internet Explorer has some problems with ftp:// URLs when handling
+internal Squid FTP icons. The following squid.conf ACL works around this:
+
+acl internal_icons urlpath_regex -i /squid-internal-static/icons/
+
+http_access allow our_networks internal_icons <== BEFORE authentication ACL !!!

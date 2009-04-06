@@ -91,7 +91,7 @@ RFCNB_Call(char *Called_Name, char *Calling_Name, char *Called_Address,
     if ((errno = RFCNB_Name_To_IP(Service_Address, &Dest_IP)) < 0) {	/* Error */
 
 	/* No need to modify RFCNB_errno as it was done by RFCNB_Name_To_IP */
-
+        free(con);
 	return (NULL);
 
     }
@@ -110,6 +110,7 @@ RFCNB_Call(char *Called_Name, char *Calling_Name, char *Called_Address,
 
 	    RFCNB_errno = RFCNBE_NoSpace;
 	    RFCNB_saved_errno = errno;
+            free(con);
 	    return (NULL);
 
 	}
@@ -133,7 +134,7 @@ RFCNB_Call(char *Called_Name, char *Calling_Name, char *Called_Address,
 	if ((Client = RFCNB_IP_Connect(Dest_IP, port)) < 0) {	/* Error */
 
 	    /* No need to modify RFCNB_errno as it was done by RFCNB_IP_Connect */
-
+            free(con);
 	    return (NULL);
 
 	}
@@ -149,7 +150,8 @@ RFCNB_Call(char *Called_Name, char *Calling_Name, char *Called_Address,
 		    &redirect, &Dest_IP, &port)) < 0) {
 
 	    /* No need to modify RFCNB_errno as it was done by RFCNB_Session.. */
-
+	    RFCNB_Close(con->fd);	/* Close it */
+            free(con);
 	    return (NULL);
 
 	}
@@ -294,14 +296,12 @@ RFCNB_Hangup(struct RFCNB_Con *con_Handle)
 void
 RFCNB_Get_Error(char *buffer, int buf_len)
 {
-
     if (RFCNB_saved_errno <= 0) {
-	sprintf(buffer, "%s", RFCNB_Error_Strings[RFCNB_errno]);
+	snprintf(buffer, (buf_len-1) ,"%s", RFCNB_Error_Strings[RFCNB_errno]);
     } else {
-	sprintf(buffer, "%s\n\terrno:%s", RFCNB_Error_Strings[RFCNB_errno],
+	snprintf(buffer, (buf_len-1), "%s\n\terrno:%s", RFCNB_Error_Strings[RFCNB_errno],
 	    strerror(RFCNB_saved_errno));
     }
-
 }
 
 /* Pick up the last error response and returns as a code                 */
@@ -309,9 +309,7 @@ RFCNB_Get_Error(char *buffer, int buf_len)
 int
 RFCNB_Get_Last_Error(void)
 {
-
     return (RFCNB_errno);
-
 }
 
 /* Pick up saved errno as well */

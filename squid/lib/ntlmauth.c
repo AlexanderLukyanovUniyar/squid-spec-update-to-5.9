@@ -1,5 +1,5 @@
 /*
- * $Id: ntlmauth.c,v 1.8 2005/05/17 16:56:36 hno Exp $
+ * $Id: ntlmauth.c,v 1.9 2003/08/05 21:40:09 robertc Exp $
  *
  * * * * * * * * Legal stuff * * * * * * *
  *
@@ -31,6 +31,7 @@
 #endif
 
 #include "ntlmauth.h"
+#include "squid_endian.h"
 #include "util.h"		/* for base64-related stuff */
 
 #if UNUSED_CODE
@@ -80,11 +81,11 @@ ntlm_fetch_string(char *packet, int32_t length, strhdr * str)
 
     lstring_zero(rv);
 
-    l = SSWAP(str->len);
-    o = WSWAP(str->offset);
+    l = le16toh(str->len);
+    o = le32toh(str->offset);
     /* debug("fetch_string(plength=%d,l=%d,o=%d)\n",length,l,o); */
 
-    if (l < 0 || o <= 0 || l > MAX_FIELD_LENGTH || o + l > length) {
+    if (l < 0 || l > MAX_FIELD_LENGTH || o + l > length || o == 0) {
 	/* debug("ntlmssp: insane data (l: %d, o: %d)\n", l,o); */
 	return rv;
     }
@@ -109,9 +110,9 @@ ntlm_add_to_payload(char *payload, int *payload_length,
     int l = (*payload_length);
     memcpy(payload + l, toadd, toadd_length);
 
-    hdr->len = SSWAP(toadd_length);
-    hdr->maxlen = SSWAP(toadd_length);
-    hdr->offset = WSWAP(l + base_offset);	/* 48 is the base offset of the payload */
+    hdr->len = htole16(toadd_length);
+    hdr->maxlen = htole16(toadd_length);
+    hdr->offset = htole32(l + base_offset);	/* 48 is the base offset of the payload */
     (*payload_length) += toadd_length;
 }
 
@@ -123,17 +124,17 @@ ntlm_add_to_payload(char *payload, int *payload_length,
  */
 const char *
 ntlm_make_challenge(char *domain, char *domain_controller,
-    unsigned char *challenge_nonce, int challenge_nonce_len)
+    char *challenge_nonce, int challenge_nonce_len)
 {
     ntlm_challenge ch;
     int pl = 0;
     const char *encoded;
     memset(&ch, 0, sizeof(ntlm_challenge));	/* reset */
     memcpy(ch.signature, "NTLMSSP", 8);		/* set the signature */
-    ch.type = WSWAP(NTLM_CHALLENGE);	/* this is a challenge */
+    ch.type = htole32(NTLM_CHALLENGE);	/* this is a challenge */
     ntlm_add_to_payload(ch.payload, &pl, &ch.target, domain, strlen(domain),
 	NTLM_CHALLENGE_HEADER_OFFSET);
-    ch.flags = WSWAP(
+    ch.flags = htole32(
 	REQUEST_NON_NT_SESSION_KEY |
 	CHALLENGE_TARGET_IS_DOMAIN |
 	NEGOTIATE_ALWAYS_SIGN |

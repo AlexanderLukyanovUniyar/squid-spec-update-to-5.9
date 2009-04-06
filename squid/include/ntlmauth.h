@@ -1,5 +1,5 @@
 /*
- * $Id: ntlmauth.h,v 1.10.2.1 2007/03/13 02:12:39 hno Exp $
+ * $Id: ntlmauth.h,v 1.12 2003/08/05 21:40:04 robertc Exp $
  *
  * * * * * * * * Legal stuff * * * * * * *
  *
@@ -54,31 +54,10 @@
 #define SQUID_NTLMAUTH_H
 
 /* int*_t */
-#include "squid_types.h"
+#include "config.h"
 
 /* All of this cruft is little endian */
-#ifdef WORDS_BIGENDIAN
-#define SSWAP(x)	(bswap16((x)))
-#define WSWAP(x)	(bswap32((x)))
-#else
-#define SSWAP(x)	(x)
-#define WSWAP(x)	(x)
-#endif
-
-#ifdef HAVE_BYTESWAP_H
-#include <byteswap.h>
-#define bswap16(x) bswap_16(x)
-#define bswap32(x) bswap_32(x)
-#else	 /* HAVE_BISTWAP_H */
-#ifndef bswap16
-#define bswap16(x) (((((u_int16_t)x) >> 8) & 0xff) | ((((u_int16_t)x) & 0xff) << 8))
-#endif
-#ifndef bswap32
-#define bswap32(x) \
-    (((((u_int32_t)x) & 0xff000000) >> 24) | ((((u_int32_t)x) & 0x00ff0000) >>  8) | \
-     ((((u_int32_t)x) & 0x0000ff00) <<  8) | ((((u_int32_t)x) & 0x000000ff) << 24))
-#endif
-#endif /* HAVE_BITSWAP_H */
+#include "squid_endian.h"
 
 /* Used internally. Microsoft seems to think this is right, I believe them.
  * Right. */
@@ -177,7 +156,7 @@ typedef struct _ntlm_authenticate {
 } ntlm_authenticate;
 
 const char *ntlm_make_challenge(char *domain, char *domain_controller,
-    unsigned char *challenge_nonce, int challenge_nonce_len);
+    char *challenge_nonce, int challenge_nonce_len);
 lstring ntlm_fetch_string(char *packet, int32_t length, strhdr * str);
 void ntlm_add_to_payload(char *payload, int *payload_length,
     strhdr * hdr, char *toadd,

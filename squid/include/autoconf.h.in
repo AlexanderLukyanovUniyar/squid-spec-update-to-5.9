@@ -13,6 +13,9 @@
 /* What default UDP port to use for ICP listening? */
 #undef CACHE_ICP_PORT
 
+/* Enable for cbdata debug information */
+#undef CBDATA_DEBUG
+
 /* Host type from configure */
 #undef CONFIG_HOST_TYPE
 
@@ -27,17 +30,14 @@
 /* Define to 1 if using `alloca.c'. */
 #undef C_ALLOCA
 
-/* MemPool debug verifications */
-#undef DEBUG_MEMPOOL
-
 /* Default FD_SETSIZE value */
 #undef DEFAULT_FD_SETSIZE
 
 /* Traffic management via "delay pools". */
 #undef DELAY_POOLS
 
-/* Enable following X-Forwarded-For headers */
-#undef FOLLOW_X_FORWARDED_FOR
+/* Define if you have problems with memPools and want to disable Pools. */
+#undef DISABLE_POOLS
 
 /* Enable Forw/Via database */
 #undef FORW_VIA_DB
@@ -45,18 +45,12 @@
 /* If gettimeofday is known to take only one argument */
 #undef GETTIMEOFDAY_NO_TZP
 
-/* Define to 1 if you have the <aio.h> header file. */
-#undef HAVE_AIO_H
-
 /* Define to 1 if you have `alloca', as a function or macro. */
 #undef HAVE_ALLOCA
 
 /* Define to 1 if you have <alloca.h> and it should be used (not on Ultrix).
    */
 #undef HAVE_ALLOCA_H
-
-/* Define if your compiler supports prototyping */
-#undef HAVE_ANSI_PROTOTYPES
 
 /* Define to 1 if you have the <arpa/inet.h> header file. */
 #undef HAVE_ARPA_INET_H
@@ -76,8 +70,23 @@
 /* Define to 1 if you have the <bstring.h> header file. */
 #undef HAVE_BSTRING_H
 
+/* Define to 1 if you have the `bswap16' function. */
+#undef HAVE_BSWAP16
+
+/* Define to 1 if you have the `bswap32' function. */
+#undef HAVE_BSWAP32
+
+/* Define to 1 if you have the `bswap_16' function. */
+#undef HAVE_BSWAP_16
+
+/* Define to 1 if you have the `bswap_32' function. */
+#undef HAVE_BSWAP_32
+
 /* Define to 1 if you have the <byteswap.h> header file. */
 #undef HAVE_BYTESWAP_H
+
+/* char is defined in system headers */
+#undef HAVE_CHAR
 
 /* Define to 1 if you have the `crypt' function. */
 #undef HAVE_CRYPT
@@ -98,8 +107,20 @@
    */
 #undef HAVE_DIRENT_H
 
+/* Define if you have the GNU dld library. */
+#undef HAVE_DLD
+
+/* Define to 1 if you have the `dlerror' function. */
+#undef HAVE_DLERROR
+
+/* Define to 1 if you have the <dlfcn.h> header file. */
+#undef HAVE_DLFCN_H
+
 /* Define to 1 if you have the `drand48' function. */
 #undef HAVE_DRAND48
+
+/* Define if you have the _dyld_func_lookup function. */
+#undef HAVE_DYLD
 
 /* Define to 1 if you have the `epoll_ctl' function. */
 #undef HAVE_EPOLL_CTL
@@ -110,14 +131,14 @@
 /* Define to 1 if you have the <execinfo.h> header file. */
 #undef HAVE_EXECINFO_H
 
-/* Define if struct mallinfo has mxfast member */
-#undef HAVE_EXT_MALLINFO
-
 /* Define to 1 if you have the `fchmod' function. */
 #undef HAVE_FCHMOD
 
 /* Define to 1 if you have the <fcntl.h> header file. */
 #undef HAVE_FCNTL_H
+
+/* fd_mask is defined by the system headers */
+#undef HAVE_FD_MASK
 
 /* Define to 1 if you have the <fnmatch.h> header file. */
 #undef HAVE_FNMATCH_H
@@ -155,8 +176,29 @@
 /* Define to 1 if you have the <grp.h> header file. */
 #undef HAVE_GRP_H
 
+/* Define to 1 if you have the `htobe16' function. */
+#undef HAVE_HTOBE16
+
+/* Define to 1 if you have the `htole16' function. */
+#undef HAVE_HTOLE16
+
 /* Define to 1 if you have the `initgroups' function. */
 #undef HAVE_INITGROUPS
+
+/* int is defined in system headers */
+#undef HAVE_INT
+
+/* int16_t is defined in system headers */
+#undef HAVE_INT16_T
+
+/* int32_t is defined in system headers */
+#undef HAVE_INT32_T
+
+/* int64_t is defined in system headers */
+#undef HAVE_INT64_T
+
+/* int8_t is defined in system headers */
+#undef HAVE_INT8_T
 
 /* Define to 1 if you have the <inttypes.h> header file. */
 #undef HAVE_INTTYPES_H
@@ -173,17 +215,20 @@
 /* Define to 1 if you have the <ip_fil.h> header file. */
 #undef HAVE_IP_FIL_H
 
-/* Define if struct ip has ip_hl member */
-#undef HAVE_IP_HL
-
 /* Define to 1 if you have the <ip_nat.h> header file. */
 #undef HAVE_IP_NAT_H
 
 /* Define to 1 if you have the `kqueue' function. */
 #undef HAVE_KQUEUE
 
+/* Define to 1 if you have the `44bsd' library (-l44bsd). */
+#undef HAVE_LIB44BSD
+
 /* Define to 1 if you have the `aio' library (-laio). */
 #undef HAVE_LIBAIO
+
+/* Define to 1 if you have the `bind' library (-lbind). */
+#undef HAVE_LIBBIND
 
 /* Define to 1 if you have the `bsd' library (-lbsd). */
 #undef HAVE_LIBBSD
@@ -212,11 +257,17 @@
 /* Define to 1 if you have the `pthread' library (-lpthread). */
 #undef HAVE_LIBPTHREAD
 
+/* Define to 1 if you have the `resolv' library (-lresolv). */
+#undef HAVE_LIBRESOLV
+
 /* Define to 1 if you have the `rt' library (-lrt). */
 #undef HAVE_LIBRT
 
 /* Define to 1 if you have the `socket' library (-lsocket). */
 #undef HAVE_LIBSOCKET
+
+/* Define to 1 if you have the <libxml/parser.h> header file. */
+#undef HAVE_LIBXML_PARSER_H
 
 /* Define to 1 if you have the <limits.h> header file. */
 #undef HAVE_LIMITS_H
@@ -227,6 +278,12 @@
 /* Define to 1 if you have the <linux/netfilter_ipv4/ip_tproxy.h> header file.
    */
 #undef HAVE_LINUX_NETFILTER_IPV4_IP_TPROXY_H
+
+/* long is defined in system headers */
+#undef HAVE_LONG
+
+/* long long is defined in system headers */
+#undef HAVE_LONG_LONG
 
 /* Define to 1 if you have the `lrand48' function. */
 #undef HAVE_LRAND48
@@ -264,11 +321,17 @@
 /* Define to 1 if you have the `mktime' function. */
 #undef HAVE_MKTIME
 
+/* mode_t is defined by the system headers */
+#undef HAVE_MODE_T
+
 /* Define to 1 if you have the <mount.h> header file. */
 #undef HAVE_MOUNT_H
 
 /* Define to 1 if you have the `mstats' function. */
 #undef HAVE_MSTATS
+
+/* mtyp_t is defined by the system headers */
+#undef HAVE_MTYP_T
 
 /* Define to 1 if you have the <ndir.h> header file, and it defines `DIR'. */
 #undef HAVE_NDIR_H
@@ -312,6 +375,9 @@
 /* Define to 1 if you have the <nss.h> header file. */
 #undef HAVE_NSS_H
 
+/* off_t is defined by the system headers */
+#undef HAVE_OFF_T
+
 /* Define to 1 if you have the <openssl/engine.h> header file. */
 #undef HAVE_OPENSSL_ENGINE_H
 
@@ -324,8 +390,14 @@
 /* Define to 1 if you have the <openssl/ssl.h> header file. */
 #undef HAVE_OPENSSL_SSL_H
 
+/* pad128_t is defined in system headers */
+#undef HAVE_PAD128_T
+
 /* Define to 1 if you have the <paths.h> header file. */
 #undef HAVE_PATHS_H
+
+/* pid_t is defined by the system headers */
+#undef HAVE_PID_T
 
 /* Define to 1 if you have the `poll' function. */
 #undef HAVE_POLL
@@ -418,11 +490,23 @@
 /* Define to 1 if you have the `setsid' function. */
 #undef HAVE_SETSID
 
+/* Define to 1 if you have the <shadow.h> header file. */
+#undef HAVE_SHADOW_H
+
+/* Define if you have the shl_load function. */
+#undef HAVE_SHL_LOAD
+
+/* short is defined in system headers */
+#undef HAVE_SHORT
+
 /* Define to 1 if you have the `sigaction' function. */
 #undef HAVE_SIGACTION
 
 /* Define to 1 if you have the <signal.h> header file. */
 #undef HAVE_SIGNAL_H
+
+/* size_t is defined by the system headers */
+#undef HAVE_SIZE_T
 
 /* Define to 1 if you have the `snprintf' function. */
 #undef HAVE_SNPRINTF
@@ -430,11 +514,17 @@
 /* Define to 1 if you have the `socketpair' function. */
 #undef HAVE_SOCKETPAIR
 
+/* socklen_t is defined by the system headers */
+#undef HAVE_SOCKLEN_T
+
 /* Define to 1 if you have the `srand48' function. */
 #undef HAVE_SRAND48
 
 /* Define to 1 if you have the `srandom' function. */
 #undef HAVE_SRANDOM
+
+/* ssize_t is defined by the system headers */
+#undef HAVE_SSIZE_T
 
 /* Define to 1 if you have the `statfs' function. */
 #undef HAVE_STATFS
@@ -472,11 +562,20 @@
 /* Define to 1 if you have the `strtoll' function. */
 #undef HAVE_STRTOLL
 
-/* we check for the existance of struct mallinfo */
+/* Define to 1 if `ip_hl' is member of `struct iphdr'. */
+#undef HAVE_STRUCT_IPHDR_IP_HL
+
+/* The system provides struct mallinfo */
 #undef HAVE_STRUCT_MALLINFO
 
-/* Define if you have struct rusage */
+/* Define to 1 if `mxfast' is member of `struct mallinfo'. */
+#undef HAVE_STRUCT_MALLINFO_MXFAST
+
+/* The system provides struct rusage */
 #undef HAVE_STRUCT_RUSAGE
+
+/* Define to 1 if `tm_gmtoff' is member of `struct tm'. */
+#undef HAVE_STRUCT_TM_TM_GMTOFF
 
 /* Define to 1 if you have the <syscall.h> header file. */
 #undef HAVE_SYSCALL_H
@@ -493,18 +592,27 @@
 /* Define to 1 if you have the <sys/bitypes.h> header file. */
 #undef HAVE_SYS_BITYPES_H
 
+/* Define to 1 if you have the <sys/bswap.h> header file. */
+#undef HAVE_SYS_BSWAP_H
+
+/* Define to 1 if you have the <sys/capability.h> header file. */
+#undef HAVE_SYS_CAPABILITY_H
+
 /* Define to 1 if you have the <sys/dir.h> header file, and it defines `DIR'.
    */
 #undef HAVE_SYS_DIR_H
 
-/* Define to 1 if you have the <sys/event.h> header file. */
-#undef HAVE_SYS_EVENT_H
+/* Define to 1 if you have the <sys/endian.h> header file. */
+#undef HAVE_SYS_ENDIAN_H
 
 /* Define to 1 if you have the <sys/file.h> header file. */
 #undef HAVE_SYS_FILE_H
 
 /* Define to 1 if you have the <sys/ioctl.h> header file. */
 #undef HAVE_SYS_IOCTL_H
+
+/* Define to 1 if you have the <sys/md5.h> header file. */
+#undef HAVE_SYS_MD5_H
 
 /* Define to 1 if you have the <sys/mount.h> header file. */
 #undef HAVE_SYS_MOUNT_H
@@ -519,9 +627,6 @@
 /* Define to 1 if you have the <sys/param.h> header file. */
 #undef HAVE_SYS_PARAM_H
 
-/* Define to 1 if you have the <sys/poll.h> header file. */
-#undef HAVE_SYS_POLL_H
-
 /* Define to 1 if you have the <sys/prctl.h> header file. */
 #undef HAVE_SYS_PRCTL_H
 
@@ -533,9 +638,6 @@
 
 /* Define to 1 if you have the <sys/socket.h> header file. */
 #undef HAVE_SYS_SOCKET_H
-
-/* Define to 1 if you have the <sys/statfs.h> header file. */
-#undef HAVE_SYS_STATFS_H
 
 /* Define to 1 if you have the <sys/statvfs.h> header file. */
 #undef HAVE_SYS_STATVFS_H
@@ -570,8 +672,17 @@
 /* Define to 1 if you have the <time.h> header file. */
 #undef HAVE_TIME_H
 
-/* Define if struct tm has tm_gmtoff member */
-#undef HAVE_TM_GMTOFF
+/* uint16_t is defined in system headers */
+#undef HAVE_UINT16_T
+
+/* uint32_t is defined in system headers */
+#undef HAVE_UINT32_T
+
+/* uint64_t is defined in system headers */
+#undef HAVE_UINT64_T
+
+/* uint8_t is defined in system headers */
+#undef HAVE_UINT8_T
 
 /* Define to 1 if you have the <unistd.h> header file. */
 #undef HAVE_UNISTD_H
@@ -579,13 +690,28 @@
 /* Do we have unix sockets? (required for the winbind ntlm helper */
 #undef HAVE_UNIXSOCKET
 
+/* upad128_t is defined in system headers */
+#undef HAVE_UPAD128_T
+
 /* Define to 1 if you have the <utime.h> header file. */
 #undef HAVE_UTIME_H
+
+/* u_int16_t is defined in system headers */
+#undef HAVE_U_INT16_T
+
+/* u_int32_t is defined in system headers */
+#undef HAVE_U_INT32_T
+
+/* u_int64_t is defined in system headers */
+#undef HAVE_U_INT64_T
+
+/* u_int8_t is defined in system headers */
+#undef HAVE_U_INT8_T
 
 /* Define to 1 if you have the <varargs.h> header file. */
 #undef HAVE_VARARGS_H
 
-/* Some systems dont have va_copy */
+/* If your system have va_copy */
 #undef HAVE_VA_COPY
 
 /* Define to 1 if you have the `vsnprintf' function. */
@@ -594,13 +720,26 @@
 /* Define if you have PSAPI.DLL on Windows systems */
 #undef HAVE_WIN32_PSAPI
 
-/* Some systems support __va_copy */
+/* __int64 is defined in system headers */
+#undef HAVE___INT64
+
+/* Define to 1 if you have the `__res_init' function. */
+#undef HAVE___RES_INIT
+
+/* Some systems have __va_copy instead of va_copy */
 #undef HAVE___VA_COPY
 
 /* By default (for now anyway) Squid includes options which allows the cache
    administrator to violate the HTTP protocol specification in terms of cache
    behaviour. Setting this to '0' will disable such code. */
 #undef HTTP_VIOLATIONS
+
+/* Enable ICAP client features in Squid */
+#undef ICAP_CLIENT
+
+/* Enable support for Transparent Proxy on systems using FreeBSD IPFW address
+   redirection. */
+#undef IPFW_TRANSPARENT
 
 /* Enable support for Transparent Proxy on systems using IP-Filter address
    redirection. This provides "masquerading" support for non Linux system. */
@@ -611,8 +750,8 @@
    with caution. */
 #undef KILL_PARENT_OPT
 
-/* Support large cache files > 2GB */
-#undef LARGE_CACHE_FILES
+/* If libresolv.a has been hacked to export _dns_ttl_ */
+#undef LIBRESOLV_DNS_TTL_HACK
 
 /* Enable support for Transparent Proxy on Linux (Netfilter) systems */
 #undef LINUX_NETFILTER
@@ -620,16 +759,15 @@
 /* Enable real Transparent Proxy support for Netfilter TPROXY. */
 #undef LINUX_TPROXY
 
-/* Define to enable experimental multicast of cache miss URLs */
-#undef MULTICAST_MISS_STREAM
-
 /* If we need to declare sys_errlist[] as external */
 #undef NEED_SYS_ERRLIST
 
 /* Define to 1 if your C compiler doesn't accept -c and -o together. */
 #undef NO_MINUS_C_MINUS_O
 
-/* Define if NTLM is allowed to fail gracefully when a helper has problems */
+/* Define if NTLM is allowed to fail gracefully when a helper has problems.
+   WARNING: This has security implications. DO NOT enable unless you KNOW you
+   need it. */
 #undef NTLM_FAIL_OPEN
 
 /* Name of package */
@@ -723,6 +861,12 @@
 /* configure command line used to configure Squid */
 #undef SQUID_CONFIGURE_OPTIONS
 
+/* UDP receive buffer size */
+#undef SQUID_DETECT_UDP_SO_RCVBUF
+
+/* UDP send buffer size */
+#undef SQUID_DETECT_UDP_SO_SNDBUF
+
 /* Maximum number of open filedescriptors */
 #undef SQUID_MAXFD
 
@@ -735,12 +879,6 @@
 /* TCP send buffer size */
 #undef SQUID_TCP_SO_SNDBUF
 
-/* UDP receive buffer size */
-#undef SQUID_UDP_SO_RCVBUF
-
-/* UDP send buffer size */
-#undef SQUID_UDP_SO_SNDBUF
-
 /* If using the C implementation of alloca, define if you know the
    direction of stack growth for your system; otherwise it will be
    automatically deduced at runtime.
@@ -752,17 +890,13 @@
 /* Define to 1 if you have the ANSI C header files. */
 #undef STDC_HEADERS
 
-/* Supports large dgram sockets over AF_UNIX sockets */
-#undef SUPPORTS_LARGE_AF_UNIX_DGRAM
+/* Define to 1 if your <sys/time.h> declares `struct tm'. */
+#undef TM_IN_SYS_TIME
 
 /* Define this to include code which lets you specify access control elements
    based on ethernet hardware addresses. This code uses functions found in 4.4
    BSD derviations (e.g. FreeBSD, ?). */
 #undef USE_ARP_ACL
-
-/* Define this if you would like to use the aufs I/O method for disk I/O
-   instead of the POSIX AIO method. */
-#undef USE_AUFSOPS
 
 /* Use Cache Digests for locating objects in neighbor caches. This code is
    still semi-experimental. */
@@ -771,9 +905,11 @@
 /* Cache Array Routing Protocol */
 #undef USE_CARP
 
-/* If --disable-internal-dns was given to configure, then we'll use the
-   dnsserver processes instead. */
+/* Use dnsserver processes instead of the internal DNS protocol support */
 #undef USE_DNSSERVERS
+
+/* Use epoll() for the IO loop */
+#undef USE_EPOLL
 
 /* Define if we should use GNU regex */
 #undef USE_GNUREGEX
@@ -792,7 +928,10 @@
 /* Compile in support for Ident (RFC 931) lookups? Enabled by default. */
 #undef USE_IDENT
 
-/* Enable code for assiting in finding memory leaks. Hacker stuff only. */
+/* Use kqueue() for the IO loop */
+#undef USE_KQUEUE
+
+/* Enable code for assisting in finding memory leaks. Hacker stuff only. */
 #undef USE_LEAKFINDER
 
 /* Define this to make use of the OpenSSL libraries for MD5 calculation rather
@@ -800,15 +939,24 @@
    (USE_SSL) */
 #undef USE_OPENSSL
 
+/* Use poll() for the IO loop */
+#undef USE_POLL
+
 /* If you want to log Referer request header values, define this. By default,
    they are written to referer.log in the Squid log directory. */
 #undef USE_REFERER_LOG
 
+/* Use select() for the IO loop */
+#undef USE_SELECT
+
+/* Use Winsock select() for the IO loop */
+#undef USE_SELECT_WIN32
+
+/* Compile the ESI processor and Surrogate header support */
+#undef USE_SQUID_ESI
+
 /* Define this to include code for SSL encryption. */
 #undef USE_SSL
-
-/* Do we want to use truncate(2) or unlink(2)? */
-#undef USE_TRUNCATE
 
 /* Define this if unlinkd is required (strongly recommended for ufs storage
    type) */
@@ -827,11 +975,11 @@
 /* Define Windows NT & Windows 2000 run service mode */
 #undef USE_WIN32_SERVICE
 
+/* Define to enable CPU profiling within Squid */
+#undef USE_XPROF_STATS
+
 /* Version number of package */
 #undef VERSION
-
-/* Define to enable experimental forward_log directive */
-#undef WIP_FWD_LOG
 
 /* Valgrind memory debugger support */
 #undef WITH_VALGRIND
@@ -846,73 +994,11 @@
 /* Enable support for the X-Accelerator-Vary HTTP header */
 #undef X_ACCELERATOR_VARY
 
+/* Keyword used by squid for inlining methods */
+#undef _SQUID_INLINE_
+
+/* Include inline methods into header file */
+#undef _USE_INLINE_
+
 /* Define to empty if `const' does not conform to ANSI C. */
 #undef const
-
-/* Define to 'int' if not defined */
-#undef fd_mask
-
-/* Define to `__inline__' or `__inline' if that's what the C compiler
-   calls it, or to nothing if 'inline' is not supported under any name.  */
-#ifndef __cplusplus
-#undef inline
-#endif
-
-/* Define to 'int' if not defined */
-#undef int16_t
-
-/* Define to 'long' if not defined */
-#undef int32_t
-
-/* Define to '__int64' if not defined */
-#undef int64_t
-
-/* Define to 'char' if not defined */
-#undef int8_t
-
-/* Define to 'unsigned short' if not defined */
-#undef mode_t
-
-/* message type for message queues */
-#undef mtyp_t
-
-/* Define to 'int' if not defined */
-#undef off_t
-
-/* Define to 'int' if not defined */
-#undef pid_t
-
-/* Define to 'unsigned int' if not defined */
-#undef size_t
-
-/* This makes warnings go away. If you have socklen_t defined in your
-   /usr/include files, then this should remain undef'd. Otherwise it should be
-   defined to int. */
-#undef socklen_t
-
-/* Define to 'int' if not defined */
-#undef ssize_t
-
-/* Define to 'unsigned int' if not defined */
-#undef u_int16_t
-
-/* Define to 'unsigned long' if not defined */
-#undef u_int32_t
-
-/* Define to 'unsigned __int64' if not defined */
-#undef u_int64_t
-
-/* Define to 'unsigned char' if not defined */
-#undef u_int8_t
-
-/* Define to 'unsigned int' if not defined */
-#undef uint16_t
-
-/* Define to 'unsigned long' if not defined */
-#undef uint32_t
-
-/* Define to 'unsigned __int64' if not defined */
-#undef uint64_t
-
-/* Define to 'unsigned char' if not defined */
-#undef uint8_t

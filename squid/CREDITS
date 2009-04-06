@@ -1,9 +1,10 @@
-$Id: CREDITS,v 1.11 2006/05/28 22:42:52 hno Exp $
+$Id: CREDITS,v 1.12 2007/12/04 13:29:59 hno Exp $
 
 ==============================================================================
 
 Squid is originally derived from the Harvest Information Discovery and
-Access System.  The Harvest copyright text follows:
+Access System and relicensed under the name Squid using the Gnu Public License.
+The original Harvest copyright text follows to acknowledge the origin:
 
 
 /*
@@ -90,15 +91,6 @@ Modified to work with strings instead of files.
 
 ==============================================================================
 
-lib/snprintf.c:
-
-Taken from the Apache Server package (www.apache.org).
-
-This product includes software developed by the Apache Group
-for use in the Apache HTTP server project (http://www.apache.org/).
-
-==============================================================================
-
 snmplib/*:
 
 The SNMP library code is developed by Carnegie Mellon University.
@@ -154,16 +146,6 @@ lib/GNUregex.c:
 
 ==============================================================================
 
-lib/dlmalloc.c:
-
-A version of malloc/free/realloc written by Doug Lea and released to the 
-public domain.  Send questions/comments/complaints/performance data
-to dl@cs.oswego.edu.
-
-http://g.oswego.edu/dl/html/malloc.html
-
-==============================================================================
-
 lib/md5.c:
 
 /*
@@ -178,17 +160,22 @@ lib/md5.c:
  * with every copy.
  *
  * To compute the message digest of a chunk of bytes, declare an
- * MD5Context structure, pass it to MD5Init, call MD5Update as
- * needed on buffers full of bytes, and then call MD5Final, which
- * will fill a supplied 16-byte array with the digest.
+ * SquidMD5Context structure, pass it to SquidMD5Init, call
+ * SquidMD5Update as needed on buffers full of bytes, and then call
+ * SquidMD5Final, which will fill a supplied 16-byte array with the
+ * digest.
  *
  * Changed so as no longer to depend on Colin Plumb's `usual.h' header
  * definitions; now uses stuff from dpkg's config.h.
  *  - Ian Jackson <ian@chiark.greenend.org.uk>.
  * Still in the public domain.
  *
- * Changed MD5Update to take a void * for easier use and some other
- * minor cleanup. - Henrik Nordstrom <henrik@henriknordstrom.net>.
+ * Changed SquidMD5Update to take a void * for easier use and some
+ * other minor cleanup. - Henrik Nordstrom <henrik@henriknordstrom.net>.
+ * Still in the public domain.
+ *
+ * Prefixed all symbols with "Squid" so they don't collide with
+ * other libraries.  Duane Wessels <wessels@squid-cache.org>.
  * Still in the public domain.
  */
 
@@ -317,49 +304,3 @@ helpers/external_acl/wbinfo_group/wbinfo_group.pl
  of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 
 ==============================================================================
-
-helpers/external_acl/winbind_group/
-
- This is a helper for the external ACL interface for Squid Cache
- Copyright (C) 2002 Guido Serassio <squidnt@serassio.it>
- Based on previous work of Rodrigo Albani de Campos
- 
-  This program is free software; you can redistribute it and/or modify
-  it under the terms of the GNU General Public License as published by
-  the Free Software Foundation; either version 2 of the License, or
-  (at your option) any later version.
-
- includes code contributed by others
-
-   winbind client common code
-
-   Copyright (C) Tim Potter 2000
-   Copyright (C) Andrew Tridgell 2000
-   
-   This library is free software; you can redistribute it and/or
-   modify it under the terms of the GNU Library General Public
-   License as published by the Free Software Foundation; either
-   version 2 of the License, or (at your option) any later version.
-
-==============================================================================
-
-lib/strsep.c:
-
-/* Copyright (C) 2004 Free Software Foundation, Inc.
- * Written by Yoann Vandoorselaere <yoann@prelude-ids.org>
- *
- * The file is free software; you can redistribute it and/or
- * modify it under the terms of the GNU Lesser General Public
- * License as published by the Free Software Foundation; either
- * version 2.1 of the License, or (at your option) any later version.
- *
- * This file is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this file; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307
- * USA.
- */

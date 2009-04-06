@@ -1,20 +1,20 @@
 /*
- * $Id: squid_mswin.h,v 1.4.2.1 2007/04/26 23:09:46 hno Exp $
+ * $Id: squid_mswin.h,v 1.6 2007/09/23 15:21:29 serassio Exp $
  *
  * AUTHOR: Andrey Shorin <tolsty@tushino.com>
  * AUTHOR: Guido Serassio <serassio@squid-cache.org>
  *
- * SQUID Internet Object Cache  http://squid.nlanr.net/Squid/
+ * SQUID Web Proxy Cache          http://www.squid-cache.org/
  * ----------------------------------------------------------
  *
- *  Squid is the result of efforts by numerous individuals from the
- *  Internet community.  Development is led by Duane Wessels of the
- *  National Laboratory for Applied Network Research and funded by the
- *  National Science Foundation.  Squid is Copyrighted (C) 1998 by
- *  the Regents of the University of California.  Please see the
- *  COPYRIGHT file for full details.  Squid incorporates software
- *  developed and/or copyrighted by other sources.  Please see the
- *  CREDITS file for full details.
+ *  Squid is the result of efforts by numerous individuals from
+ *  the Internet community; see the CONTRIBUTORS file for full
+ *  details.   Many organizations have provided support for Squid's
+ *  development; see the SPONSORS file for full details.  Squid is
+ *  Copyrighted (C) 2001 by the Regents of the University of
+ *  California; see the COPYRIGHT file for full details.  Squid
+ *  incorporates software developed and/or copyrighted by other
+ *  sources; see the CREDITS file for full details.
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -32,11 +32,14 @@
  *
  */
 
-#ifndef STDC_HEADERS
-#define STDC_HEADERS 1
+#define ACL WindowsACL
+#if defined(_MSC_VER) /* Microsoft C Compiler ONLY */
+#if _MSC_VER == 1400
+#define _CRT_SECURE_NO_DEPRECATE
+#pragma warning( disable : 4290 )
+#pragma warning( disable : 4996 )
 #endif
-
-#define _WIN32_WINNT 0x0500
+#endif
 
 #if defined _FILE_OFFSET_BITS && _FILE_OFFSET_BITS == 64
 # define __USE_FILE_OFFSET64	1
@@ -44,11 +47,12 @@
 
 #if defined(_MSC_VER) /* Microsoft C Compiler ONLY */
 
-typedef	unsigned char	u_char;
+typedef unsigned char uint8_t;
+typedef unsigned short uint16_t;
+typedef unsigned int uint32_t;
+typedef unsigned __int64 uint64_t;
 
-typedef int SOCKET;
-typedef int ssize_t;
-typedef int mode_t;
+typedef long pid_t;
 
 #if defined __USE_FILE_OFFSET64
 typedef int64_t off_t;
@@ -84,18 +88,18 @@ typedef unsigned long ino_t;
 #define fdopen _fdopen
 #if defined(_MSC_VER) /* Microsoft C Compiler ONLY */
 #define fileno _fileno
+#define fstat _fstati64
 #endif
 #define ftruncate WIN32_ftruncate
 #define getcwd _getcwd
 #define getpid _getpid
 #define getrusage WIN32_getrusage
-#define ioctl ioctlsocket
-#define memccpy _memccpy
 #if defined(_MSC_VER) /* Microsoft C Compiler ONLY */
+#define lseek _lseeki64
+#define memccpy _memccpy
 #define mkdir(p) _mkdir(p)
-#endif
 #define mktemp _mktemp
-#define open _open
+#endif
 #define pclose _pclose
 #define pipe WIN32_pipe
 #define popen _popen
@@ -104,12 +108,13 @@ typedef unsigned long ino_t;
 #define sleep(t) Sleep((t)*1000)
 #if defined(_MSC_VER) /* Microsoft C Compiler ONLY */
 #define snprintf _snprintf
-#endif
+#define stat _stati64
 #define strcasecmp _stricmp
 #define strdup _strdup
 #define strlwr _strlwr
 #define strncasecmp _strnicmp
 #define tempnam _tempnam
+#endif
 #define truncate WIN32_truncate
 #define umask _umask
 #define unlink _unlink
@@ -135,59 +140,30 @@ typedef unsigned long ino_t;
 #define O_RANDOM        _O_RANDOM
 #define O_NDELAY	0
 
+#define S_IFMT   _S_IFMT
+#define S_IFDIR  _S_IFDIR
+#define S_IFCHR  _S_IFCHR
+#define S_IFREG  _S_IFREG
+#define S_IREAD  _S_IREAD
+#define S_IWRITE _S_IWRITE
+#define S_IEXEC  _S_IEXEC
+
 #define S_IRWXO 007
 #if defined(_MSC_VER) /* Microsoft C Compiler ONLY */
 #define	S_ISDIR(m) (((m) & _S_IFDIR) == _S_IFDIR)
-#define	S_ISREG(m) (((m) & _S_IFREG) == _S_IFREG)
 #endif
 
-#ifndef SIGHUP
 #define	SIGHUP	1	/* hangup */
-#endif
-#ifndef SIGBUS
-#define	SIGBUS  7	/* bus error */
-#endif
-#ifndef SIGKILL
 #define	SIGKILL	9	/* kill (cannot be caught or ignored) */
-#endif
-#ifndef	SIGSEGV
-#define	SIGSEGV 11      /* segment violation */
-#endif
-#ifndef SIGPIPE
+#define	SIGBUS	10	/* bus error */
 #define	SIGPIPE	13	/* write on a pipe with no one to read it */
-#endif
-#ifndef SIGCHLD
 #define	SIGCHLD	20	/* to parent on child stop or exit */
-#endif
-#ifndef SIGUSR1
 #define SIGUSR1 30	/* user defined signal 1 */
-#endif
-#ifndef SIGUSR2
 #define SIGUSR2 31	/* user defined signal 2 */
-#endif
 
-typedef unsigned short in_port_t;
 typedef unsigned short int ushort;
 typedef int uid_t;
 typedef int gid_t;
-
-#if defined __USE_FILE_OFFSET64
-#define stat _stati64
-#if defined(_MSC_VER) /* Microsoft C Compiler ONLY */
-#define lseek _lseeki64
-#endif
-#define fstat _fstati64
-#define tell _telli64
-
-#else
-#if defined(_MSC_VER) /* Microsoft C Compiler ONLY */
-#define stat _stat
-#define lseek _lseek
-#define fstat _fstat
-#define tell _tell
-#endif
-
-#endif
 
 struct passwd {
     char    *pw_name;      /* user name */
@@ -234,6 +210,7 @@ struct timezone
 
 #include <stddef.h>
 #include <process.h>
+#include <errno.h>
 #if defined(_MSC_VER) /* Microsoft C Compiler ONLY */
 /* Hack to suppress compiler warnings on FD_SET() & FD_CLR() */
 #pragma warning (push)
@@ -262,11 +239,10 @@ typedef char * caddr_t;
 #define EWOULDBLOCK WSAEWOULDBLOCK
 #define EALREADY WSAEALREADY
 #define ETIMEDOUT WSAETIMEDOUT
-#define ECONNABORTED WSAECONNABORTED
 #define ECONNREFUSED WSAECONNREFUSED
 #define ECONNRESET WSAECONNRESET
-#define ERESTART WSATRY_AGAIN
 #define ENOTCONN WSAENOTCONN
+#define ERESTART WSATRY_AGAIN
 
 #undef h_errno
 #define h_errno errno /* we'll set it ourselves */
@@ -274,7 +250,7 @@ typedef char * caddr_t;
 #undef FD_CLR
 #define FD_CLR(fd, set) do { \
     u_int __i; \
-    SOCKET __sock = _get_osfhandle(fd); \
+    SOCKET __sock = fd_table[fd].win32.handle; \
     for (__i = 0; __i < ((fd_set FAR *)(set))->fd_count ; __i++) { \
         if (((fd_set FAR *)(set))->fd_array[__i] == __sock) { \
             while (__i < ((fd_set FAR *)(set))->fd_count-1) { \
@@ -291,7 +267,7 @@ typedef char * caddr_t;
 #undef FD_SET
 #define FD_SET(fd, set) do { \
     u_int __i; \
-    SOCKET __sock = _get_osfhandle(fd); \
+    SOCKET __sock = fd_table[fd].win32.handle; \
     for (__i = 0; __i < ((fd_set FAR *)(set))->fd_count; __i++) { \
         if (((fd_set FAR *)(set))->fd_array[__i] == (__sock)) { \
             break; \
@@ -306,115 +282,427 @@ typedef char * caddr_t;
 } while(0)
 
 #undef FD_ISSET
-#define FD_ISSET(fd, set) __WSAFDIsSet((SOCKET)(_get_osfhandle(fd)), (fd_set FAR *)(set))
+#define FD_ISSET(fd, set) Win32__WSAFDIsSet(fd, (fd_set FAR *)(set))
 
-extern THREADLOCAL int ws32_result;
+/* internal to Microsoft CRTLIB */
+typedef struct {
+        long osfhnd;    /* underlying OS file HANDLE */
+        char osfile;    /* attributes of file (e.g., open in text mode?) */
+        char pipech;    /* one char buffer for handles opened on pipes */
+#ifdef _MT
+        int lockinitflag;
+        CRITICAL_SECTION lock;
+#endif  /* _MT */
+    }   ioinfo;
+#define IOINFO_L2E          5
+#define IOINFO_ARRAY_ELTS   (1 << IOINFO_L2E)
+#define _pioinfo(i) ( __pioinfo[(i) >> IOINFO_L2E] + ((i) & (IOINFO_ARRAY_ELTS - 1)) )
+#define _osfile(i)  ( _pioinfo(i)->osfile )
+#define _osfhnd(i)  ( _pioinfo(i)->osfhnd )
+#define FOPEN           0x01    /* file handle open */
+
+#if defined(_MSC_VER) /* Microsoft C Compiler ONLY */
+
+SQUIDCEXTERN _CRTIMP ioinfo * __pioinfo[];
+SQUIDCEXTERN int __cdecl _free_osfhnd(int);
+
+#elif defined(__MINGW32__) /* MinGW environment */
+
+__MINGW_IMPORT ioinfo * __pioinfo[];
+SQUIDCEXTERN int _free_osfhnd(int);
+
+#endif
+
+SQUIDCEXTERN THREADLOCAL int ws32_result;
 
 #define strerror(e) WIN32_strerror(e)
 
-#define socket(f,t,p) \
-	(INVALID_SOCKET == ((SOCKET)(ws32_result = (int)socket(f,t,p))) ? \
-	((WSAEMFILE == (errno = WSAGetLastError()) ? errno = EMFILE : -1), -1) : \
-	(SOCKET)_open_osfhandle(ws32_result,0))
-#define accept(s,a,l) \
-	(INVALID_SOCKET == ((SOCKET)(ws32_result = (int)accept(_get_osfhandle(s),a,l))) ? \
-	((WSAEMFILE == (errno = WSAGetLastError()) ? errno = EMFILE : -1), -1) : \
-	(SOCKET)_open_osfhandle(ws32_result,0))
-#define bind(s,n,l) \
-	(SOCKET_ERROR == bind(_get_osfhandle(s),n,l) ? \
-	(errno = WSAGetLastError()), -1 : 0)
+#ifdef __cplusplus
+
+inline
+int close(int fd)
+{
+    char l_so_type[sizeof(int)];
+    int l_so_type_siz = sizeof(l_so_type);
+    SOCKET sock = _get_osfhandle(fd);
+
+    if (::getsockopt(sock, SOL_SOCKET, SO_TYPE, l_so_type, &l_so_type_siz) == 0){
+        int result = 0;
+	    if (closesocket(sock) == SOCKET_ERROR) {
+	        errno = WSAGetLastError();
+	        result = 1;
+	    }
+	    _free_osfhnd(fd);
+	    _osfile(fd) = 0;
+	    return result;
+    }
+    else
+	    return _close(fd);
+}
+
+#if defined(_MSC_VER) /* Microsoft C Compiler ONLY */
+
+#ifndef _S_IREAD
+#define _S_IREAD 0x0100
+#endif
+
+#ifndef _S_IWRITE
+#define _S_IWRITE 0x0080
+#endif
+
+inline
+int open(const char *filename, int oflag, int pmode = 0)
+{
+    return _open(filename, oflag, pmode & (_S_IREAD | _S_IWRITE));
+}
+#endif
+
+inline
+int read(int fd, void * buf, size_t siz)
+{
+    char l_so_type[sizeof(int)];
+    int l_so_type_siz = sizeof(l_so_type);
+    SOCKET sock = _get_osfhandle(fd);
+
+    if (::getsockopt(sock, SOL_SOCKET, SO_TYPE, l_so_type, &l_so_type_siz) == 0)
+	return ::recv(sock, (char FAR *) buf, (int)siz, 0);
+    else
+	return _read(fd, buf, (unsigned int)siz);
+}
+
+inline
+int write(int fd, const void * buf, size_t siz)
+{
+    char l_so_type[sizeof(int)];
+    int l_so_type_siz = sizeof(l_so_type);
+    SOCKET sock = _get_osfhandle(fd);
+
+    if (::getsockopt(sock, SOL_SOCKET, SO_TYPE, l_so_type, &l_so_type_siz) == 0)
+	return ::send(sock, (char FAR *) buf, siz, 0);
+    else
+	return _write(fd, buf, siz);
+}
+
+inline 
+char *index(const char *s, int c)
+{
+    return (char *)strchr(s,c);
+}
+
+namespace Squid {
+
+inline
+int accept(int s, struct sockaddr * a, int * l)
+{
+    SOCKET result;
+    if ((result = ::accept(_get_osfhandle(s), a, l)) == INVALID_SOCKET) {
+	if (WSAEMFILE == (errno = WSAGetLastError()))
+	    errno = EMFILE;
+	return -1;
+    }
+    else
+	return _open_osfhandle(result, 0);
+}
+
+inline
+int bind(int s, struct sockaddr * n, int l)
+{
+    if (::bind(_get_osfhandle(s),n,l) == SOCKET_ERROR) {
+	errno = WSAGetLastError();
+	return -1;
+    }
+    else
+	return 0;
+}
+
+inline
+int connect(int s, const struct sockaddr * n, int l)
+{
+    if (::connect(_get_osfhandle(s),n,l) == SOCKET_ERROR) {
+	if (WSAEMFILE == (errno = WSAGetLastError()))
+	    errno = EMFILE;
+	return -1;
+    }
+    else
+	return 0;
+}
+
+inline 
+struct hostent * gethostbyname (const char *n)
+{
+    HOSTENT FAR * result; 
+    if ((result = ::gethostbyname(n)) == NULL)
+	errno = WSAGetLastError();
+    return result;
+}
+#define gethostbyname(n) Squid::gethostbyname(n)
+
+inline
+SERVENT FAR* getservbyname (const char * n, const char * p)
+{
+    SERVENT FAR * result;
+    if ((result = ::getservbyname(n, p)) == NULL)
+	errno = WSAGetLastError();
+    return result;
+}
+#define getservbyname(n,p) Squid::getservbyname(n,p)
+
+inline
+HOSTENT FAR * gethostbyaddr(const char * a, int l, int t)
+{
+    HOSTENT FAR * result;
+    if ((result = ::gethostbyaddr(a, l, t)) == NULL)
+	errno = WSAGetLastError();
+    return result;
+}
+#define gethostbyaddr(a,l,t) Squid::gethostbyaddr(a,l,t)
+
+inline
+int getsockname(int s, struct sockaddr * n, int * l)
+{
+    if ((::getsockname(_get_osfhandle(s), n, l)) == SOCKET_ERROR) {
+	errno = WSAGetLastError();
+	return -1;
+    }
+    else
+	return 0;
+}
+
+inline
+int gethostname(char * n, size_t l)
+{
+    if ((::gethostname(n, l)) == SOCKET_ERROR) {
+	errno = WSAGetLastError();
+	return -1;
+    }
+    else
+	return 0;
+}
+#define gethostname(n,l) Squid::gethostname(n,l)
+
+inline
+int getsockopt(int s, int l, int o, void * v, int * n)
+{
+    Sleep(1);
+    if ((::getsockopt(_get_osfhandle(s), l, o,(char *) v, n)) == SOCKET_ERROR) {
+	errno = WSAGetLastError();
+	return -1;
+    }
+    else
+	return 0;
+}
+
+/* Simple ioctl() emulation */
+inline
+int ioctl(int s, int c, void * a)
+{
+    if ((::ioctlsocket(_get_osfhandle(s), c, (u_long FAR *)a)) == SOCKET_ERROR) {
+	errno = WSAGetLastError();
+	return -1;
+    }
+    else
+	return 0;
+}
+
+inline
+int ioctlsocket(int s, long c, u_long FAR * a)
+{
+    if ((::ioctlsocket(_get_osfhandle(s), c, a)) == SOCKET_ERROR) {
+	errno = WSAGetLastError();
+	return -1;
+    }
+    else
+	return 0;
+}
+
+inline
+int listen(int s, int b)
+{
+    if (::listen(_get_osfhandle(s), b) == SOCKET_ERROR) {
+	if (WSAEMFILE == (errno = WSAGetLastError()))
+	    errno = EMFILE;
+	return -1;
+    }
+    else
+	return 0;
+}
+#define listen(s,b) Squid::listen(s,b)
+
+inline
+int recv(int s, void * b, size_t l, int f)
+{
+    int result;
+    if ((result = ::recv(_get_osfhandle(s), (char *)b, l, f)) == SOCKET_ERROR) {
+	errno = WSAGetLastError();
+        return -1;
+    }
+    else
+        return result;
+}
+
+inline
+int recvfrom(int s, void * b, size_t l, int f, struct sockaddr * fr, int * fl)
+{
+    int result;
+    if ((result = ::recvfrom(_get_osfhandle(s), (char *)b, l, f, fr, fl)) == SOCKET_ERROR) {
+	errno = WSAGetLastError();
+	return -1;
+    }
+    else
+        return result;
+}
+
+inline
+int select(int n, fd_set * r, fd_set * w, fd_set * e, struct timeval * t)
+{
+    int result;
+    if ((result = ::select(n,r,w,e,t)) == SOCKET_ERROR) {
+	errno = WSAGetLastError();
+	return -1;
+    }
+    else
+        return result;
+}
+#define select(n,r,w,e,t) Squid::select(n,r,w,e,t)
+
+inline
+int send(int s, const void * b, size_t l, int f)
+{
+    int result;
+    if ((result = ::send(_get_osfhandle(s), (char *)b, l, f)) == SOCKET_ERROR) {
+	errno = WSAGetLastError();
+	return -1;
+    }
+    else
+        return result;
+}
+
+inline
+int sendto(int s, const void * b, size_t l, int f, const struct sockaddr * t, int tl)
+{
+    int result;
+    if ((result = ::sendto(_get_osfhandle(s), (char *)b, l, f, t, tl)) == SOCKET_ERROR) {
+	errno = WSAGetLastError();
+	return -1;
+    }
+    else
+        return result;
+}
+
+inline
+int setsockopt(SOCKET s, int l, int o, const char * v, int n)
+{
+    SOCKET socket;
+
+    socket = ((s == INVALID_SOCKET) ? s : (SOCKET)_get_osfhandle((int)s));
+
+    if (::setsockopt(socket, l, o, v, n) == SOCKET_ERROR) {
+        errno = WSAGetLastError();
+        return -1;
+    }
+    else
+        return 0;
+}
+#define setsockopt(s,l,o,v,n) Squid::setsockopt(s,l,o,v,n)
+
+inline
+int shutdown(int s, int h)
+{
+    if (::shutdown(_get_osfhandle(s),h) == SOCKET_ERROR) {
+	errno = WSAGetLastError();
+	return -1;
+    }
+    else
+	return 0;
+}
+
+inline
+int socket(int f, int t, int p)
+{
+    SOCKET result;
+    if ((result = ::socket(f, t, p)) == INVALID_SOCKET) {
+	if (WSAEMFILE == (errno = WSAGetLastError()))
+	    errno = EMFILE;
+	return -1;
+    }
+    else
+	return _open_osfhandle(result, 0);
+}
+#define socket(f,t,p) Squid::socket(f,t,p)
+
+inline
+int WSAAsyncSelect(int s, HWND h, unsigned int w, long e)
+{
+    if (::WSAAsyncSelect(_get_osfhandle(s), h, w, e) == SOCKET_ERROR) {
+	errno = WSAGetLastError();
+	return -1;
+    }
+    else
+        return 0;
+}
+
+#undef WSADuplicateSocket
+inline
+int WSADuplicateSocket(int s, DWORD n, LPWSAPROTOCOL_INFO l)
+{
+#ifdef UNICODE
+    if (::WSADuplicateSocketW(_get_osfhandle(s), n, l) == SOCKET_ERROR) {
+#else
+    if (::WSADuplicateSocketA(_get_osfhandle(s), n, l) == SOCKET_ERROR) {
+#endif
+	errno = WSAGetLastError();
+	return -1;
+    }
+    else
+        return 0;
+}
+
+#undef WSASocket
+inline
+int WSASocket(int a, int t, int p, LPWSAPROTOCOL_INFO i, GROUP g, DWORD f)
+{
+    SOCKET result;
+#ifdef UNICODE
+    if ((result = ::WSASocketW(a, t, p, i, g, f)) == INVALID_SOCKET) {
+#else
+    if ((result = ::WSASocketA(a, t, p, i, g, f)) == INVALID_SOCKET) {
+#endif
+	if (WSAEMFILE == (errno = WSAGetLastError()))
+	    errno = EMFILE;
+	return -1;
+    }
+    else
+	return _open_osfhandle(result, 0);
+}
+
+} /* namespace Squid */
+
+#else /* #ifdef __cplusplus */
 #define connect(s,n,l) \
 	(SOCKET_ERROR == connect(_get_osfhandle(s),n,l) ? \
 	(WSAEMFILE == (errno = WSAGetLastError()) ? errno = EMFILE : -1, -1) : 0)
-#define listen(s,b) \
-	(SOCKET_ERROR == listen(_get_osfhandle(s),b) ? \
-	(WSAEMFILE == (errno = WSAGetLastError()) ? errno = EMFILE : -1, -1) : 0)
-#define shutdown(s,h) \
-	(SOCKET_ERROR == shutdown(_get_osfhandle(s),h) ? \
+#define gethostbyname(n) \
+	(NULL == ((HOSTENT FAR*)(ws32_result = (int)gethostbyname(n))) ? \
+	(errno = WSAGetLastError()), (HOSTENT FAR*)NULL : (HOSTENT FAR*)ws32_result)
+#define gethostname(n,l) \
+	(SOCKET_ERROR == gethostname(n,l) ? \
 	(errno = WSAGetLastError()), -1 : 0)
-#define select(n,r,w,e,t) \
-	(SOCKET_ERROR == (ws32_result = select(n,r,w,e,t)) ? \
-	(errno = WSAGetLastError()), -1 : ws32_result)
 #define recv(s,b,l,f) \
 	(SOCKET_ERROR == (ws32_result = recv(_get_osfhandle(s),b,l,f)) ? \
-        (errno = WSAGetLastError()), -1 : ws32_result)
-#define recvfrom(s,b,l,f,fr,frl) \
-	(SOCKET_ERROR == (ws32_result = recvfrom(_get_osfhandle(s),b,l,f,fr,frl)) ? \
-	(errno = WSAGetLastError()), -1 : ws32_result)
-#define send(s,b,l,f) \
-	(SOCKET_ERROR == (ws32_result = send(_get_osfhandle(s),b,l,f)) ? \
 	(errno = WSAGetLastError()), -1 : ws32_result)
 #define sendto(s,b,l,f,t,tl) \
 	(SOCKET_ERROR == (ws32_result = sendto(_get_osfhandle(s),b,l,f,t,tl)) ? \
 	(errno = WSAGetLastError()), -1 : ws32_result)
-#define getsockname(s,n,l) \
-	(SOCKET_ERROR == getsockname(_get_osfhandle(s),n,l) ? \
-	(errno = WSAGetLastError()), -1 : 0)
-#define getsockopt(s,l,o,v,n) \
-	(Sleep(1), SOCKET_ERROR == getsockopt(_get_osfhandle(s),l,o,(char*)v,n) ? \
-	(errno = WSAGetLastError()), -1 : 0)
-#define setsockopt(s,l,o,v,n) \
-	(SOCKET_ERROR == setsockopt(_get_osfhandle(s),l,o,v,n) ? \
-	(errno = WSAGetLastError()), -1 : 0)
-#define ioctlsocket(s,c,a) \
-	(SOCKET_ERROR == ioctlsocket(_get_osfhandle(s),c,a) ? \
-	(errno = WSAGetLastError()), -1 : 0)
-#define gethostname(n,l) \
-	(SOCKET_ERROR == gethostname(n,l) ? \
-	(errno = WSAGetLastError()), -1 : 0)
-#define gethostbyname(n) \
-	(NULL == ((HOSTENT FAR*)(ws32_result = (int)gethostbyname(n))) ? \
-	(errno = WSAGetLastError()), NULL : (HOSTENT FAR*)ws32_result)
-#define getservbyname(n,p) \
-	(NULL == ((SERVENT FAR*)(ws32_result = (int)getservbyname(n,p))) ? \
-	(errno = WSAGetLastError()), NULL : (SERVENT FAR*)ws32_result)
-#define gethostbyaddr(a,l,t) \
-	(NULL == ((HOSTENT FAR*)(ws32_result = (int)gethostbyaddr(a,l,t))) ? \
-	(errno = WSAGetLastError()), NULL : (HOSTENT FAR*)ws32_result)
-#undef WSASocket
-#ifdef UNICODE
-#define WSASocket(a,t,p,i,g,f) \
-	(INVALID_SOCKET == ((SOCKET)(ws32_result = (int)WSASocketW(a,t,p,i,g,f))) ? \
+#define select(n,r,w,e,t) \
+	(SOCKET_ERROR == (ws32_result = select(n,r,w,e,t)) ? \
+	(errno = WSAGetLastError()), -1 : ws32_result)
+#define socket(f,t,p) \
+	(INVALID_SOCKET == ((SOCKET)(ws32_result = (int)socket(f,t,p))) ? \
 	((WSAEMFILE == (errno = WSAGetLastError()) ? errno = EMFILE : -1), -1) : \
 	(SOCKET)_open_osfhandle(ws32_result,0))
-#else
-#define WSASocket(a,t,p,i,g,f) \
-	(INVALID_SOCKET == ((SOCKET)(ws32_result = (int)WSASocketA(a,t,p,i,g,f))) ? \
-	((WSAEMFILE == (errno = WSAGetLastError()) ? errno = EMFILE : -1), -1) : \
-	(SOCKET)_open_osfhandle(ws32_result,0))
-#endif /* !UNICODE */
-#undef WSADuplicateSocket
-#ifdef UNICODE
-#define WSADuplicateSocket(s,n,l) \
-	(SOCKET_ERROR == WSADuplicateSocketW(_get_osfhandle(s),n,l) ? \
-	(errno = WSAGetLastError()), -1 : 0)
-#else
-#define WSADuplicateSocket(s,n,l) \
-	(SOCKET_ERROR == WSADuplicateSocketA(_get_osfhandle(s),n,l) ? \
-	(errno = WSAGetLastError()), -1 : 0)
-#endif /* !UNICODE */
-
-#if defined(UTIL_C)
-#define read       _read
-#define write      _write
-#else
-extern THREADLOCAL int _so_err;
-extern THREADLOCAL int _so_err_siz;
-#define read(fd,buf,siz) \
-	(_so_err_siz = sizeof(_so_err), \
-	getsockopt((fd),SOL_SOCKET,SO_ERROR,&_so_err,&_so_err_siz) \
-	== 0 ? recv((fd),(buf),(siz),0) : _read((fd),(buf),(siz)))
-#define write(fd,buf,siz) \
-	(_so_err_siz = sizeof(_so_err), \
-	getsockopt((fd),SOL_SOCKET,SO_ERROR,&_so_err,&_so_err_siz) \
-	== 0 ? send((fd),(buf),(siz),0) : _write((fd),(buf),(siz)))
-#endif
-
-#if defined(COMM_C) || defined(TOOLS_C)
-#define close WIN32_Close_FD_Socket
-#else
-#define close _close
-#endif
+#define write      _write /* Needed in util.c */
+#define open       _open /* Needed in win32lib.c */
+#endif /* #ifdef __cplusplus */
 
 #define	RUSAGE_SELF	0		/* calling process */
 #define	RUSAGE_CHILDREN	-1		/* terminated child processes */
@@ -437,3 +725,5 @@ struct rusage {
 	long ru_nvcsw;			/* voluntary context switches */
 	long ru_nivcsw;			/* involuntary context switches */
 };
+
+#undef ACL

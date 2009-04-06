@@ -1,6 +1,6 @@
 
 /*
- * $Id: defines.h,v 1.122.2.1 2007/02/03 22:58:20 hno Exp $
+ * $Id: defines.h,v 1.122 2007/08/13 17:20:51 hno Exp $
  *
  *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/
@@ -41,25 +41,6 @@
 #define FALSE 0
 #endif
 
-/* Define load weights for cache_dir types */
-#define MAX_LOAD_VALUE 1000
-
-#define COSS_LOAD_BASE 0
-#define AUFS_LOAD_BASE 100
-#define DISKD_LOAD_BASE 100
-#define UFS_LOAD_BASE 500
-
-#define COSS_LOAD_STRIPE_WEIGHT (900 - COSS_LOAD_BASE)
-#define COSS_LOAD_QUEUE_WEIGHT (100 - COSS_LOAD_BASE)
-#if COSS_LOAD_QUEUE_WEIGHT < 0
-#undef COSS_LOAD_QUEUE_WEIGHT
-#define COSS_LOAD_QUEUE_WEIGHT 0
-#endif
-
-#define AUFS_LOAD_QUEUE_WEIGHT (MAX_LOAD_VALUE - AUFS_LOAD_BASE)
-
-#define DISKD_LOAD_QUEUE_WEIGHT (MAX_LOAD_VALUE - DISKD_LOAD_BASE)
-
 #define ACL_NAME_SZ 32
 #define BROWSERNAMELEN 128
 
@@ -75,16 +56,6 @@
 
 #define MAXHTTPPORTS			128
 
-#define COMM_OK		  (0)
-#define COMM_ERROR	 (-1)
-#define COMM_NOMESSAGE	 (-3)
-#define COMM_TIMEOUT	 (-4)
-#define COMM_SHUTDOWN	 (-5)
-#define COMM_INPROGRESS  (-6)
-#define COMM_ERR_CONNECT (-7)
-#define COMM_ERR_DNS     (-8)
-#define COMM_ERR_CLOSING (-9)
-
 /* Select types. */
 #define COMM_SELECT_READ   (0x1)
 #define COMM_SELECT_WRITE  (0x2)
@@ -94,10 +65,10 @@
 #define COMM_NOCLOEXEC		0x02
 #define COMM_REUSEADDR		0x04
 
-#define do_debug(SECTION, LEVEL) \
-	((_db_level = (LEVEL)) <= debugLevels[SECTION])
+#include "Debug.h"
+#define do_debug(SECTION, LEVEL) ((Debug::level = (LEVEL)) > Debug::Levels[SECTION])
 #define debug(SECTION, LEVEL) \
-        !do_debug(SECTION, LEVEL) ? (void) 0 : _db_print
+        do_debug(SECTION, LEVEL) ? (void) 0 : _db_print
 
 #define safe_free(x)	if (x) { xxfree(x); x = NULL; }
 
@@ -167,6 +138,7 @@
 #define LOG_DISABLE 0
 
 #define SM_PAGE_SIZE 4096
+#define MAX_CLIENT_BUF_SZ 4096
 
 #define EBIT_SET(flag, bit) 	((void)((flag) |= ((1L<<(bit)))))
 #define EBIT_CLR(flag, bit) 	((void)((flag) &= ~((1L<<(bit)))))
@@ -177,7 +149,7 @@
 #define CBIT_BIN(mask, bit)     (mask)[(bit)>>3]
 #define CBIT_SET(mask, bit) 	((void)(CBIT_BIN(mask, bit) |= CBIT_BIT(bit)))
 #define CBIT_CLR(mask, bit) 	((void)(CBIT_BIN(mask, bit) &= ~CBIT_BIT(bit)))
-#define CBIT_TEST(mask, bit) 	((CBIT_BIN(mask, bit) & CBIT_BIT(bit)) != 0)
+#define CBIT_TEST(mask, bit) 	(CBIT_BIN(mask, bit) & CBIT_BIT(bit))
 
 #define MAX_FILES_PER_DIR (1<<20)
 
@@ -186,6 +158,7 @@
 
 #define PEER_MAX_ADDRESSES 10
 #define RTT_AV_FACTOR      50
+#define RTT_BACKGROUND_AV_FACTOR      25	/* Background pings need a smaller factor since they are sent less frequently */
 
 #define PEER_DEAD 0
 #define PEER_ALIVE 1
@@ -216,21 +189,11 @@
 
 #if HAVE_SOCKETPAIR && defined (AF_UNIX)
 #define IPC_STREAM IPC_UNIX_STREAM
-#else
-#define IPC_STREAM IPC_TCP_SOCKET
-#endif
-
-/*
- * Do NOT use IPC_UNIX_DGRAM here because you can't
- * send() more than 4096 bytes on a socketpair() socket
- * at least on FreeBSD
- */
-#if HAVE_SOCKETPAIR && defined (AF_UNIX) && SUPPORTS_LARGE_AF_UNIX_DGRAM
 #define IPC_DGRAM IPC_UNIX_DGRAM
 #else
+#define IPC_STREAM IPC_TCP_SOCKET
 #define IPC_DGRAM IPC_UDP_SOCKET
 #endif
-
 
 #define STORE_META_KEY STORE_META_KEY_MD5
 
@@ -239,11 +202,8 @@
 #define SwapMetaType(x) (char)x[0]
 #define SwapMetaSize(x) &x[sizeof(char)]
 #define SwapMetaData(x) &x[STORE_META_TLD_START]
-#define STORE_HDR_METASIZE (4*sizeof(time_t)+2*sizeof(u_short)+sizeof(squid_file_sz))
+#define STORE_HDR_METASIZE (4*sizeof(time_t)+2*sizeof(u_short)+sizeof(uint64_t))
 #define STORE_HDR_METASIZE_OLD (4*sizeof(time_t)+2*sizeof(u_short)+sizeof(size_t))
-
-#define STORE_ENTRY_WITH_MEMOBJ		1
-#define STORE_ENTRY_WITHOUT_MEMOBJ	0
 
 #define PINGER_PAYLOAD_SZ 8192
 
@@ -262,35 +222,34 @@
 #define DEFAULT_SQUID_ERROR_DIR "/usr/local/squid/etc/errors"
 #endif
 
-/* gb_type operations */
-#define gb_flush_limit (0x3FFFFFFF)
-#define gb_inc(gb, delta) { if ((gb)->bytes > gb_flush_limit || delta > gb_flush_limit) gb_flush(gb); (gb)->bytes += delta; (gb)->count++; }
-
-/* iteration for HttpHdrRange */
-#define HttpHdrRangeInitPos (-1)
-
-/* use this and only this to initialize HttpHeaderPos */
-#define HttpHeaderInitPos (-1)
-
 /* handy to determine the #elements in a static array */
 #define countof(arr) (sizeof(arr)/sizeof(*arr))
-
-/* to initialize static variables (see also MemBufNull) */
-#define MemBufNULL { NULL, 0, 0, 0, 0 }
 
 /*
  * Max number of ICP messages to receive per call to icpHandleUdp
  */
+#ifdef _SQUID_MSWIN_
+#define INCOMING_ICP_MAX 1
+#else
 #define INCOMING_ICP_MAX 15
+#endif
 /*
  * Max number of DNS messages to receive per call to DNS read handler
  */
+#ifdef _SQUID_MSWIN_
+#define INCOMING_DNS_MAX 1
+#else
 #define INCOMING_DNS_MAX 15
+#endif
 /*
  * Max number of HTTP connections to accept per call to httpAccept
  * and PER HTTP PORT
  */
+#ifdef _SQUID_MSWIN_
+#define INCOMING_HTTP_MAX 1
+#else
 #define INCOMING_HTTP_MAX 10
+#endif
 #define INCOMING_TOTAL_MAX (INCOMING_ICP_MAX+INCOMING_HTTP_MAX)
 
 /*
@@ -298,8 +257,6 @@
  * peer as DEAD
  */
 #define PEER_TCP_MAGIC_COUNT 10
-
-#define CLIENT_SOCK_SZ 4096
 
 #define URI_WHITESPACE_STRIP 0
 #define URI_WHITESPACE_ALLOW 1
@@ -315,25 +272,25 @@
 #endif
 #endif
 
-/* cbdata macros */
-#define cbdataAlloc(type) ((type *)cbdataInternalAlloc(CBDATA_##type))
-#define cbdataFree(var) (var = (var != NULL ? cbdataInternalFree(var): NULL))
-#define CBDATA_TYPE(type)	static cbdata_type CBDATA_##type = 0
-#define CBDATA_GLOBAL_TYPE(type)	cbdata_type CBDATA_##type
-#define CBDATA_INIT_TYPE(type)	(CBDATA_##type ? 0 : (CBDATA_##type = cbdataAddType(CBDATA_##type, #type, sizeof(type), NULL)))
-#define CBDATA_INIT_TYPE_FREECB(type, free_func)	(CBDATA_##type ? 0 : (CBDATA_##type = cbdataAddType(CBDATA_##type, #type, sizeof(type), free_func)))
-
 #ifndef O_TEXT
 #define O_TEXT 0
 #endif
 #ifndef O_BINARY
 #define O_BINARY 0
 #endif
-#ifndef O_NOATIME
-#define O_NOATIME 0
+
+/*
+ * Macro to find file access mode
+ */
+#ifdef O_ACCMODE
+#define FILE_MODE(x) ((x)&O_ACCMODE)
+#else
+#define FILE_MODE(x) ((x)&(O_RDONLY|O_WRONLY|O_RDWR))
 #endif
 
-/* Windows Port */
+#define	HTTP_REQBUF_SZ	4096
+
+/* CygWin & Windows NT Port */
 #ifdef _SQUID_WIN32_
 #define _WIN_SQUID_SERVICE_CONTROL_STOP SERVICE_CONTROL_STOP
 #define _WIN_SQUID_SERVICE_CONTROL_SHUTDOWN SERVICE_CONTROL_SHUTDOWN
@@ -347,21 +304,5 @@
 #define _WIN_SQUID_RUN_MODE_INTERACTIVE		0
 #define _WIN_SQUID_RUN_MODE_SERVICE		1
 #endif
-
-/*
- * Macro to find file access mode
- */
-#ifdef O_ACCMODE
-#define FILE_MODE(x) ((x)&O_ACCMODE)
-#else
-#define FILE_MODE(x) ((x)&(O_RDONLY|O_WRONLY|O_RDWR))
-#endif
-
-/* swap_filen is 25 bits, signed */
-#define FILEMAP_MAX_SIZE (1<<24)
-#define FILEMAP_MAX (FILEMAP_MAX_SIZE - 65536)
-
-#define	DLINK_ISEMPTY(n)	( (n).head == NULL )
-#define	DLINK_HEAD(n)		( (n).head->data )
 
 #endif /* SQUID_DEFINES_H */

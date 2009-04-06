@@ -1,6 +1,6 @@
 
 /*
- * $Id: enums.h,v 1.237.2.3 2007/03/03 18:34:13 hno Exp $
+ * $Id: enums.h,v 1.258 2007/08/13 17:20:51 hno Exp $
  *
  *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/
@@ -38,20 +38,20 @@ typedef enum {
     LOG_TAG_NONE,
     LOG_TCP_HIT,
     LOG_TCP_MISS,
-    LOG_TCP_REFRESH_HIT,
-    LOG_TCP_REFRESH_FAIL_HIT,
-    LOG_TCP_REFRESH_MISS,
+    LOG_TCP_REFRESH_UNMODIFIED, // refresh from origin revalidated existing entry
+    LOG_TCP_REFRESH_FAIL,       // refresh from origin failed
+    LOG_TCP_REFRESH_MODIFIED,   // refresh from origin replaced existing entry
     LOG_TCP_CLIENT_REFRESH_MISS,
     LOG_TCP_IMS_HIT,
     LOG_TCP_SWAPFAIL_MISS,
     LOG_TCP_NEGATIVE_HIT,
     LOG_TCP_MEM_HIT,
     LOG_TCP_DENIED,
+    LOG_TCP_DENIED_REPLY,
     LOG_TCP_OFFLINE_HIT,
 #if LOG_TCP_REDIRECTS
     LOG_TCP_REDIRECT,
 #endif
-    LOG_TCP_STALE_HIT,
     LOG_UDP_HIT,
     LOG_UDP_MISS,
     LOG_UDP_DENIED,
@@ -94,73 +94,13 @@ typedef enum {
     ERR_ONLY_IF_CACHED_MISS,	/* failure to satisfy only-if-cached request */
     ERR_TOO_BIG,
     TCP_RESET,
+    ERR_ESI,                    /* Failure to perform ESI processing */
     ERR_INVALID_RESP,
+    ERR_ICAP_FAILURE,
     ERR_MAX
 } err_type;
 
-typedef enum {
-    ACL_NONE,
-    ACL_SRC_IP,
-    ACL_DST_IP,
-    ACL_MY_IP,
-    ACL_SRC_DOMAIN,
-    ACL_DST_DOMAIN,
-    ACL_SRC_DOM_REGEX,
-    ACL_DST_DOM_REGEX,
-    ACL_TIME,
-    ACL_URLPATH_REGEX,
-    ACL_URL_REGEX,
-    ACL_URL_PORT,
-    ACL_MY_PORT,
-#if USE_IDENT
-    ACL_IDENT,
-    ACL_IDENT_REGEX,
-#endif
-    ACL_TYPE,
-    ACL_PROTO,
-    ACL_METHOD,
-    ACL_BROWSER,
-    ACL_REFERER_REGEX,
-    ACL_PROXY_AUTH,
-    ACL_PROXY_AUTH_REGEX,
-    ACL_SRC_ASN,
-    ACL_DST_ASN,
-#if USE_ARP_ACL
-    ACL_SRC_ARP,
-#endif
-#if SQUID_SNMP
-    ACL_SNMP_COMMUNITY,
-#endif
-#if SRC_RTT_NOT_YET_FINISHED
-    ACL_NETDB_SRC_RTT,
-#endif
-    ACL_MAXCONN,
-    ACL_REQ_MIME_TYPE,
-    ACL_REP_MIME_TYPE,
-    ACL_REP_HEADER,
-    ACL_REQ_HEADER,
-    ACL_MAX_USER_IP,
-    ACL_EXTERNAL,
-    ACL_URLLOGIN,
-#if USE_SSL
-    ACL_USER_CERT,
-    ACL_CA_CERT,
-#endif
-    ACL_URLGROUP,
-    ACL_EXTUSER,
-    ACL_EXTUSER_REGEX,
-    ACL_ENUM_MAX
-} squid_acl;
-
-typedef enum {
-    ACL_LOOKUP_NONE,
-    ACL_LOOKUP_NEEDED,
-    ACL_LOOKUP_PENDING,
-    ACL_LOOKUP_DONE,
-    ACL_PROXY_AUTH_NEEDED
-} acl_lookup_state;
-
-enum {
+enum fd_type {
     FD_NONE,
     FD_LOG,
     FD_FILE,
@@ -187,86 +127,9 @@ typedef enum {
     LOOKUP_MISS
 } lookup_t;
 
-/* recognized or "known" header fields; @?@ add more! */
 typedef enum {
-    HDR_UNKNOWN = -1,
-    HDR_ACCEPT = 0,
-    HDR_ACCEPT_CHARSET,
-    HDR_ACCEPT_ENCODING,
-    HDR_ACCEPT_LANGUAGE,
-    HDR_ACCEPT_RANGES,
-    HDR_AGE,
-    HDR_ALLOW,
-    HDR_AUTHORIZATION,
-    HDR_CACHE_CONTROL,
-    HDR_CONNECTION,
-    HDR_CONTENT_BASE,
-    HDR_CONTENT_DISPOSITION,
-    HDR_CONTENT_ENCODING,
-    HDR_CONTENT_LANGUAGE,
-    HDR_CONTENT_LENGTH,
-    HDR_CONTENT_LOCATION,
-    HDR_CONTENT_MD5,
-    HDR_CONTENT_RANGE,
-    HDR_CONTENT_TYPE,
-    HDR_TE,
-    HDR_TRANSFER_ENCODING,
-    HDR_TRAILER,
-    HDR_COOKIE,
-    HDR_DATE,
-    HDR_ETAG,
-    HDR_EXPIRES,
-    HDR_FROM,
-    HDR_HOST,
-    HDR_IF_MATCH,
-    HDR_IF_MODIFIED_SINCE,
-    HDR_IF_NONE_MATCH,
-    HDR_IF_RANGE,
-    HDR_LAST_MODIFIED,
-    HDR_LINK,
-    HDR_LOCATION,
-    HDR_MAX_FORWARDS,
-    HDR_MIME_VERSION,
-    HDR_PRAGMA,
-    HDR_PROXY_AUTHENTICATE,
-    HDR_PROXY_AUTHENTICATION_INFO,
-    HDR_PROXY_AUTHORIZATION,
-    HDR_PROXY_CONNECTION,
-    HDR_PUBLIC,
-    HDR_RANGE,
-    HDR_REQUEST_RANGE,		/* some clients use this, sigh */
-    HDR_REFERER,
-    HDR_RETRY_AFTER,
-    HDR_SERVER,
-    HDR_SET_COOKIE,
-    HDR_UPGRADE,
-    HDR_USER_AGENT,
-    HDR_VARY,
-    HDR_VIA,
-    HDR_EXPECT,
-    HDR_WARNING,
-    HDR_WWW_AUTHENTICATE,
-    HDR_AUTHENTICATION_INFO,
-    HDR_X_CACHE,
-    HDR_X_CACHE_LOOKUP,		/* tmp hack, remove later */
-    HDR_X_FORWARDED_FOR,
-    HDR_X_REQUEST_URI,		/* appended if ADD_X_REQUEST_URI is #defined */
-    HDR_X_SQUID_ERROR,
-    HDR_NEGOTIATE,
-#if X_ACCELERATOR_VARY
-    HDR_X_ACCELERATOR_VARY,
-#endif
-    HDR_X_ERROR_URL,		/* errormap, requested URL */
-    HDR_X_ERROR_STATUS,		/* errormap, received HTTP status line */
-    HDR_FRONT_END_HTTPS,
-    HDR_PROXY_SUPPORT,
-    HDR_KEEP_ALIVE,
-    HDR_OTHER,
-    HDR_ENUM_END
-} http_hdr_type;
-
-typedef enum {
-    CC_PUBLIC,
+    CC_BADHDR = -1,
+    CC_PUBLIC = 0,
     CC_PRIVATE,
     CC_NO_CACHE,
     CC_NO_STORE,
@@ -281,29 +144,14 @@ typedef enum {
     CC_ENUM_END
 } http_hdr_cc_type;
 
-/* possible types for http header fields */
 typedef enum {
-    ftInvalid = HDR_ENUM_END,	/* to catch nasty errors with hdr_id<->fld_type clashes */
-    ftInt,
-    ftStr,
-    ftDate_1123,
-    ftETag,
-    ftPCc,
-    ftPContRange,
-    ftPRange,
-    ftDate_1123_or_ETag,
-    ftSize
-} field_type;
-
-/* possible owners of http header */
-typedef enum {
-    hoNone,
-#if USE_HTCP
-    hoHtcpReply,
-#endif
-    hoRequest,
-    hoReply
-} http_hdr_owner_type;
+    SC_NO_STORE,
+    SC_NO_STORE_REMOTE,
+    SC_MAX_AGE,
+    SC_CONTENT,
+    SC_OTHER,
+    SC_ENUM_END
+} http_hdr_sc_type;
 
 typedef enum {
     HIER_NONE,
@@ -328,9 +176,6 @@ typedef enum {
     CARP,
 #endif
     ANY_OLD_PARENT,
-    USERHASH_PARENT,
-    SOURCEHASH_PARENT,
-    PINNED,
     HIER_MAX
 } hier_code;
 
@@ -362,10 +207,10 @@ typedef enum {
     ICP_END
 } icp_opcode;
 
-enum {
+typedef enum _mem_status_t {
     NOT_IN_MEMORY,
     IN_MEMORY
-};
+} mem_status_t;
 
 enum {
     PING_NONE,
@@ -389,62 +234,6 @@ typedef enum {
     STORE_MEM_CLIENT,
     STORE_DISK_CLIENT
 } store_client_t;
-
-enum {
-    METHOD_NONE,		/* 000 */
-    METHOD_GET,			/* 001 */
-    METHOD_POST,		/* 010 */
-    METHOD_PUT,			/* 011 */
-    METHOD_HEAD,		/* 100 */
-    METHOD_CONNECT,		/* 101 */
-    METHOD_TRACE,		/* 110 */
-    METHOD_PURGE,		/* 111 */
-    METHOD_OPTIONS,
-    METHOD_DELETE,		/* RFC2616 section 9.7 */
-    METHOD_PROPFIND,
-    METHOD_PROPPATCH,
-    METHOD_MKCOL,
-    METHOD_COPY,
-    METHOD_MOVE,
-    METHOD_LOCK,
-    METHOD_UNLOCK,
-    METHOD_BMOVE,
-    METHOD_BDELETE,
-    METHOD_BPROPFIND,
-    METHOD_BPROPPATCH,
-    METHOD_BCOPY,
-    METHOD_SEARCH,
-    METHOD_SUBSCRIBE,
-    METHOD_UNSUBSCRIBE,
-    METHOD_POLL,
-    METHOD_REPORT,
-    METHOD_MKACTIVITY,
-    METHOD_CHECKOUT,
-    METHOD_MERGE,
-    /* Extension methods must be last, Add any new methods before this line */
-    METHOD_EXT00,
-    METHOD_EXT01,
-    METHOD_EXT02,
-    METHOD_EXT03,
-    METHOD_EXT04,
-    METHOD_EXT05,
-    METHOD_EXT06,
-    METHOD_EXT07,
-    METHOD_EXT08,
-    METHOD_EXT09,
-    METHOD_EXT10,
-    METHOD_EXT11,
-    METHOD_EXT12,
-    METHOD_EXT13,
-    METHOD_EXT14,
-    METHOD_EXT15,
-    METHOD_EXT16,
-    METHOD_EXT17,
-    METHOD_EXT18,
-    METHOD_EXT19,
-    METHOD_ENUM_END
-};
-typedef unsigned int method_t;
 
 typedef enum {
     PROTO_NONE,
@@ -500,6 +289,8 @@ typedef enum {
     HTTP_REQUEST_ENTITY_TOO_LARGE = 413,
     HTTP_REQUEST_URI_TOO_LARGE = 414,
     HTTP_UNSUPPORTED_MEDIA_TYPE = 415,
+    HTTP_REQUESTED_RANGE_NOT_SATISFIABLE = 416,
+    HTTP_EXPECTATION_FAILED = 417,
     HTTP_UNPROCESSABLE_ENTITY = 422,	/* RFC2518 section 10.3 */
     HTTP_LOCKED = 423,		/* RFC2518 section 10.4 */
     HTTP_FAILED_DEPENDENCY = 424,	/* RFC2518 section 10.5 */
@@ -533,10 +324,27 @@ enum {
     ENTRY_NEGCACHED,
     ENTRY_VALIDATED,
     ENTRY_BAD_LENGTH,
-    ENTRY_ABORTED,
-    ENTRY_DEFER_READ,
-    KEY_EARLY_PUBLIC
+    ENTRY_ABORTED
 };
+
+/*
+ * These are for client Streams. Each node in the stream can be queried for
+ * its status
+ */
+typedef enum {
+    STREAM_NONE,		/* No particular status */
+    STREAM_COMPLETE,		/* All data has been flushed, no more reads allowed */
+    /* an unpredicted end has occured, no more
+     * reads occured, but no need to tell 
+     * downstream that an error occured
+     */
+    STREAM_UNPLANNED_COMPLETE,
+    /* An error has occured in this node or an above one,
+     * and the node is not generating an error body / it's
+     * midstream
+     */
+    STREAM_FAILED
+} clientStream_status_t;
 
 typedef enum {
     ACCESS_DENIED,
@@ -559,6 +367,14 @@ typedef enum {
     AUTH_NEGOTIATE,
     AUTH_BROKEN			/* known type, but broken data */
 } auth_type_t;
+
+/* stateful helper callback response codes */
+typedef enum {
+    S_HELPER_UNKNOWN,
+    S_HELPER_RESERVE,
+    S_HELPER_RELEASE,
+    S_HELPER_DEFER
+} stateful_helper_callback_t;
 
 /* stateful helper reservation info */
 typedef enum {
@@ -585,22 +401,12 @@ typedef enum {
     MEM_16K_BUF,
     MEM_32K_BUF,
     MEM_64K_BUF,
-    MEM_ACL,
     MEM_ACL_DENY_INFO_LIST,
-    MEM_ACL_IP_DATA,
-    MEM_ACL_LIST,
     MEM_ACL_NAME_LIST,
-    MEM_ACL_REQUEST_TYPE,
-    MEM_AUTH_USER_T,
-    MEM_AUTH_USER_HASH,
-    MEM_ACL_PROXY_AUTH_MATCH,
-    MEM_ACL_USER_DATA,
-    MEM_ACL_TIME_DATA,
 #if USE_CACHE_DIGESTS
     MEM_CACHE_DIGEST,
 #endif
     MEM_CLIENT_INFO,
-    MEM_CLIENT_SOCK_BUF,
     MEM_LINK_LIST,
     MEM_DLINK_NODE,
     MEM_DONTFREE,
@@ -608,33 +414,15 @@ typedef enum {
     MEM_DWRITE_Q,
     MEM_FQDNCACHE_ENTRY,
     MEM_FWD_SERVER,
-    MEM_HELPER_REQUEST,
-    MEM_HELPER_STATEFUL_REQUEST,
     MEM_HTTP_HDR_CC,
     MEM_HTTP_HDR_CONTENT_RANGE,
-    MEM_HTTP_HDR_ENTRY,
-    MEM_HTTP_HDR_RANGE,
-    MEM_HTTP_HDR_RANGE_SPEC,
-    MEM_HTTP_REPLY,
-    MEM_INTLIST,
     MEM_IPCACHE_ENTRY,
     MEM_MD5_DIGEST,
-    MEM_MEMOBJECT,
-    MEM_MEM_NODE,
     MEM_NETDBENTRY,
     MEM_NET_DB_NAME,
     MEM_RELIST,
-    MEM_REQUEST_T,
-    MEM_STOREENTRY,
-    MEM_WORDLIST,
 #if !USE_DNSSERVERS
     MEM_IDNS_QUERY,
-#endif
-    MEM_EVENT,
-    MEM_TLV,
-    MEM_SWAP_LOG_DATA,
-#if USE_SSL
-    MEM_ACL_CERT_DATA,
 #endif
     MEM_MAX
 } mem_type;
@@ -652,8 +440,8 @@ enum {
     STORE_META_HITMETERING,	/* reserved for hit metering */
     STORE_META_VALID,
     STORE_META_VARY_HEADERS,	/* Stores Vary request headers */
-    STORE_META_STD_LFS,		/* standard metadata in lfs format */
-    STORE_META_OBJSIZE,		/* object size, if its known */
+    STORE_META_STD_LFS,         /* standard metadata in lfs format */
+    STORE_META_OBJSIZE,         /* object size, not impleemented, squid26 compatibility */
     STORE_META_END
 };
 
@@ -684,14 +472,14 @@ typedef enum {
 
 
 enum {
-    MEDIAN_HTTP,
-    MEDIAN_ICP_QUERY,
-    MEDIAN_DNS,
-    MEDIAN_HIT,
-    MEDIAN_MISS,
-    MEDIAN_NM,
-    MEDIAN_NH,
-    MEDIAN_ICP_REPLY
+    PCTILE_HTTP,
+    PCTILE_ICP_QUERY,
+    PCTILE_DNS,
+    PCTILE_HIT,
+    PCTILE_MISS,
+    PCTILE_NM,
+    PCTILE_NH,
+    PCTILE_ICP_REPLY
 };
 
 enum {
@@ -710,47 +498,35 @@ enum {
 };
 
 /*
- * cbdata types. similar to the MEM_* types above, but managed
- * in cbdata.c. A big difference is that these types are dynamically
- * allocated. This list is only a list of predefined types. Other types
- * are added runtime
- */
-typedef enum {
-    CBDATA_UNKNOWN = 0,
-    CBDATA_UNDEF = 0,
-    CBDATA_acl_access,
-    CBDATA_aclCheck_t,
-    CBDATA_clientHttpRequest,
-    CBDATA_ConnStateData,
-    CBDATA_ErrorState,
-    CBDATA_FwdState,
-    CBDATA_generic_cbdata,
-    CBDATA_helper,
-    CBDATA_helper_server,
-    CBDATA_statefulhelper,
-    CBDATA_helper_stateful_server,
-    CBDATA_HttpStateData,
-    CBDATA_peer,
-    CBDATA_ps_state,
-    CBDATA_RemovalPolicy,
-    CBDATA_RemovalPolicyWalker,
-    CBDATA_RemovalPurgeWalker,
-    CBDATA_store_client,
-    CBDATA_FIRST_CUSTOM_TYPE = 1000
-} cbdata_type;
-
-/*
  * Return codes from checkVary(request)
  */
 enum {
     VARY_NONE,
     VARY_MATCH,
     VARY_OTHER,
-    VARY_RESTART,
     VARY_CANCEL
 };
 
-/* Windows Port */
+/*
+ * Store digest state enum
+ */
+typedef enum {
+    DIGEST_READ_NONE,
+    DIGEST_READ_REPLY,
+    DIGEST_READ_HEADERS,
+    DIGEST_READ_CBLOCK,
+    DIGEST_READ_MASK,
+    DIGEST_READ_DONE
+} digest_read_state_t;
+
+/* Distinguish between Request and Reply (for header mangling) */
+enum {
+    ROR_REQUEST,
+    ROR_REPLY
+};
+
+
+/* CygWin & Windows NT Port */
 #ifdef _SQUID_WIN32_
 /*
  * Supported Windows OS types codes
@@ -770,21 +546,19 @@ enum {
 
 #endif
 
-/*
- * Special case pending filedescriptors. Set in fd_table[fd].read/write_pending
- */
 typedef enum {
-    COMM_PENDING_NORMAL,	/* No special processing required */
-    COMM_PENDING_WANTS_READ,	/* need to read, no matter what commSetSelect indicates */
-    COMM_PENDING_WANTS_WRITE,	/* need to write, no matter what commSetSelect indicates */
-    COMM_PENDING_NOW		/* needs to be called again, without needing to wait for readiness
-				 * for example when data is already buffered etc */
-} comm_pending;
+    CLF_UNKNOWN,
+    CLF_AUTO,
+    CLF_CUSTOM,
+    CLF_SQUID,
+    CLF_COMMON,
+    CLF_NONE
+} customlog_type;
 
-typedef enum {
-    ST_OP_NONE,
-    ST_OP_OPEN,
-    ST_OP_CREATE
-} store_op_t;
+enum {
+    DISABLE_PMTU_OFF,
+    DISABLE_PMTU_ALWAYS,
+    DISABLE_PMTU_TRANSPARENT
+};
 
 #endif /* SQUID_ENUMS_H */

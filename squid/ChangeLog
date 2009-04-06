@@ -1,3 +1,46 @@
+Changes to squid-3.0.STABLE1 (13 Dec 2007):
+
+	- Major rewrite translating the code to C++, originally based on
+	  Squid-2.5.STABLE1
+	- Internal client streams concept for content adaptation
+	- ICAP (Internet Content Adaptation Protocol) client support
+	- ESI (Edge Side Includes) support added
+	- Improved support for files larger than 2GB.
+	- And a lot more. Most features from Squid-2.6 is supported, but not
+	  all. See the release notes for details.
+
+Older ChangeLog follows. The sections relating to Squid-2.6 is not entirely
+authorative for this release and mirrored here for reference only.
+	
+	- CARP now plays well with the other peering algorithms,
+	  and support for CARP peerings is compiled by default. Can be
+	  disabled by --disable-carp
+	- Configuration file can be read from an external program
+	  or preprocessor. See squid.8 man page.
+	- http_port is now optional, allowing for SSL only operation
+	- Satellite and other high latency peering relations enhancements
+	  (Robert Cohren)
+	- Nuked num32 types, and made type detection more robust by the
+	  use of typedefs rather than #defines.
+	- the mailto links on Squid's ERR pages now contain data about the
+	  occurred error by default, so that the email will contain this data in
+	  its body. This feature can be disabled via the email_err_data directive.
+	  (Clemens Löser)
+	- COSS now uses a file called stripe and the path in squid.conf is the
+	  directory this is placed in. Additionally squid -z will create the
+	  COSS swapfile.
+	- WCCPv2 support, including mask assignment support
+	- HTCP support for access control and the CRL operation for
+	  purgeing of cache content
+	- ICAP related fixes
+	- Windows-related fixes, including Vista and Longhorn identification
+	- Client-side parsing and some string use optimisations
+	- Lots of off-by-one and memory leaks in corner cases have been fixed
+	  thanks to valgrind
+	- Improved high-resolution profiling
+	- Windows overlapped-IO and thread support added to the Async IO disk code
+	- Improvements for handling large DNS replies
+
 Changes to squid-2.6.STABLE15 (31 Aug 2007)
 
 	- The select() I/O loop got broken by the /dev/poll addition

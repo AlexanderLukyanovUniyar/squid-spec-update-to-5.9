@@ -18,6 +18,9 @@
 #if HAVE_LIMITS_H
 #include <limits.h>
 #endif
+#if !HAVE_INITGROUPS
+#include "initgroups.h"
+#endif
 
 int initgroups(const char *name, gid_t basegid)
 {
@@ -25,6 +28,7 @@ int initgroups(const char *name, gid_t basegid)
 #ifndef NGROUPS_MAX
 #define NGROUPS_MAX 16
 #endif
+
     gid_t groups[NGROUPS_MAX];
     struct group *g;
     int index = 0;
@@ -34,21 +38,26 @@ int initgroups(const char *name, gid_t basegid)
     groups[index++] = basegid;
 
     while (index < NGROUPS_MAX && ((g = getgrent()) != NULL)) {
-	if (g->gr_gid != basegid) {
-	    char **names;
+       if (g->gr_gid != basegid) {
+        char **names;
 
-	    for (names = g->gr_mem; *names != NULL; ++names) {
-		if (!strcmp(*names, name))
-		    groups[index++] = g->gr_gid;
-	    }
-	}
+        for (names = g->gr_mem; *names != NULL; ++names) {
+
+       if (!strcmp(*names, name))
+            groups[index++] = g->gr_gid;
+
+           }
+       }
     }
 
     endgrent();
 
     return setgroups(index, groups);
+
 #else
+
     return 0;
+
 #endif /* def HAVE_SETGROUPS */
 }
 

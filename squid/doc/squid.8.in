@@ -1,4 +1,4 @@
-.TH squid 8 2006-05-29 "@PACKAGE_STRING@"
+.TH squid 8 "@PACKAGE_STRING@"
 .\" Copyright and licensing information
 .\" goes here.
 .SH NAME
@@ -6,7 +6,7 @@ squid \- proxy caching server
 .SH SYNOPSIS
 .B squid
 [
-.B \-dhirsvzCDFNRVYX
+.B \-dhisrvzCDFNRVYX
 ] [
 .BI \-l " facility"
 ] [
@@ -66,11 +66,18 @@ the Squid FAQ and the documentation at the
 home page http://www.squid-cache.org
 .PP
 .SH OPTIONS
+.IP "-a port"
+Specify HTTP port number where Squid should listen for requests, in addition
+to any http_port specifications in squid.conf.
 .IP "-d level"
 Write debugging to stderr also.
 .IP "-f file"
 Use the given config-file instead of
-.I @DEFAULT_CONFIG_FILE@
+.IR @DEFAULT_CONFIG_FILE@ .
+If the file name starts with a ! or | then it is assumed to be an external
+command or command line. Can for example be used to pre-process the
+configuration before it is being read by Squid. To facilitate this Squid
+also understands the common #line notion to indicate the real source file.
 .IP -h
 Print help message.
 .IP -i
@@ -100,10 +107,10 @@ Do not catch fatal signals.
 Disable initial DNS tests.
 .IP -F
 Don't serve any requests until store is rebuilt.
-.IP -N
-No daemon mode.
 .IP "-O options"
 Set Windows Service Command line options in Registry.
+.IP -N
+No daemon mode.
 .IP -R
 Do not set REUSEADDR on port.
 .IP -X
@@ -139,7 +146,6 @@ Error page templates
 
 .SH SEE ALSO
 .BR cachemgr.cgi "(8), "
-.BR ncsa_auth "(8), "
 .BR pam_auth "(8), "
 .BR squid_ldap_auth "(8), "
 .BR squid_ldap_group "(8), "

@@ -1,11 +1,11 @@
 ## Process this file with automake to produce Makefile.in
 #
-# $Id: Makefile.am,v 1.20 2006/06/02 21:35:38 hno Exp $
+# $Id: Makefile.am,v 1.27 2006/05/11 01:36:57 hno Exp $
 #
 
-AUTOMAKE_OPTIONS = dist-bzip2 subdir-objects 1.5
-DIST_SUBDIRS	= lib snmplib scripts src icons errors contrib doc helpers tools
-SUBDIRS		= lib @makesnmplib@ scripts src icons errors doc helpers tools
+AUTOMAKE_OPTIONS = dist-bzip2 subdir-objects 1.5 foreign
+DIST_SUBDIRS	= lib snmplib scripts src icons errors contrib doc helpers test-suite tools
+SUBDIRS		= lib @makesnmplib@ scripts src icons errors doc helpers test-suite tools
 
 DISTCLEANFILES = include/stamp-h include/stamp-h[0-9]*
 DEFAULT_PINGER		= $(libexecdir)/`echo pinger | sed '$(transform);s/$$/$(EXEEXT)/'`
@@ -24,7 +24,7 @@ dist-hook:
 	@if [ -f $(top_srcdir)/RELEASENOTES.html ]; then \
 	  cp -p $(top_srcdir)/RELEASENOTES.html $(distdir)/RELEASENOTES.html; \
 	else \
-	  cp $(top_srcdir)/doc/release-notes/release-2.6.html $(distdir)/RELEASENOTES.html; \
+	  cp $(top_srcdir)/doc/release-notes/release-3.0.html $(distdir)/RELEASENOTES.html; \
 	fi
 
 EXTRA_DIST = \
@@ -42,6 +42,3 @@ EXTRA_DIST = \
 install-pinger:
 	chown root $(DEFAULT_PINGER) 
 	chmod 4711 $(DEFAULT_PINGER)
-
-distuninstallcheck_listfiles = \
-	find . -name squid.conf -prune -o -name cachemgr.conf -prune -type f -print

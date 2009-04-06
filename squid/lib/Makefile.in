@@ -15,7 +15,7 @@
 @SET_MAKE@
 
 #
-#  $Id: Makefile.in,v 1.88.2.2 2007/08/12 12:41:06 hno Exp $
+#  $Id: Makefile.in,v 1.150 2007/12/05 01:11:16 hno Exp $
 #
 
 srcdir = @srcdir@
@@ -40,6 +40,7 @@ PRE_UNINSTALL = :
 POST_UNINSTALL = :
 build_triplet = @build@
 host_triplet = @host@
+check_PROGRAMS = tests/testAll$(EXEEXT)
 subdir = lib
 DIST_COMMON = $(srcdir)/Makefile.am $(srcdir)/Makefile.in drand48.c \
 	inet_ntoa.c initgroups.c strerror.c tempnam.c
@@ -53,29 +54,27 @@ CONFIG_HEADER = $(top_builddir)/include/autoconf.h
 CONFIG_CLEAN_FILES =
 LIBRARIES = $(noinst_LIBRARIES)
 ARFLAGS = cru
-libdlmalloc_a_AR = $(AR) $(ARFLAGS)
-libdlmalloc_a_LIBADD =
-am_libdlmalloc_a_OBJECTS = dlmalloc.$(OBJEXT)
-libdlmalloc_a_OBJECTS = $(am_libdlmalloc_a_OBJECTS)
 libmiscutil_a_AR = $(AR) $(ARFLAGS)
-libmiscutil_a_DEPENDENCIES = @LIBOBJS@
-am__libmiscutil_a_SOURCES_DIST = Array.c base64.c getfullhostname.c \
+libmiscutil_a_DEPENDENCIES = libTrie/src/Trie.o libTrie/src/TrieNode.o \
+	@LIBOBJS@ $(am__empty)
+am__libmiscutil_a_SOURCES_DIST = MemPool.cc base64.c getfullhostname.c \
 	hash.c heap.c html_quote.c iso3307.c md5.c radix.c rfc1035.c \
-	rfc1123.c rfc1738.c rfc2617.c safe_inet_addr.c snprintf.c \
-	splay.c Stack.c strsep.c stub_memaccount.c util.c uudecode.c \
-	win32lib.c
-@NEED_OWN_MD5_TRUE@am__objects_1 = md5.$(OBJEXT)
-@NEED_OWN_SNPRINTF_TRUE@am__objects_2 = snprintf.$(OBJEXT)
-@NEED_OWN_STRSEP_TRUE@am__objects_3 = strsep.$(OBJEXT)
-@ENABLE_MINGW32SPECIFIC_TRUE@am__objects_4 = win32lib.$(OBJEXT)
-am_libmiscutil_a_OBJECTS = Array.$(OBJEXT) base64.$(OBJEXT) \
+	rfc1123.c rfc1738.c rfc2617.c safe_inet_addr.c Splay.cc \
+	strsep.c strtoll.c stub_memaccount.c util.c uudecode.c \
+	assert.c xusleep.c Profiler.c win32lib.c
+@NEED_OWN_STRSEP_TRUE@am__objects_1 = strsep.$(OBJEXT)
+@NEED_OWN_STRTOLL_TRUE@am__objects_2 = strtoll.$(OBJEXT)
+@ENABLE_XPROF_STATS_TRUE@am__objects_3 = Profiler.$(OBJEXT)
+@ENABLE_WIN32SPECIFIC_TRUE@am__objects_4 = win32lib.$(OBJEXT)
+am_libmiscutil_a_OBJECTS = MemPool.$(OBJEXT) base64.$(OBJEXT) \
 	getfullhostname.$(OBJEXT) hash.$(OBJEXT) heap.$(OBJEXT) \
-	html_quote.$(OBJEXT) iso3307.$(OBJEXT) $(am__objects_1) \
+	html_quote.$(OBJEXT) iso3307.$(OBJEXT) md5.$(OBJEXT) \
 	radix.$(OBJEXT) rfc1035.$(OBJEXT) rfc1123.$(OBJEXT) \
 	rfc1738.$(OBJEXT) rfc2617.$(OBJEXT) safe_inet_addr.$(OBJEXT) \
-	$(am__objects_2) splay.$(OBJEXT) Stack.$(OBJEXT) \
-	$(am__objects_3) stub_memaccount.$(OBJEXT) util.$(OBJEXT) \
-	uudecode.$(OBJEXT) $(am__objects_4)
+	Splay.$(OBJEXT) $(am__objects_1) $(am__objects_2) \
+	stub_memaccount.$(OBJEXT) util.$(OBJEXT) uudecode.$(OBJEXT) \
+	assert.$(OBJEXT) xusleep.$(OBJEXT) $(am__objects_3) \
+	$(am__objects_4)
 libmiscutil_a_OBJECTS = $(am_libmiscutil_a_OBJECTS)
 libntlmauth_a_AR = $(AR) $(ARFLAGS)
 libntlmauth_a_DEPENDENCIES = @LIBOBJS@
@@ -89,20 +88,46 @@ libsspwin32_a_AR = $(AR) $(ARFLAGS)
 libsspwin32_a_LIBADD =
 am_libsspwin32_a_OBJECTS = sspwin32.$(OBJEXT)
 libsspwin32_a_OBJECTS = $(am_libsspwin32_a_OBJECTS)
+am__tests_testAll_SOURCES_DIST = tests/testArray.cc tests/testMain.cc \
+	tests/testArray.h Profiler.c win32lib.c util.c assert.c
+am_tests_testAll_OBJECTS = testArray.$(OBJEXT) testMain.$(OBJEXT) \
+	$(am__objects_3) $(am__objects_4) util.$(OBJEXT) \
+	assert.$(OBJEXT)
+tests_testAll_OBJECTS = $(am_tests_testAll_OBJECTS)
+tests_testAll_DEPENDENCIES =
+am__dirstamp = $(am__leading_dot)dirstamp
 DEFAULT_INCLUDES = -I. -I$(srcdir) -I$(top_builddir)/include
 depcomp = $(SHELL) $(top_srcdir)/cfgaux/depcomp
 am__depfiles_maybe = depfiles
 COMPILE = $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) \
 	$(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS)
+LTCOMPILE = $(LIBTOOL) --tag=CC --mode=compile $(CC) $(DEFS) \
+	$(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) \
+	$(AM_CFLAGS) $(CFLAGS)
 CCLD = $(CC)
-LINK = $(CCLD) $(AM_CFLAGS) $(CFLAGS) $(AM_LDFLAGS) $(LDFLAGS) -o $@
-SOURCES = $(libdlmalloc_a_SOURCES) $(libmiscutil_a_SOURCES) \
+LINK = $(LIBTOOL) --tag=CC --mode=link $(CCLD) $(AM_CFLAGS) $(CFLAGS) \
+	$(AM_LDFLAGS) $(LDFLAGS) -o $@
+CXXCOMPILE = $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) \
+	$(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS)
+LTCXXCOMPILE = $(LIBTOOL) --tag=CXX --mode=compile $(CXX) $(DEFS) \
+	$(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) \
+	$(AM_CXXFLAGS) $(CXXFLAGS)
+CXXLD = $(CXX)
+CXXLINK = $(LIBTOOL) --tag=CXX --mode=link $(CXXLD) $(AM_CXXFLAGS) \
+	$(CXXFLAGS) $(AM_LDFLAGS) $(LDFLAGS) -o $@
+SOURCES = $(libmiscutil_a_SOURCES) $(EXTRA_libmiscutil_a_SOURCES) \
+	$(libntlmauth_a_SOURCES) $(libregex_a_SOURCES) \
+	$(libsspwin32_a_SOURCES) $(tests_testAll_SOURCES)
+DIST_SOURCES = $(am__libmiscutil_a_SOURCES_DIST) \
 	$(EXTRA_libmiscutil_a_SOURCES) $(libntlmauth_a_SOURCES) \
-	$(libregex_a_SOURCES) $(libsspwin32_a_SOURCES)
-DIST_SOURCES = $(libdlmalloc_a_SOURCES) \
-	$(am__libmiscutil_a_SOURCES_DIST) \
-	$(EXTRA_libmiscutil_a_SOURCES) $(libntlmauth_a_SOURCES) \
-	$(libregex_a_SOURCES) $(libsspwin32_a_SOURCES)
+	$(libregex_a_SOURCES) $(libsspwin32_a_SOURCES) \
+	$(am__tests_testAll_SOURCES_DIST)
+RECURSIVE_TARGETS = all-recursive check-recursive dvi-recursive \
+	html-recursive info-recursive install-data-recursive \
+	install-exec-recursive install-info-recursive \
+	install-recursive installcheck-recursive installdirs-recursive \
+	pdf-recursive ps-recursive uninstall-info-recursive \
+	uninstall-recursive
 ETAGS = etags
 CTAGS = ctags
 DISTFILES = $(DIST_COMMON) $(DIST_SOURCES) $(TEXINFOS) $(EXTRA_DIST)
@@ -114,6 +139,7 @@ AMTAR = @AMTAR@
 AR = @AR@
 AR_R = @AR_R@
 AUTH_LIBS = @AUTH_LIBS@
+AUTH_LINKOBJS = @AUTH_LINKOBJS@
 AUTH_MODULES = @AUTH_MODULES@
 AUTH_OBJS = @AUTH_OBJS@
 AUTOCONF = @AUTOCONF@
@@ -121,6 +147,7 @@ AUTOHEADER = @AUTOHEADER@
 AUTOMAKE = @AUTOMAKE@
 AWK = @AWK@
 BASIC_AUTH_HELPERS = @BASIC_AUTH_HELPERS@
+CACHE_EFFECTIVE_USER = @CACHE_EFFECTIVE_USER@
 CACHE_HTTP_PORT = @CACHE_HTTP_PORT@
 CACHE_ICP_PORT = @CACHE_ICP_PORT@
 CC = @CC@
@@ -129,19 +156,30 @@ CFLAGS = @CFLAGS@
 CGIEXT = @CGIEXT@
 CPP = @CPP@
 CPPFLAGS = @CPPFLAGS@
+CPPUNITCONFIG = @CPPUNITCONFIG@
 CRYPTLIB = @CRYPTLIB@
+CXX = @CXX@
+CXXCPP = @CXXCPP@
+CXXDEPMODE = @CXXDEPMODE@
+CXXFLAGS = @CXXFLAGS@
 CYGPATH_W = @CYGPATH_W@
 DEFS = @DEFS@
 DEPDIR = @DEPDIR@
 DIGEST_AUTH_HELPERS = @DIGEST_AUTH_HELPERS@
+DISK_LIBS = @DISK_LIBS@
+DISK_LINKOBJS = @DISK_LINKOBJS@
+DISK_PROGRAMS = @DISK_PROGRAMS@
+ECHO = @ECHO@
 ECHO_C = @ECHO_C@
 ECHO_N = @ECHO_N@
 ECHO_T = @ECHO_T@
 EGREP = @EGREP@
+ENABLE_ARP_ACL_FALSE = @ENABLE_ARP_ACL_FALSE@
+ENABLE_ARP_ACL_TRUE = @ENABLE_ARP_ACL_TRUE@
 ENABLE_HTCP_FALSE = @ENABLE_HTCP_FALSE@
 ENABLE_HTCP_TRUE = @ENABLE_HTCP_TRUE@
-ENABLE_MINGW32SPECIFIC_FALSE = @ENABLE_MINGW32SPECIFIC_FALSE@
-ENABLE_MINGW32SPECIFIC_TRUE = @ENABLE_MINGW32SPECIFIC_TRUE@
+ENABLE_IDENT_FALSE = @ENABLE_IDENT_FALSE@
+ENABLE_IDENT_TRUE = @ENABLE_IDENT_TRUE@
 ENABLE_PINGER_FALSE = @ENABLE_PINGER_FALSE@
 ENABLE_PINGER_TRUE = @ENABLE_PINGER_TRUE@
 ENABLE_SSL_FALSE = @ENABLE_SSL_FALSE@
@@ -150,27 +188,32 @@ ENABLE_UNLINKD_FALSE = @ENABLE_UNLINKD_FALSE@
 ENABLE_UNLINKD_TRUE = @ENABLE_UNLINKD_TRUE@
 ENABLE_WIN32SPECIFIC_FALSE = @ENABLE_WIN32SPECIFIC_FALSE@
 ENABLE_WIN32SPECIFIC_TRUE = @ENABLE_WIN32SPECIFIC_TRUE@
+ENABLE_XPROF_STATS_FALSE = @ENABLE_XPROF_STATS_FALSE@
+ENABLE_XPROF_STATS_TRUE = @ENABLE_XPROF_STATS_TRUE@
+EPOLL_LIBS = @EPOLL_LIBS@
 ERR_DEFAULT_LANGUAGE = @ERR_DEFAULT_LANGUAGE@
 ERR_LANGUAGES = @ERR_LANGUAGES@
 EXEEXT = @EXEEXT@
 EXTERNAL_ACL_HELPERS = @EXTERNAL_ACL_HELPERS@
+F77 = @F77@
 FALSE = @FALSE@
+FFLAGS = @FFLAGS@
 GREP = @GREP@
+ICAP_LIBS = @ICAP_LIBS@
 INSTALL_DATA = @INSTALL_DATA@
 INSTALL_PROGRAM = @INSTALL_PROGRAM@
 INSTALL_SCRIPT = @INSTALL_SCRIPT@
 INSTALL_STRIP_PROGRAM = @INSTALL_STRIP_PROGRAM@
 LDFLAGS = @LDFLAGS@
-LIBDLMALLOC = @LIBDLMALLOC@
+LIBADD_DL = @LIBADD_DL@
 LIBOBJS = @LIBOBJS@
 LIBREGEX = @LIBREGEX@
 LIBS = @LIBS@
 LIBSASL = @LIBSASL@
+LIBTOOL = @LIBTOOL@
 LIB_DB = @LIB_DB@
-LIB_EPOLL = @LIB_EPOLL@
 LIB_LBER = @LIB_LBER@
 LIB_LDAP = @LIB_LDAP@
-LIB_MALLOC = @LIB_MALLOC@
 LN = @LN@
 LN_S = @LN_S@
 LTLIBOBJS = @LTLIBOBJS@
@@ -180,18 +223,13 @@ MAINTAINER_MODE_TRUE = @MAINTAINER_MODE_TRUE@
 MAKEINFO = @MAKEINFO@
 MAKE_LEAKFINDER_FALSE = @MAKE_LEAKFINDER_FALSE@
 MAKE_LEAKFINDER_TRUE = @MAKE_LEAKFINDER_TRUE@
+MINGW_LIBS = @MINGW_LIBS@
 MKDIR = @MKDIR@
 MV = @MV@
-NEED_COSSDUMP_FALSE = @NEED_COSSDUMP_FALSE@
-NEED_COSSDUMP_TRUE = @NEED_COSSDUMP_TRUE@
-NEED_DISKD_FALSE = @NEED_DISKD_FALSE@
-NEED_DISKD_TRUE = @NEED_DISKD_TRUE@
-NEED_OWN_MD5_FALSE = @NEED_OWN_MD5_FALSE@
-NEED_OWN_MD5_TRUE = @NEED_OWN_MD5_TRUE@
-NEED_OWN_SNPRINTF_FALSE = @NEED_OWN_SNPRINTF_FALSE@
-NEED_OWN_SNPRINTF_TRUE = @NEED_OWN_SNPRINTF_TRUE@
 NEED_OWN_STRSEP_FALSE = @NEED_OWN_STRSEP_FALSE@
 NEED_OWN_STRSEP_TRUE = @NEED_OWN_STRSEP_TRUE@
+NEED_OWN_STRTOLL_FALSE = @NEED_OWN_STRTOLL_FALSE@
+NEED_OWN_STRTOLL_TRUE = @NEED_OWN_STRTOLL_TRUE@
 NEGOTIATE_AUTH_HELPERS = @NEGOTIATE_AUTH_HELPERS@
 NTLM_AUTH_HELPERS = @NTLM_AUTH_HELPERS@
 OBJEXT = @OBJEXT@
@@ -204,25 +242,33 @@ PACKAGE_TARNAME = @PACKAGE_TARNAME@
 PACKAGE_VERSION = @PACKAGE_VERSION@
 PATH_SEPARATOR = @PATH_SEPARATOR@
 PERL = @PERL@
-PKGCONFIG = @PKGCONFIG@
 RANLIB = @RANLIB@
 REGEXLIB = @REGEXLIB@
 REPL_LIBS = @REPL_LIBS@
 REPL_OBJS = @REPL_OBJS@
 REPL_POLICIES = @REPL_POLICIES@
 RM = @RM@
+SED = @SED@
 SET_MAKE = @SET_MAKE@
 SH = @SH@
 SHELL = @SHELL@
 SNMPLIB = @SNMPLIB@
+SQUID_CFLAGS = @SQUID_CFLAGS@
+SQUID_CPPUNIT_INC = @SQUID_CPPUNIT_INC@
+SQUID_CPPUNIT_LA = @SQUID_CPPUNIT_LA@
+SQUID_CPPUNIT_LIBS = @SQUID_CPPUNIT_LIBS@
+SQUID_CXXFLAGS = @SQUID_CXXFLAGS@
 SSLLIB = @SSLLIB@
 STORE_LIBS = @STORE_LIBS@
-STORE_MODULES = @STORE_MODULES@
+STORE_LINKOBJS = @STORE_LINKOBJS@
 STORE_OBJS = @STORE_OBJS@
+STORE_TESTS = @STORE_TESTS@
 STRIP = @STRIP@
 TRUE = @TRUE@
 USE_AIOPS_WIN32_FALSE = @USE_AIOPS_WIN32_FALSE@
 USE_AIOPS_WIN32_TRUE = @USE_AIOPS_WIN32_TRUE@
+USE_AIO_WIN32_FALSE = @USE_AIO_WIN32_FALSE@
+USE_AIO_WIN32_TRUE = @USE_AIO_WIN32_TRUE@
 USE_DELAY_POOLS_FALSE = @USE_DELAY_POOLS_FALSE@
 USE_DELAY_POOLS_TRUE = @USE_DELAY_POOLS_TRUE@
 USE_DEVPOLL_FALSE = @USE_DEVPOLL_FALSE@
@@ -231,6 +277,12 @@ USE_DNSSERVER_FALSE = @USE_DNSSERVER_FALSE@
 USE_DNSSERVER_TRUE = @USE_DNSSERVER_TRUE@
 USE_EPOLL_FALSE = @USE_EPOLL_FALSE@
 USE_EPOLL_TRUE = @USE_EPOLL_TRUE@
+USE_ESI_FALSE = @USE_ESI_FALSE@
+USE_ESI_TRUE = @USE_ESI_TRUE@
+USE_ICAP_CLIENT_FALSE = @USE_ICAP_CLIENT_FALSE@
+USE_ICAP_CLIENT_TRUE = @USE_ICAP_CLIENT_TRUE@
+USE_IPC_WIN32_FALSE = @USE_IPC_WIN32_FALSE@
+USE_IPC_WIN32_TRUE = @USE_IPC_WIN32_TRUE@
 USE_KQUEUE_FALSE = @USE_KQUEUE_FALSE@
 USE_KQUEUE_TRUE = @USE_KQUEUE_TRUE@
 USE_POLL_FALSE = @USE_POLL_FALSE@
@@ -248,8 +300,12 @@ WIN32_PSAPI = @WIN32_PSAPI@
 XTRA_LIBS = @XTRA_LIBS@
 XTRA_OBJS = @XTRA_OBJS@
 ac_ct_CC = @ac_ct_CC@
+ac_ct_CXX = @ac_ct_CXX@
+ac_ct_F77 = @ac_ct_F77@
 am__fastdepCC_FALSE = @am__fastdepCC_FALSE@
 am__fastdepCC_TRUE = @am__fastdepCC_TRUE@
+am__fastdepCXX_FALSE = @am__fastdepCXX_FALSE@
+am__fastdepCXX_TRUE = @am__fastdepCXX_TRUE@
 am__include = @am__include@
 am__leading_dot = @am__leading_dot@
 am__quote = @am__quote@
@@ -289,45 +345,49 @@ program_transform_name = @program_transform_name@
 psdir = @psdir@
 sbindir = @sbindir@
 sharedstatedir = @sharedstatedir@
+subdirs = @subdirs@
 sysconfdir = @sysconfdir@
 target_alias = @target_alias@
-@NEED_OWN_SNPRINTF_FALSE@SNPRINTFSOURCE = 
-@NEED_OWN_SNPRINTF_TRUE@SNPRINTFSOURCE = snprintf.c
+DIST_SUBDIRS = libTrie
+SUBDIRS = libTrie
+AM_CFLAGS = @SQUID_CFLAGS@
+AM_CXXFLAGS = @SQUID_CXXFLAGS@
+@ENABLE_XPROF_STATS_FALSE@XPROF_STATS_SOURCE = 
+@ENABLE_XPROF_STATS_TRUE@XPROF_STATS_SOURCE = Profiler.c
 @NEED_OWN_STRSEP_FALSE@STRSEPSOURCE = 
 @NEED_OWN_STRSEP_TRUE@STRSEPSOURCE = strsep.c
-@NEED_OWN_MD5_FALSE@MD5SOURCE = 
-@NEED_OWN_MD5_TRUE@MD5SOURCE = md5.c
+@NEED_OWN_STRTOLL_FALSE@STRTOLLSOURCE = 
+@NEED_OWN_STRTOLL_TRUE@STRTOLLSOURCE = strtoll.c
 @ENABLE_WIN32SPECIFIC_FALSE@LIBSSPWIN32 = 
 @ENABLE_WIN32SPECIFIC_TRUE@LIBSSPWIN32 = libsspwin32.a
-@ENABLE_MINGW32SPECIFIC_FALSE@WIN32SRC = 
-@ENABLE_MINGW32SPECIFIC_TRUE@WIN32SRC = win32lib.c
+@ENABLE_WIN32SPECIFIC_FALSE@WIN32SRC = 
+@ENABLE_WIN32SPECIFIC_TRUE@WIN32SRC = win32lib.c
 EXTRA_LIBRARIES = \
-	libdlmalloc.a \
 	libregex.a \
 	libsspwin32.a
 
 noinst_LIBRARIES = \
-	@LIBDLMALLOC@ \
 	libmiscutil.a \
 	libntlmauth.a \
-	@LIBREGEX@ \
-	$(LIBSSPWIN32)
+	$(LIBSSPWIN32) \
+	@LIBREGEX@
 
 EXTRA_libmiscutil_a_SOURCES = \
 	md5.c \
-	snprintf.c \
+	Profiler.c \
 	strsep.c \
+	strtoll.c \
 	win32lib.c
 
 libmiscutil_a_SOURCES = \
-	Array.c \
+	MemPool.cc \
 	base64.c \
 	getfullhostname.c \
 	hash.c \
 	heap.c \
 	html_quote.c \
 	iso3307.c \
-	$(MD5SOURCE) \
+	md5.c \
 	radix.c \
 	rfc1035.c \
 	rfc1123.c \
@@ -335,23 +395,25 @@ libmiscutil_a_SOURCES = \
 	rfc2617.c \
 	safe_inet_addr.c \
 	$(SNPRINTFSOURCE) \
-	splay.c \
-	Stack.c \
+	Splay.cc \
 	$(STRSEPSOURCE) \
+	$(STRTOLLSOURCE) \
 	stub_memaccount.c \
 	util.c \
 	uudecode.c \
+	assert.c \
+	xusleep.c \
+	$(XPROF_STATS_SOURCE) \
 	$(WIN32SRC)
 
 libmiscutil_a_LIBADD = \
+	libTrie/src/Trie.o \
+	libTrie/src/TrieNode.o \
 	@LIBOBJS@
 
 # $(top_srcdir)/include/version.h should be a dependency
 libregex_a_SOURCES = \
 	GNUregex.c
-
-libdlmalloc_a_SOURCES = \
-	dlmalloc.c
 
 libntlmauth_a_SOURCES = \
 	ntlmauth.c
@@ -362,11 +424,19 @@ libntlmauth_a_LIBADD = \
 libsspwin32_a_SOURCES = \
 	sspwin32.c
 
-INCLUDES = -I$(top_builddir)/include -I$(top_srcdir)/include
-all: all-am
+INCLUDES = -I$(top_builddir)/include -I$(top_srcdir)/include @SQUID_CPPUNIT_INC@
+TESTS = $(check_PROGRAMS)
+tests_testAll_SOURCES = tests/testArray.cc tests/testMain.cc  tests/testArray.h \
+	$(XPROF_STATS_SOURCE) \
+	$(WIN32SRC) \
+	util.c assert.c
+
+tests_testAll_LDADD = @SQUID_CPPUNIT_LA@ @SQUID_CPPUNIT_LIBS@
+tests_testAll_LDFLAGS = $(LIBADD_DL)
+all: all-recursive
 
 .SUFFIXES:
-.SUFFIXES: .c .o .obj
+.SUFFIXES: .c .cc .lo .o .obj
 $(srcdir)/Makefile.in: @MAINTAINER_MODE_TRUE@ $(srcdir)/Makefile.am  $(am__configure_deps)
 	@for dep in $?; do \
 	  case '$(am__configure_deps)' in \
@@ -399,10 +469,6 @@ $(ACLOCAL_M4): @MAINTAINER_MODE_TRUE@ $(am__aclocal_m4_deps)
 
 clean-noinstLIBRARIES:
 	-test -z "$(noinst_LIBRARIES)" || rm -f $(noinst_LIBRARIES)
-libdlmalloc.a: $(libdlmalloc_a_OBJECTS) $(libdlmalloc_a_DEPENDENCIES) 
-	-rm -f libdlmalloc.a
-	$(libdlmalloc_a_AR) libdlmalloc.a $(libdlmalloc_a_OBJECTS) $(libdlmalloc_a_LIBADD)
-	$(RANLIB) libdlmalloc.a
 libmiscutil.a: $(libmiscutil_a_OBJECTS) $(libmiscutil_a_DEPENDENCIES) 
 	-rm -f libmiscutil.a
 	$(libmiscutil_a_AR) libmiscutil.a $(libmiscutil_a_OBJECTS) $(libmiscutil_a_LIBADD)
@@ -420,6 +486,19 @@ libsspwin32.a: $(libsspwin32_a_OBJECTS) $(libsspwin32_a_DEPENDENCIES)
 	$(libsspwin32_a_AR) libsspwin32.a $(libsspwin32_a_OBJECTS) $(libsspwin32_a_LIBADD)
 	$(RANLIB) libsspwin32.a
 
+clean-checkPROGRAMS:
+	@list='$(check_PROGRAMS)'; for p in $$list; do \
+	  f=`echo $$p|sed 's/$(EXEEXT)$$//'`; \
+	  echo " rm -f $$p $$f"; \
+	  rm -f $$p $$f ; \
+	done
+tests/$(am__dirstamp):
+	@$(mkdir_p) tests
+	@: > tests/$(am__dirstamp)
+tests/testAll$(EXEEXT): $(tests_testAll_OBJECTS) $(tests_testAll_DEPENDENCIES) tests/$(am__dirstamp)
+	@rm -f tests/testAll$(EXEEXT)
+	$(CXXLINK) $(tests_testAll_LDFLAGS) $(tests_testAll_OBJECTS) $(tests_testAll_LDADD) $(LIBS)
+
 mostlyclean-compile:
 	-rm -f *.$(OBJEXT)
 
@@ -431,11 +510,12 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@$(DEPDIR)/initgroups.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@$(DEPDIR)/strerror.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@$(DEPDIR)/tempnam.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/Array.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/GNUregex.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/Stack.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/MemPool.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/Profiler.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/Splay.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/assert.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/base64.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/dlmalloc.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/getfullhostname.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/hash.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/heap.Po@am__quote@
@@ -449,14 +529,16 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/rfc1738.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/rfc2617.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/safe_inet_addr.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/snprintf.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/splay.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/sspwin32.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/strsep.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/strtoll.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/stub_memaccount.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/testArray.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/testMain.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/util.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/uudecode.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/win32lib.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/xusleep.Po@am__quote@
 
 .c.o:
 @am__fastdepCC_TRUE@	if $(COMPILE) -MT $@ -MD -MP -MF "$(DEPDIR)/$*.Tpo" -c -o $@ $<; \
@@ -471,7 +553,143 @@ distclean-compile:
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	source='$<' object='$@' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(COMPILE) -c `$(CYGPATH_W) '$<'`
+
+.c.lo:
+@am__fastdepCC_TRUE@	if $(LTCOMPILE) -MT $@ -MD -MP -MF "$(DEPDIR)/$*.Tpo" -c -o $@ $<; \
+@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/$*.Tpo" "$(DEPDIR)/$*.Plo"; else rm -f "$(DEPDIR)/$*.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='$<' object='$@' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(LTCOMPILE) -c -o $@ $<
+
+.cc.o:
+@am__fastdepCXX_TRUE@	if $(CXXCOMPILE) -MT $@ -MD -MP -MF "$(DEPDIR)/$*.Tpo" -c -o $@ $<; \
+@am__fastdepCXX_TRUE@	then mv -f "$(DEPDIR)/$*.Tpo" "$(DEPDIR)/$*.Po"; else rm -f "$(DEPDIR)/$*.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='$<' object='$@' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXXCOMPILE) -c -o $@ $<
+
+.cc.obj:
+@am__fastdepCXX_TRUE@	if $(CXXCOMPILE) -MT $@ -MD -MP -MF "$(DEPDIR)/$*.Tpo" -c -o $@ `$(CYGPATH_W) '$<'`; \
+@am__fastdepCXX_TRUE@	then mv -f "$(DEPDIR)/$*.Tpo" "$(DEPDIR)/$*.Po"; else rm -f "$(DEPDIR)/$*.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='$<' object='$@' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXXCOMPILE) -c -o $@ `$(CYGPATH_W) '$<'`
+
+.cc.lo:
+@am__fastdepCXX_TRUE@	if $(LTCXXCOMPILE) -MT $@ -MD -MP -MF "$(DEPDIR)/$*.Tpo" -c -o $@ $<; \
+@am__fastdepCXX_TRUE@	then mv -f "$(DEPDIR)/$*.Tpo" "$(DEPDIR)/$*.Plo"; else rm -f "$(DEPDIR)/$*.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='$<' object='$@' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(LTCXXCOMPILE) -c -o $@ $<
+
+testArray.o: tests/testArray.cc
+@am__fastdepCXX_TRUE@	if $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT testArray.o -MD -MP -MF "$(DEPDIR)/testArray.Tpo" -c -o testArray.o `test -f 'tests/testArray.cc' || echo '$(srcdir)/'`tests/testArray.cc; \
+@am__fastdepCXX_TRUE@	then mv -f "$(DEPDIR)/testArray.Tpo" "$(DEPDIR)/testArray.Po"; else rm -f "$(DEPDIR)/testArray.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='tests/testArray.cc' object='testArray.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o testArray.o `test -f 'tests/testArray.cc' || echo '$(srcdir)/'`tests/testArray.cc
+
+testArray.obj: tests/testArray.cc
+@am__fastdepCXX_TRUE@	if $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT testArray.obj -MD -MP -MF "$(DEPDIR)/testArray.Tpo" -c -o testArray.obj `if test -f 'tests/testArray.cc'; then $(CYGPATH_W) 'tests/testArray.cc'; else $(CYGPATH_W) '$(srcdir)/tests/testArray.cc'; fi`; \
+@am__fastdepCXX_TRUE@	then mv -f "$(DEPDIR)/testArray.Tpo" "$(DEPDIR)/testArray.Po"; else rm -f "$(DEPDIR)/testArray.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='tests/testArray.cc' object='testArray.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o testArray.obj `if test -f 'tests/testArray.cc'; then $(CYGPATH_W) 'tests/testArray.cc'; else $(CYGPATH_W) '$(srcdir)/tests/testArray.cc'; fi`
+
+testMain.o: tests/testMain.cc
+@am__fastdepCXX_TRUE@	if $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT testMain.o -MD -MP -MF "$(DEPDIR)/testMain.Tpo" -c -o testMain.o `test -f 'tests/testMain.cc' || echo '$(srcdir)/'`tests/testMain.cc; \
+@am__fastdepCXX_TRUE@	then mv -f "$(DEPDIR)/testMain.Tpo" "$(DEPDIR)/testMain.Po"; else rm -f "$(DEPDIR)/testMain.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='tests/testMain.cc' object='testMain.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o testMain.o `test -f 'tests/testMain.cc' || echo '$(srcdir)/'`tests/testMain.cc
+
+testMain.obj: tests/testMain.cc
+@am__fastdepCXX_TRUE@	if $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT testMain.obj -MD -MP -MF "$(DEPDIR)/testMain.Tpo" -c -o testMain.obj `if test -f 'tests/testMain.cc'; then $(CYGPATH_W) 'tests/testMain.cc'; else $(CYGPATH_W) '$(srcdir)/tests/testMain.cc'; fi`; \
+@am__fastdepCXX_TRUE@	then mv -f "$(DEPDIR)/testMain.Tpo" "$(DEPDIR)/testMain.Po"; else rm -f "$(DEPDIR)/testMain.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='tests/testMain.cc' object='testMain.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o testMain.obj `if test -f 'tests/testMain.cc'; then $(CYGPATH_W) 'tests/testMain.cc'; else $(CYGPATH_W) '$(srcdir)/tests/testMain.cc'; fi`
+
+mostlyclean-libtool:
+	-rm -f *.lo
+
+clean-libtool:
+	-rm -rf .libs _libs
+
+distclean-libtool:
+	-rm -f libtool
 uninstall-info-am:
+
+# This directory's subdirectories are mostly independent; you can cd
+# into them and run `make' without going through this Makefile.
+# To change the values of `make' variables: instead of editing Makefiles,
+# (1) if the variable is set in `config.status', edit `config.status'
+#     (which will cause the Makefiles to be regenerated when you run `make');
+# (2) otherwise, pass the desired values on the `make' command line.
+$(RECURSIVE_TARGETS):
+	@failcom='exit 1'; \
+	for f in x $$MAKEFLAGS; do \
+	  case $$f in \
+	    *=* | --[!k]*);; \
+	    *k*) failcom='fail=yes';; \
+	  esac; \
+	done; \
+	dot_seen=no; \
+	target=`echo $@ | sed s/-recursive//`; \
+	list='$(SUBDIRS)'; for subdir in $$list; do \
+	  echo "Making $$target in $$subdir"; \
+	  if test "$$subdir" = "."; then \
+	    dot_seen=yes; \
+	    local_target="$$target-am"; \
+	  else \
+	    local_target="$$target"; \
+	  fi; \
+	  (cd $$subdir && $(MAKE) $(AM_MAKEFLAGS) $$local_target) \
+	  || eval $$failcom; \
+	done; \
+	if test "$$dot_seen" = "no"; then \
+	  $(MAKE) $(AM_MAKEFLAGS) "$$target-am" || exit 1; \
+	fi; test -z "$$fail"
+
+mostlyclean-recursive clean-recursive distclean-recursive \
+maintainer-clean-recursive:
+	@failcom='exit 1'; \
+	for f in x $$MAKEFLAGS; do \
+	  case $$f in \
+	    *=* | --[!k]*);; \
+	    *k*) failcom='fail=yes';; \
+	  esac; \
+	done; \
+	dot_seen=no; \
+	case "$@" in \
+	  distclean-* | maintainer-clean-*) list='$(DIST_SUBDIRS)' ;; \
+	  *) list='$(SUBDIRS)' ;; \
+	esac; \
+	rev=''; for subdir in $$list; do \
+	  if test "$$subdir" = "."; then :; else \
+	    rev="$$subdir $$rev"; \
+	  fi; \
+	done; \
+	rev="$$rev ."; \
+	target=`echo $@ | sed s/-recursive//`; \
+	for subdir in $$rev; do \
+	  echo "Making $$target in $$subdir"; \
+	  if test "$$subdir" = "."; then \
+	    local_target="$$target-am"; \
+	  else \
+	    local_target="$$target"; \
+	  fi; \
+	  (cd $$subdir && $(MAKE) $(AM_MAKEFLAGS) $$local_target) \
+	  || eval $$failcom; \
+	done && test -z "$$fail"
+tags-recursive:
+	list='$(SUBDIRS)'; for subdir in $$list; do \
+	  test "$$subdir" = . || (cd $$subdir && $(MAKE) $(AM_MAKEFLAGS) tags); \
+	done
+ctags-recursive:
+	list='$(SUBDIRS)'; for subdir in $$list; do \
+	  test "$$subdir" = . || (cd $$subdir && $(MAKE) $(AM_MAKEFLAGS) ctags); \
+	done
 
 ID: $(HEADERS) $(SOURCES) $(LISP) $(TAGS_FILES)
 	list='$(SOURCES) $(HEADERS) $(LISP) $(TAGS_FILES)'; \
@@ -483,10 +701,23 @@ ID: $(HEADERS) $(SOURCES) $(LISP) $(TAGS_FILES)
 	mkid -fID $$unique
 tags: TAGS
 
-TAGS:  $(HEADERS) $(SOURCES)  $(TAGS_DEPENDENCIES) \
+TAGS: tags-recursive $(HEADERS) $(SOURCES)  $(TAGS_DEPENDENCIES) \
 		$(TAGS_FILES) $(LISP)
 	tags=; \
 	here=`pwd`; \
+	if ($(ETAGS) --etags-include --version) >/dev/null 2>&1; then \
+	  include_option=--etags-include; \
+	  empty_fix=.; \
+	else \
+	  include_option=--include; \
+	  empty_fix=; \
+	fi; \
+	list='$(SUBDIRS)'; for subdir in $$list; do \
+	  if test "$$subdir" = .; then :; else \
+	    test ! -f $$subdir/TAGS || \
+	      tags="$$tags $$include_option=$$here/$$subdir/TAGS"; \
+	  fi; \
+	done; \
 	list='$(SOURCES) $(HEADERS)  $(LISP) $(TAGS_FILES)'; \
 	unique=`for i in $$list; do \
 	    if test -f "$$i"; then echo $$i; else echo $(srcdir)/$$i; fi; \
@@ -499,7 +730,7 @@ TAGS:  $(HEADERS) $(SOURCES)  $(TAGS_DEPENDENCIES) \
 	    $$tags $$unique; \
 	fi
 ctags: CTAGS
-CTAGS:  $(HEADERS) $(SOURCES)  $(TAGS_DEPENDENCIES) \
+CTAGS: ctags-recursive $(HEADERS) $(SOURCES)  $(TAGS_DEPENDENCIES) \
 		$(TAGS_FILES) $(LISP)
 	tags=; \
 	here=`pwd`; \
@@ -520,6 +751,79 @@ GTAGS:
 
 distclean-tags:
 	-rm -f TAGS ID GTAGS GRTAGS GSYMS GPATH tags
+
+check-TESTS: $(TESTS)
+	@failed=0; all=0; xfail=0; xpass=0; skip=0; \
+	srcdir=$(srcdir); export srcdir; \
+	list='$(TESTS)'; \
+	if test -n "$$list"; then \
+	  for tst in $$list; do \
+	    if test -f ./$$tst; then dir=./; \
+	    elif test -f $$tst; then dir=; \
+	    else dir="$(srcdir)/"; fi; \
+	    if $(TESTS_ENVIRONMENT) $${dir}$$tst; then \
+	      all=`expr $$all + 1`; \
+	      case " $(XFAIL_TESTS) " in \
+	      *" $$tst "*) \
+		xpass=`expr $$xpass + 1`; \
+		failed=`expr $$failed + 1`; \
+		echo "XPASS: $$tst"; \
+	      ;; \
+	      *) \
+		echo "PASS: $$tst"; \
+	      ;; \
+	      esac; \
+	    elif test $$? -ne 77; then \
+	      all=`expr $$all + 1`; \
+	      case " $(XFAIL_TESTS) " in \
+	      *" $$tst "*) \
+		xfail=`expr $$xfail + 1`; \
+		echo "XFAIL: $$tst"; \
+	      ;; \
+	      *) \
+		failed=`expr $$failed + 1`; \
+		echo "FAIL: $$tst"; \
+	      ;; \
+	      esac; \
+	    else \
+	      skip=`expr $$skip + 1`; \
+	      echo "SKIP: $$tst"; \
+	    fi; \
+	  done; \
+	  if test "$$failed" -eq 0; then \
+	    if test "$$xfail" -eq 0; then \
+	      banner="All $$all tests passed"; \
+	    else \
+	      banner="All $$all tests behaved as expected ($$xfail expected failures)"; \
+	    fi; \
+	  else \
+	    if test "$$xpass" -eq 0; then \
+	      banner="$$failed of $$all tests failed"; \
+	    else \
+	      banner="$$failed of $$all tests did not behave as expected ($$xpass unexpected passes)"; \
+	    fi; \
+	  fi; \
+	  dashes="$$banner"; \
+	  skipped=""; \
+	  if test "$$skip" -ne 0; then \
+	    skipped="($$skip tests were not run)"; \
+	    test `echo "$$skipped" | wc -c` -le `echo "$$banner" | wc -c` || \
+	      dashes="$$skipped"; \
+	  fi; \
+	  report=""; \
+	  if test "$$failed" -ne 0 && test -n "$(PACKAGE_BUGREPORT)"; then \
+	    report="Please report to $(PACKAGE_BUGREPORT)"; \
+	    test `echo "$$report" | wc -c` -le `echo "$$banner" | wc -c` || \
+	      dashes="$$report"; \
+	  fi; \
+	  dashes=`echo "$$dashes" | sed s/./=/g`; \
+	  echo "$$dashes"; \
+	  echo "$$banner"; \
+	  test -z "$$skipped" || echo "$$skipped"; \
+	  test -z "$$report" || echo "$$report"; \
+	  echo "$$dashes"; \
+	  test "$$failed" -eq 0; \
+	else :; fi
 
 distdir: $(DISTFILES)
 	@srcdirstrip=`echo "$(srcdir)" | sed 's|.|.|g'`; \
@@ -548,51 +852,65 @@ distdir: $(DISTFILES)
 	    || exit 1; \
 	  fi; \
 	done
+	list='$(DIST_SUBDIRS)'; for subdir in $$list; do \
+	  if test "$$subdir" = .; then :; else \
+	    test -d "$(distdir)/$$subdir" \
+	    || $(mkdir_p) "$(distdir)/$$subdir" \
+	    || exit 1; \
+	    distdir=`$(am__cd) $(distdir) && pwd`; \
+	    top_distdir=`$(am__cd) $(top_distdir) && pwd`; \
+	    (cd $$subdir && \
+	      $(MAKE) $(AM_MAKEFLAGS) \
+	        top_distdir="$$top_distdir" \
+	        distdir="$$distdir/$$subdir" \
+	        distdir) \
+	      || exit 1; \
+	  fi; \
+	done
 check-am: all-am
-check: check-am
+	$(MAKE) $(AM_MAKEFLAGS) $(check_PROGRAMS)
+	$(MAKE) $(AM_MAKEFLAGS) check-TESTS
+check: check-recursive
 all-am: Makefile $(LIBRARIES)
-installdirs:
-install: install-am
-install-exec: install-exec-am
-install-data: install-data-am
-uninstall: uninstall-am
+installdirs: installdirs-recursive
+installdirs-am:
+install-exec: install-exec-recursive
+install-data: install-data-recursive
+uninstall: uninstall-recursive
 
 install-am: all-am
 	@$(MAKE) $(AM_MAKEFLAGS) install-exec-am install-data-am
 
-installcheck: installcheck-am
-install-strip:
-	$(MAKE) $(AM_MAKEFLAGS) INSTALL_PROGRAM="$(INSTALL_STRIP_PROGRAM)" \
-	  install_sh_PROGRAM="$(INSTALL_STRIP_PROGRAM)" INSTALL_STRIP_FLAG=-s \
-	  `test -z '$(STRIP)' || \
-	    echo "INSTALL_PROGRAM_ENV=STRIPPROG='$(STRIP)'"` install
+installcheck: installcheck-recursive
 mostlyclean-generic:
 
 clean-generic:
 
 distclean-generic:
 	-test -z "$(CONFIG_CLEAN_FILES)" || rm -f $(CONFIG_CLEAN_FILES)
+	-rm -f tests/$(am__dirstamp)
 
 maintainer-clean-generic:
 	@echo "This command is intended for maintainers to use"
 	@echo "it deletes files that may require special tools to rebuild."
-clean: clean-am
+clean: clean-recursive
 
-clean-am: clean-generic clean-noinstLIBRARIES mostlyclean-am
+clean-am: clean-checkPROGRAMS clean-generic clean-libtool \
+	clean-noinstLIBRARIES mostlyclean-am
 
-distclean: distclean-am
+distclean: distclean-recursive
 	-rm -rf $(DEPDIR) ./$(DEPDIR)
 	-rm -f Makefile
 distclean-am: clean-am distclean-compile distclean-generic \
-	distclean-tags
+	distclean-libtool distclean-tags
 
-dvi: dvi-am
+dvi: dvi-recursive
 
 dvi-am:
 
-html: html-am
+html: html-recursive
 
-info: info-am
+info: info-recursive
 
 info-am:
 
@@ -600,42 +918,52 @@ install-data-am:
 
 install-exec-am:
 
-install-info: install-info-am
+install-info: install-info-recursive
 
 install-man:
 
 installcheck-am:
 
-maintainer-clean: maintainer-clean-am
+maintainer-clean: maintainer-clean-recursive
 	-rm -rf $(DEPDIR) ./$(DEPDIR)
 	-rm -f Makefile
 maintainer-clean-am: distclean-am maintainer-clean-generic
 
-mostlyclean: mostlyclean-am
+mostlyclean: mostlyclean-recursive
 
-mostlyclean-am: mostlyclean-compile mostlyclean-generic
+mostlyclean-am: mostlyclean-compile mostlyclean-generic \
+	mostlyclean-libtool
 
-pdf: pdf-am
+pdf: pdf-recursive
 
 pdf-am:
 
-ps: ps-am
+ps: ps-recursive
 
 ps-am:
 
 uninstall-am: uninstall-info-am
 
-.PHONY: CTAGS GTAGS all all-am check check-am clean clean-generic \
-	clean-noinstLIBRARIES ctags distclean distclean-compile \
-	distclean-generic distclean-tags distdir dvi dvi-am html \
-	html-am info info-am install install-am install-data \
-	install-data-am install-exec install-exec-am install-info \
-	install-info-am install-man install-strip installcheck \
-	installcheck-am installdirs maintainer-clean \
-	maintainer-clean-generic mostlyclean mostlyclean-compile \
-	mostlyclean-generic pdf pdf-am ps ps-am tags uninstall \
-	uninstall-am uninstall-info-am
+uninstall-info: uninstall-info-recursive
 
+.PHONY: $(RECURSIVE_TARGETS) CTAGS GTAGS all all-am check check-TESTS \
+	check-am clean clean-checkPROGRAMS clean-generic clean-libtool \
+	clean-noinstLIBRARIES clean-recursive ctags ctags-recursive \
+	distclean distclean-compile distclean-generic \
+	distclean-libtool distclean-recursive distclean-tags distdir \
+	dvi dvi-am html html-am info info-am install install-am \
+	install-data install-data-am install-exec install-exec-am \
+	install-info install-info-am install-man install-strip \
+	installcheck installcheck-am installdirs installdirs-am \
+	maintainer-clean maintainer-clean-generic \
+	maintainer-clean-recursive mostlyclean mostlyclean-compile \
+	mostlyclean-generic mostlyclean-libtool mostlyclean-recursive \
+	pdf pdf-am ps ps-am tags tags-recursive uninstall uninstall-am \
+	uninstall-info-am
+
+
+install: all
+install-strip: all
 # Tell versions [3.59,3.63) of GNU make to not export all variables.
 # Otherwise a system limit (for SysV at least) may be exceeded.
 .NOEXPORT:

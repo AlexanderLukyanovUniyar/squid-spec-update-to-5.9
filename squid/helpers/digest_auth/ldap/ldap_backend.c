@@ -49,7 +49,7 @@ PFldap_start_tls_s Win32_ldap_start_tls_s;
 
 static LDAP *ld = NULL;
 static const char *passattr = NULL;
-static const char *ldapServer = NULL;
+static char *ldapServer = NULL;
 static const char *userbasedn = NULL;
 static const char *userdnattr = NULL;
 static const char *usersearchfilter = NULL;
@@ -395,7 +395,7 @@ LDAPArguments(int argc, char **argv)
 
     while (argc > 1 && argv[1][0] == '-') {
 	const char *value = "";
-	const char option = argv[1][1];
+	char option = argv[1][1];
 	switch (option) {
 	case 'P':
 	case 'R':
@@ -430,7 +430,7 @@ LDAPArguments(int argc, char **argv)
 		int len = strlen(ldapServer) + 1 + strlen(value) + 1;
 		char *newhost = malloc(len);
 		snprintf(newhost, len, "%s %s", ldapServer, value);
-		free((char *)ldapServer);
+		free(ldapServer);
 		ldapServer = newhost;
 	    } else {
 		ldapServer = strdup(value);
@@ -556,7 +556,7 @@ LDAPArguments(int argc, char **argv)
 	    int len = strlen(ldapServer) + 1 + strlen(value) + 1;
 	    char *newhost = malloc(len);
 	    snprintf(newhost, len, "%s %s", ldapServer, value);
-	    free((char *)ldapServer);
+	    free(ldapServer);
 	    ldapServer = newhost;
 	} else {
 	    ldapServer = strdup(value);
@@ -566,16 +566,16 @@ LDAPArguments(int argc, char **argv)
     }
 
     if (!ldapServer)
-	ldapServer = "localhost";
+	ldapServer = (char *) "localhost";
 
     if (!userbasedn || !passattr) {
-	fprintf(stderr, "Usage: " PROGRAM_NAME " -b basedn -A passwdattr -F filter | -u userattr [options] [ldap_server_name]\n\n");
+	fprintf(stderr, "Usage: " PROGRAM_NAME " -b basedn -f filter [options] ldap_server_name\n\n");
 	fprintf(stderr, "\t-A password attribute(REQUIRED)\t\tUser attribute that contains the password\n");
-	fprintf(stderr, "\t-l password realm delimiter\t\tCharater(s) that devides the password attribute\n\t\t\t\t\t\tin realm and password tokens, default ':' realm:password\n");
+	fprintf(stderr, "\t-l password realm delimiter(REQUIRED)\tCharater(s) that devides the password attribute\n\t\t\t\t\t\tin realm and password tokens, default ':' realm:password\n");
 	fprintf(stderr, "\t-b basedn (REQUIRED)\t\t\tbase dn under where to search for users\n");
-	fprintf(stderr, "\t-e Encrypted passwords\t\t\tPasswords are stored encrypted digest H(A1)\n");
-	fprintf(stderr, "\t-F filter (REQUIRED*)\t\t\tuser search filter pattern. %%s = login\n");
-	fprintf(stderr, "\t-u attribute (REQUIRED*)\t\tattribute to use in combination with the basedn to create the user DN\n");
+	fprintf(stderr, "\t-e Encrypted passwords(REQUIRED)\tPassword are stored encrypted using HHA1\n");
+	fprintf(stderr, "\t-F filter\t\t\t\tuser search filter pattern. %%s = login\n");
+	fprintf(stderr, "\t-u attribute\t\t\t\tattribute to use in combination with the basedn to create the user DN\n");
 	fprintf(stderr, "\t-s base|one|sub\t\t\t\tsearch scope\n");
 	fprintf(stderr, "\t-D binddn\t\t\t\tDN to bind as to perform searches\n");
 	fprintf(stderr, "\t-w bindpasswd\t\t\t\tpassword for binddn\n");
@@ -595,10 +595,9 @@ LDAPArguments(int argc, char **argv)
 	fprintf(stderr, "\t-a never|always|search|find\t\twhen to dereference aliases\n");
 #ifdef LDAP_VERSION3
 	fprintf(stderr, "\t-v 2|3\t\t\t\t\tLDAP version\n");
-	fprintf(stderr, "\t-Z\t\t\t\t\tTLS encrypt the LDAP connection, requires\n\t\t\t\t\t\tLDAP version 3\n");
+	fprintf(stderr, "\t-Z\t\t\t\t\tTLS encrypt the LDAP connection, requires\n\t\t\t\tLDAP version 3\n");
 #endif
 	fprintf(stderr, "\t-S\t\t\t\t\tStrip NT domain from usernames\n");
-	fprintf(stderr, "\n\t*) one of -u or -F needs to be specified. If both is specified -y is ignored\n");
 	fprintf(stderr, "\n");
 	fprintf(stderr, "\tIf you need to bind as a user to perform searches then use the\n\t-D binddn -w bindpasswd or -D binddn -W secretfile options\n\n");
 	return -1;
@@ -630,9 +629,7 @@ readSecret(const char *filename)
     bindpasswd = strdup(buf);
     if (!bindpasswd) {
 	fprintf(stderr, PROGRAM_NAME " ERROR: can not allocate memory\n");
-	exit(1);
     }
-
     fclose(f);
 
     return 0;

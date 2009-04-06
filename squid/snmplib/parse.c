@@ -135,7 +135,7 @@ int Line = 1;
 #define	WRITEONLY   20
 #undef NOACCESS
 #define NOACCESS    21
-#define SNMP_STATUS	22
+#define SNMP_STATUS 22
 #define MANDATORY   23
 #define SNMP_OPTIONAL    24
 #define OBSOLETE    25
@@ -488,7 +488,7 @@ get_token(register FILE *fp, register char *token)
     register struct tok *tp;
 
     *cp = 0;
-    ch = last;
+    ch = (unsigned char)last;
     /* skip all white space */
     while (xisspace(ch) && ch != -1) {
 	ch = getc(fp);

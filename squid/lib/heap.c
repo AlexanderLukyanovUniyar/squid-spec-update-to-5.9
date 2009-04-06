@@ -1,6 +1,6 @@
 
 /*
- * $Id: heap.c,v 1.9 2005/10/23 15:20:49 hno Exp $
+ * $Id: heap.c,v 1.10 2005/07/03 15:25:07 serassio Exp $
  *
  * AUTHOR: John Dilley, Hewlett Packard
  *

@@ -1,5 +1,5 @@
 /*
- * $Id: util.h,v 1.69 2006/12/10 13:36:23 serassio Exp $
+ * $Id: util.h,v 1.78 2007/09/20 12:32:50 amosjeffries Exp $
  *
  * AUTHOR: Harvest Derived
  *
@@ -35,8 +35,10 @@
 #define SQUID_UTIL_H
 
 #include "config.h"
+
+#if HAVE_STDIO_H
 #include <stdio.h>
-#include <time.h>
+#endif
 #if HAVE_TIME_H
 #include <time.h>
 #endif
@@ -52,41 +54,60 @@
 #define _etext etext
 #endif
 
-#ifndef MIN
-#define	MIN(a, b)	((a) < (b) ? (a) : (b))
+SQUIDCEXTERN const char *getfullhostname(void);
+SQUIDCEXTERN const char *mkhttpdlogtime(const time_t *);
+SQUIDCEXTERN const char *mkrfc1123(time_t);
+SQUIDCEXTERN char *uudecode(const char *);
+SQUIDCEXTERN char *xstrdup(const char *);
+SQUIDCEXTERN char *xstrndup(const char *, size_t);
+SQUIDCEXTERN const char *xstrerr(int xerrno);
+SQUIDCEXTERN const char *xstrerror(void);
+SQUIDCEXTERN int tvSubMsec(struct timeval, struct timeval);
+SQUIDCEXTERN int tvSubUsec(struct timeval, struct timeval);
+SQUIDCEXTERN double tvSubDsec(struct timeval, struct timeval);
+SQUIDCEXTERN char *xstrncpy(char *, const char *, size_t);
+SQUIDCEXTERN size_t xcountws(const char *str);
+SQUIDCEXTERN time_t parse_rfc1123(const char *str);
+SQUIDCEXTERN void *xcalloc(size_t, size_t);
+SQUIDCEXTERN void *xmalloc(size_t);
+SQUIDCEXTERN void *xrealloc(void *, size_t);
+SQUIDCEXTERN void Tolower(char *);
+SQUIDCEXTERN void xfree(void *);
+SQUIDCEXTERN void xxfree(const void *);
+#ifdef __cplusplus
+/* 
+ * Any code using libstdc++ must have externally resolvable overloads
+ * for void * operator new - which means in the .o for the binary,
+ * or in a shared library. static libs don't propogate the symbol
+ * so, look in the translation unit containing main() in squid
+ * for the extern version in squid
+ */
+#ifndef _SQUID_EXTERNNEW_
+#if defined(_SQUID_SGI_) && !defined(_GNUC_)
+/* 
+ * The gcc compiler treats extern inline functions as being extern,
+ * while the SGI MIPSpro compilers treat them as inline. To get equivalent
+ * behavior, remove the inline keyword.
+ */
+#define _SQUID_EXTERNNEW_ extern
+#else
+#define _SQUID_EXTERNNEW_ extern inline
+#endif
+#endif
+#include "SquidNew.h"
 #endif
 
-extern const char *getfullhostname(void);
-extern const char *mkhttpdlogtime(const time_t *);
-extern const char *mkrfc1123(time_t);
-extern char *uudecode(const char *);
-extern char *xstrdup(const char *);
-extern char *xstrndup(const char *, size_t);
-extern const char *xstrerror(void);
-extern int tvSubMsec(struct timeval, struct timeval);
-extern int tvSubUsec(struct timeval, struct timeval);
-extern double tvSubDsec(struct timeval, struct timeval);
-extern char *xstrncpy(char *, const char *, size_t);
-extern size_t xcountws(const char *str);
-extern time_t parse_rfc1123(const char *str, int len);
-extern void *xcalloc(size_t, size_t);
-extern void *xmalloc(size_t);
-extern void *xrealloc(void *, size_t);
-extern void Tolower(char *);
-extern void xfree(void *);
-extern void xxfree(const void *);
-
 /* rfc1738.c */
-extern char *rfc1738_escape(const char *);
-extern char *rfc1738_escape_unescaped(const char *);
-extern char *rfc1738_escape_part(const char *);
-extern void rfc1738_unescape(char *);
+SQUIDCEXTERN char *rfc1738_escape(const char *);
+SQUIDCEXTERN char *rfc1738_escape_unescaped(const char *);
+SQUIDCEXTERN char *rfc1738_escape_part(const char *);
+SQUIDCEXTERN void rfc1738_unescape(char *);
 
 /* html.c */
-extern char *html_quote(const char *);
+SQUIDCEXTERN char *html_quote(const char *);
 
 #if XMALLOC_STATISTICS
-extern void malloc_statistics(void (*)(int, int, int, void *), void *);
+SQUIDCEXTERN void malloc_statistics(void (*)(int, int, int, void *), void *);
 #endif
 
 #if XMALLOC_TRACE
@@ -104,57 +125,68 @@ extern size_t xmalloc_total;
 extern void xmalloc_find_leaks(void);
 #endif
 
-typedef struct in_addr SIA;
-extern int safe_inet_addr(const char *, SIA *);
-extern time_t parse_iso3307_time(const char *buf);
-extern char *base64_decode(const char *coded);
-extern const char *base64_encode(const char *decoded);
-extern const char *base64_encode_bin(const char *data, int len);
+typedef struct IN_ADDR SIA;
+SQUIDCEXTERN int safe_inet_addr(const char *, SIA *);
+SQUIDCEXTERN time_t parse_iso3307_time(const char *buf);
+SQUIDCEXTERN char *base64_decode(const char *coded);
+SQUIDCEXTERN const char *base64_encode(const char *decoded);
+SQUIDCEXTERN const char *base64_encode_bin(const char *data, int len);
 
-extern double xpercent(double part, double whole);
-extern int xpercentInt(double part, double whole);
-extern double xdiv(double nom, double denom);
+SQUIDCEXTERN double xpercent(double part, double whole);
+SQUIDCEXTERN int xpercentInt(double part, double whole);
+SQUIDCEXTERN double xdiv(double nom, double denom);
 
-extern const char *xitoa(int num);
+SQUIDCEXTERN const char *xitoa(int num);
+SQUIDCEXTERN const char *xint64toa(int64_t num);
 
 #if !HAVE_DRAND48
-double drand48(void);
+SQUIDCEXTERN double drand48(void);
 #endif
+
+typedef struct {
+    size_t count;
+    size_t bytes;
+    size_t gb;
+} gb_t;
+
+/* gb_type operations */
+#define gb_flush_limit (0x3FFFFFFF)
+#define gb_inc(gb, delta) { if ((gb)->bytes > gb_flush_limit || delta > gb_flush_limit) gb_flush(gb); (gb)->bytes += delta; (gb)->count++; }
+#define gb_incb(gb, delta) { if ((gb)->bytes > gb_flush_limit || delta > gb_flush_limit) gb_flush(gb); (gb)->bytes += delta; }
+#define gb_incc(gb, delta) { if ((gb)->bytes > gb_flush_limit || delta > gb_flush_limit) gb_flush(gb); (gb)->count+= delta; }
+extern double gb_to_double(const gb_t *);
+SQUIDCEXTERN const char *double_to_str(char *buf, int buf_size, double value);
+extern const char *gb_to_str(const gb_t *);
+extern void gb_flush(gb_t *);  /* internal, do not use this */
 
 /*
  * Returns the amount of known allocated memory
  */
-extern size_t statMemoryAccounted(void);
+int statMemoryAccounted(void);
 
-/* Cygwin & Windows NT Port */
+/* Windows Port */
 /* win32lib.c */
 #ifdef _SQUID_MSWIN_
-#if defined(_MSC_VER)		/* Microsoft C Compiler ONLY */
-extern int64_t WIN32_strtoll(const char *nptr, char **endptr, int base);
-#endif
-extern int chroot(const char *);
-extern int ftruncate(int, off_t);
+SQUIDCEXTERN int chroot (const char *);
+SQUIDCEXTERN int ftruncate(int, off_t);
 #ifndef HAVE_GETTIMEOFDAY
-extern int gettimeofday(struct timeval *, struct timezone *);
+SQUIDCEXTERN int gettimeofday(struct timeval * ,void *);
 #endif
-extern int inet_aton(const char *, struct in_addr *);
-extern int kill(pid_t, int);
-extern int statfs(const char *, struct statfs *);
-extern int truncate(const char *, off_t);
-extern const char *wsastrerror(int);
-extern struct passwd *getpwnam(char *);
-extern struct group *getgrnam(char *);
-extern uid_t geteuid(void);
-extern uid_t getuid(void);
-extern int setuid(uid_t);
-extern int seteuid(uid_t);
-extern gid_t getgid(void);
-extern gid_t getegid(void);
-extern int setgid(gid_t);
-extern int setegid(gid_t);
-extern const char *WIN32_strerror(int);
-extern void WIN32_maperror(unsigned long);
-extern int WIN32_Close_FD_Socket(int);
+SQUIDCEXTERN int kill(pid_t, int);
+SQUIDCEXTERN int statfs(const char *, struct statfs *);
+SQUIDCEXTERN int truncate(const char *, off_t);
+SQUIDCEXTERN const char * wsastrerror(int);
+SQUIDCEXTERN struct passwd *getpwnam(char *);
+SQUIDCEXTERN struct group *getgrnam(char *);
+SQUIDCEXTERN uid_t geteuid(void);
+SQUIDCEXTERN uid_t getuid(void);
+SQUIDCEXTERN int setuid(uid_t);
+SQUIDCEXTERN int seteuid(uid_t);
+SQUIDCEXTERN gid_t getgid(void);
+SQUIDCEXTERN gid_t getegid(void);
+SQUIDCEXTERN int setgid(gid_t);
+SQUIDCEXTERN int setegid(gid_t);
+SQUIDCEXTERN const char *WIN32_strerror(int);
+SQUIDCEXTERN void WIN32_maperror(unsigned long);
 #endif
-
 #endif /* SQUID_UTIL_H */

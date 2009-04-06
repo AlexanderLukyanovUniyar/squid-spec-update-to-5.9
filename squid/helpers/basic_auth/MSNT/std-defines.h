@@ -26,8 +26,8 @@
 #ifndef _STD_DEFINES_H_
 #define _STD_DEFINES_H_
 
-#define BOOL int
-typedef short int16;
+#define BOOL int16_t
+#define int16 int16_t
 
 #include <netdb.h>
 #include <sys/types.h>

@@ -1,6 +1,6 @@
 ## Process this file with automake to produce Makefile.in
 #
-# $Id: Makefile.am,v 1.12.2.1 2007/08/22 00:20:52 hno Exp $
+# $Id: Makefile.am,v 1.14 2007/08/22 00:20:10 hno Exp $
 #
 
 errordir = $(datadir)/errors
@@ -42,9 +42,9 @@ LANGUAGES	= \
 		Spanish \
 		Swedish \
 		Traditional_Chinese \
-		Turkish
+		Turkish 
 
-install-data-local:
+install-data-local: 
 	@for l in $(INSTALL_LANGUAGES); do \
 		$(mkinstalldirs) $(DESTDIR)$(DEFAULT_ERROR_DIR)/$$l && \
 		for f in $(srcdir)/$$l/ERR_*; do \
@@ -87,12 +87,7 @@ dist-hook:
 	    test -d $(distdir)/$$lang \
 	    || mkdir $(distdir)/$$lang \
 	    || exit 1; \
-	    cp -p $(srcdir)/$$lang/ERR_* $(distdir)/$$lang \
-	    || exit 1; \
-	    if test -f $(srcdir)/$$lang/README; then \
-	      cp -p $(srcdir)/$$lang/README $(distdir)/$$lang \
+	    cp -p $(srcdir)/$$lang/ERR_*  $(distdir)/$$lang \
 	      || exit 1; \
-	    fi; \
 	  fi; \
-	done
-
+	done		

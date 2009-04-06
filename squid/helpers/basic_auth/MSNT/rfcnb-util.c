@@ -359,20 +359,15 @@ RFCNB_Name_To_IP(char *host, struct in_addr *Dest_IP)
 	if ((hp = gethostbyname(host)) == NULL) {	/* Not in DNS */
 
 	    /* Try NetBIOS name lookup, how the hell do we do that? */
-
 	    RFCNB_errno = RFCNBE_BadName;	/* Is this right? */
 	    RFCNB_saved_errno = errno;
 	    return (RFCNBE_Bad);
 
-	} else {		/* We got a name */
-
-	    memcpy((void *) Dest_IP, (void *) hp->h_addr_list[0], sizeof(struct in_addr));
-
+	} else { /* We got a name */
+            Dest_IP->s_addr = ((struct sockaddr_in*)hp->h_addr_list[0])->sin_addr.s_addr;
 	}
-    } else {			/* It was an IP address */
-
-	memcpy((void *) Dest_IP, (void *) &addr, sizeof(struct in_addr));
-
+    } else { /* It was an IP address */
+	Dest_IP->s_addr = addr;
     }
 
     return 0;

@@ -1,5 +1,5 @@
 /*
- * $Id: html_quote.c,v 1.5 2005/05/17 16:56:36 hno Exp $
+ * $Id: html_quote.c,v 1.6 2007/12/06 02:37:15 amosjeffries Exp $
  * 
  * DEBUG:
  * AUTHOR: Robert Collins
@@ -42,7 +42,6 @@
 #endif
 
 #include "util.h"
-#include "snprintf.h"
 
 /*  
  *  HTML defines these characters as special entities that should be quoted.
@@ -109,6 +108,15 @@ html_quote(const char *string)
 		escape = htmlstandardentities[i].quote;
 		break;
 	    }
+	}
+	/* Encode control chars just to be on the safe side, and make
+	 * sure all 8-bit characters are encoded to protect from buggy
+	 * clients
+	 */
+	if (!escape && (ch <= 0x1F || ch >= 0x7f) && ch != '\n' && ch != '\r' && ch != '\t') {
+	    static char dec_encoded[7];
+	    snprintf(dec_encoded, sizeof dec_encoded, "&#%3d;", (int) ch);
+	    escape = dec_encoded;
 	}
 	if (escape) {
 	    /* Ok, An escaped form was found above. Use it */

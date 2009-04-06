@@ -18,12 +18,12 @@
 #include "config.h"
 #include "ntlmauth.h"
 #include "ntlm.h"
+#include "squid_endian.h"
 #include "util.h"
 #include "smbval/smblib-common.h"
 #include "smbval/rfcnb-error.h"
 
 #include <signal.h>
-#include <unistd.h>
 
 /* these are part of rfcnb-priv.h and smblib-priv.h */
 extern int SMB_Get_Error_Msg(int msg, char *msgbuf, int len);
@@ -49,6 +49,9 @@ extern int RFCNB_Get_Last_Error();
 #endif
 #ifdef HAVE_UNISTD_H
 #include <unistd.h>
+#endif
+#ifdef HAVE_ASSERT_H
+#include <assert.h>
 #endif
 
 #ifdef DEBUG
@@ -273,7 +276,7 @@ manage_request()
     ntlmhdr *fast_header;
     char buf[BUFFER_SIZE];
     const char *ch;
-    char *ch2, *decoded, *cred;
+    char *ch2, *decoded, *cred = NULL;
     int plen;
 
     if (fgets(buf, BUFFER_SIZE, stdin) == NULL) {
@@ -308,7 +311,7 @@ manage_request()
 	    SEND("NA Broken authentication packet");
 	    return;
 	}
-	switch WSWAP(fast_header->type) {
+	switch (le32toh(fast_header->type)) {
 	case NTLM_NEGOTIATE:
 	    SEND("NA Invalid negotiation request received");
 	    return;
@@ -414,6 +417,7 @@ manage_request()
 		    return;
 		}
 	    }
+            assert(cred != NULL);
 	    lc(cred);		/* let's lowercase them for our convenience */
 	    SEND2("AF %s", cred);
 	    return;

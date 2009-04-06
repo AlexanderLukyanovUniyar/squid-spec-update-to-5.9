@@ -27,6 +27,7 @@ int SMBlib_errno;
 int SMBlib_SMB_Error;
 #define SMBLIB_ERRNO
 #define uchar unsigned char
+#include "util.h"
 #include "smblib-priv.h"
 #include "smblib.h"
 #include "rfcnb-priv.h"

@@ -7,7 +7,7 @@
 %endif
 
 Name: squid
-Version: 2.6.STABLE22
+Version: 3.0.STABLE13
 Release: alt1
 
 Summary: The Squid proxy caching server
@@ -19,21 +19,20 @@ Url: http://www.squid-cache.org/
 Packager: Squid Development Team <squid@packages.altlinux.org>
 
 Source: %url/Versions/v2/%name-%version.tar
-Source1: %url/Doc/FAQ/FAQ.sgml
 Source2: %name.init
 Source3: %name.logrotate
 Source4: wbinfo_group.sh
 
 # Cumulative ALT Linux patch, see git.altlinux.org/people/bga/packages/squid.git
-Patch: %name-%version-alt.patch
+Patch: %name-%version-%release.patch
 
 Obsoletes: %name-novm
 
 BuildConflicts: bind-devel
 BuildPreReq: rpm-build >= 4.0.4-alt10
 
-# Added on Fri Sep 28 2007
-BuildRequires: OpenSP libdb4-devel libkrb5-devel libldap-devel libpam-devel libsasl2-devel libssl-devel sgml-tools
+# Automatically added by buildreq on Wed Apr 08 2009
+BuildRequires: gcc-c++ libdb4-devel libldap-devel libpam-devel libssl-devel
 
 # Used by smb_auth.pl,pop3.pl and squid_db_auth, required on find-requires stage:
 BuildRequires: perl-Authen-Smb perl-libnet perl-DBI
@@ -152,20 +151,13 @@ Install squid package to get all Squid parts.
 %setup -q
 %patch -p1
 
-mkdir -p faq
-install -m644 %SOURCE1 FAQ.sgml
-sed -i -e 's,url="/\(htpasswd/chpasswd-cgi.tar.gz\)",url="http://www.squid-cache.org/\1",g' FAQ.sgml
-
 find . -type f -name '*.pl' -print0 | \
 	xargs -r0 sed -ie 's,/usr/local/bin/perl,/usr/bin/perl,g'
 
 sed -i -e 's,^KERBINC = ,KERBINC = -I%_includedir/krb5,g' \
-	helpers/negotiate_auth/squid_kerb_auth/Makefile.am
-
-touch NEWS AUTHORS
+	helpers/negotiate_auth/squid_kerb_auth/Makefile.*
 
 %build
-autoreconf -fisv
 %configure \
 	--bindir=%_sbindir \
 	--libexecdir=%_libdir/%name \
@@ -180,15 +172,12 @@ autoreconf -fisv
 	--enable-icmp \
 	--enable-htcp \
 	--enable-async-io=16 \
-	--enable-useragent-log \
 	--enable-wccp \
 	--enable-wccpv2 \
-	--with-gnu-regex \
 	--enable-arp-acl \
 	--enable-ssl \
 	--enable-forw-via-db \
-	--enable-follow-x-forwarded-for \
-	--enable-forward-log \
+	--enable-useragent-log \
 	--enable-referer-log \
 	--enable-ident-lookups \
 	--enable-carp \
@@ -196,28 +185,20 @@ autoreconf -fisv
 	--enable-cache-digests \
 	--enable-x-accelerator-vary \
 	--enable-auth="basic ntlm digest negotiate" \
-	--enable-basic-auth-helpers="DB LDAP MSNT NCSA PAM POP3 SASL SMB YP getpwnam multi-domain-NTLM" \
+	--enable-basic-auth-helpers="DB LDAP MSNT NCSA PAM POP3 SASL SMB YP getpwnam multi-domain-NTLM squid_radius_auth" \
 	--enable-ntlm-auth-helpers="SMB fakeauth no_check" \
 	--enable-digest-auth-helpers="ldap password eDirectory" \
 	--enable-negotiate-auth-helpers="squid_kerb_auth" \
 	--enable-external-acl-helpers="ip_user ldap_group unix_group session wbinfo_group" \
-	--enable-storeio="aufs coss diskd null ufs" \
+	--enable-storeio="aufs diskd null ufs" \
+	--enable-disk-io="AIO Blocking DiskDaemon DiskThreads" \
 	--enable-default-err-language="English" \
+	--enable-icap-client \
 	--with-large-files \
-	--enable-large-cache-files \
-	--enable-icap-support \
-	--enable-multicast-miss \
-	--enable-underscores \
-	--enable-fd-config \
-	--with-maxfd=16384
+	--with-filedescriptors=16384 \
+	--with-default-user="%name"
 
 %make_build
-
-cp FAQ.sgml faq/
-pushd faq
-sgml2html FAQ.sgml
-rm FAQ.sgml
-popd
 
 %install
 %make_build install DESTDIR=%buildroot
@@ -282,7 +263,7 @@ chown -R %name:%name %_spooldir/%name >/dev/null 2>&1 ||:
 
 %files
 %doc COPYRIGHT README ChangeLog QUICKSTART RELEASENOTES.html SPONSORS
-%doc faq/* doc/debug-sections.txt
+%doc doc/debug-sections.txt
 
 %files server
 %config(noreplace) %_sysconfdir/%name/%name.conf
@@ -299,11 +280,11 @@ chown -R %name:%name %_spooldir/%name >/dev/null 2>&1 ||:
 %_sbindir/squidclient
 #%_sbindir/RunAccel
 %_sbindir/RunCache
-%_sbindir/cossdump
+#%_sbindir/cossdump
 %_man8dir/squid.*
 %attr(4710,root,%name) %_libdir/%name/pinger
 %_libdir/%name/unlinkd
-%_libdir/%name/diskd-daemon
+%_libdir/%name/diskd
 %attr(3770,root,%name) %dir %_logdir/%name
 %attr(2770,root,%name) %dir %_spooldir/%name
 
@@ -335,12 +316,14 @@ chown -R %name:%name %_spooldir/%name >/dev/null 2>&1 ||:
 #%_libdir/%name/wb_ntlmauth
 %_libdir/%name/wbinfo_group.sh
 %_libdir/%name/yp_auth
+%_libdir/%name/squid_radius_auth
 %_man8dir/pam_auth.*
 %_man8dir/ncsa_auth.*
 %_man8dir/squid_ldap_auth.*
 %_man8dir/squid_ldap_group.*
 %_man8dir/squid_unix_group.*
 %_man8dir/squid_session.*
+%_man8dir/squid_radius_auth.*
 
 %files helpers-perl
 %doc scripts/*.pl
@@ -362,6 +345,11 @@ chown -R %name:%name %_spooldir/%name >/dev/null 2>&1 ||:
 
 
 %changelog
+* Tue Apr 07 2009 Grigory Batalov <bga@altlinux.ru> 3.0.STABLE13-alt1
+- New upstream release.
+- Obsolete FAQ is removed.
+- squid_radius_auth helper is enabled.
+
 * Mon Nov 10 2008 Grigory Batalov <bga@altlinux.ru> 2.6.STABLE22-alt1
 - New upstream release.
 

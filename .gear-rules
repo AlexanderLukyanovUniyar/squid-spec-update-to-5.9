@@ -1,6 +1,5 @@
 copy: *.init
 copy: *.logrotate
-copy: *.sgml
 copy: *.sh
 tar: @version@:squid
-diff: @version@:squid squid name=@name@-@version@-alt.patch
+diff: @version@:squid squid name=@name@-@version@-@release@.patch

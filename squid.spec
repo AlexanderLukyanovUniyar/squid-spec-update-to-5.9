@@ -8,7 +8,7 @@
 
 Name: squid
 Version: 3.0.STABLE13
-Release: alt1
+Release: alt2
 
 Summary: The Squid proxy caching server
 Summary(ru_RU.KOI8-R): Кэширующий прокси-сервер Squid
@@ -32,7 +32,7 @@ BuildConflicts: bind-devel
 BuildPreReq: rpm-build >= 4.0.4-alt10
 
 # Automatically added by buildreq on Wed Apr 08 2009
-BuildRequires: gcc-c++ libdb4-devel libldap-devel libpam-devel libssl-devel
+BuildRequires: gcc-c++ libdb4-devel libldap-devel libpam-devel libssl-devel libkrb5-devel
 
 # Used by smb_auth.pl,pop3.pl and squid_db_auth, required on find-requires stage:
 BuildRequires: perl-Authen-Smb perl-libnet perl-DBI
@@ -59,12 +59,25 @@ Squid --- высокопроизводительный кэширующий прокси-сервер для web-клиентов
 
 
 
+%package conf-default
+Summary: default %name config
+Group: System/Servers
+Requires: %name-common
+Provides: %name-conf = %version-%release, %_sysconfdir/%name/%name.conf
+%{expand:%%global o_list %(for n in host2cat; do echo -n "%name-conf-$n "; done)}
+%{?o_list:Conflicts: %o_list}
+
+%description conf-default
+This package contains default %name config
+
+
+
 %package server
 Summary: main Squid server and its necessary files
 Summary(ru_RU.KOI8-R): главный сервер Squid и необходимые ему файлы
 Group: System/Servers
 PreReq: net-snmp-mibs
-Requires: %name-common
+Requires: %name-common, %name-conf, %_sysconfdir/%name/%name.conf
 Conflicts: %name <= 2.5.STABLE9-alt3
 Obsoletes: %name-pinger
 
@@ -265,8 +278,10 @@ chown -R %name:%name %_spooldir/%name >/dev/null 2>&1 ||:
 %doc COPYRIGHT README ChangeLog QUICKSTART RELEASENOTES.html SPONSORS
 %doc doc/debug-sections.txt
 
-%files server
+%files conf-default
 %config(noreplace) %_sysconfdir/%name/%name.conf
+
+%files server
 %config(noreplace) %_sysconfdir/%name/%name.conf.default
 %config(noreplace) %_sysconfdir/%name/mime.conf
 %config(noreplace) %_sysconfdir/%name/mime.conf.default
@@ -345,6 +360,9 @@ chown -R %name:%name %_spooldir/%name >/dev/null 2>&1 ||:
 
 
 %changelog
+* Mon Apr 13 2009 Grigory Batalov <bga@altlinux.ru> 3.0.STABLE13-alt2
+- Default config is separated.
+
 * Tue Apr 07 2009 Grigory Batalov <bga@altlinux.ru> 3.0.STABLE13-alt1
 - New upstream release.
 - Obsolete FAQ is removed.

@@ -8,7 +8,7 @@
 
 Name: squid
 Version: 3.0.STABLE13
-Release: alt2
+Release: alt3
 
 Summary: The Squid proxy caching server
 Summary(ru_RU.KOI8-R): Кэширующий прокси-сервер Squid
@@ -207,6 +207,7 @@ sed -i -e 's,^KERBINC = ,KERBINC = -I%_includedir/krb5,g' \
 	--enable-disk-io="AIO Blocking DiskDaemon DiskThreads" \
 	--enable-default-err-language="English" \
 	--enable-icap-client \
+	--enable-linux-netfilter \
 	--with-large-files \
 	--with-filedescriptors=16384 \
 	--with-default-user="%name"
@@ -360,6 +361,9 @@ chown -R %name:%name %_spooldir/%name >/dev/null 2>&1 ||:
 
 
 %changelog
+* Fri May 08 2009 Grigory Batalov <bga@altlinux.ru> 3.0.STABLE13-alt3
+- Enable Linux netfilter.
+
 * Mon Apr 13 2009 Grigory Batalov <bga@altlinux.ru> 3.0.STABLE13-alt2
 - Default config is separated.
 

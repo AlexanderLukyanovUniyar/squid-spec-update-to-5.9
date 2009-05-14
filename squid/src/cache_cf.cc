@@ -141,6 +141,7 @@ static int check_null_sockaddr_in_list(const sockaddr_in_list *);
 static void parse_http_port_list(http_port_list **);
 static void dump_http_port_list(StoreEntry *, const char *, const http_port_list *);
 static void free_http_port_list(http_port_list **);
+static int check_null_http_port_list(const http_port_list *);
 
 #if USE_SSL
 static void parse_https_port_list(https_port_list **);
@@ -3013,6 +3014,12 @@ free_http_port_list(http_port_list ** head)
         *head = s->next;
         cbdataFree(s);
     }
+}
+
+static int
+check_null_http_port_list(const http_port_list * s)
+{
+    return NULL == s;
 }
 
 #if USE_SSL

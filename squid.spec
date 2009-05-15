@@ -8,7 +8,7 @@
 
 Name: squid
 Version: 3.0.STABLE13
-Release: alt3
+Release: alt4
 
 Summary: The Squid proxy caching server
 Summary(ru_RU.KOI8-R): Кэширующий прокси-сервер Squid
@@ -361,6 +361,9 @@ chown -R %name:%name %_spooldir/%name >/dev/null 2>&1 ||:
 
 
 %changelog
+* Fri May 15 2009 Grigory Batalov <bga@altlinux.ru> 3.0.STABLE13-alt4
+- Set default http_port to 3128.
+
 * Fri May 08 2009 Grigory Batalov <bga@altlinux.ru> 3.0.STABLE13-alt3
 - Enable Linux netfilter.
 

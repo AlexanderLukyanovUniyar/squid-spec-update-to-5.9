@@ -31,8 +31,8 @@ Obsoletes: %name-novm
 BuildConflicts: bind-devel
 BuildPreReq: rpm-build >= 4.0.4-alt10
 
-# Automatically added by buildreq on Wed Apr 08 2009
-BuildRequires: gcc-c++ libdb4-devel libldap-devel libpam-devel libssl-devel libkrb5-devel
+# Automatically added by buildreq on Mon May 18 2009
+BuildRequires: cppunit-devel gcc-c++ libdb4-devel libldap-devel libpam-devel libssl-devel libkrb5-devel
 
 # Used by smb_auth.pl,pop3.pl and squid_db_auth, required on find-requires stage:
 BuildRequires: perl-Authen-Smb perl-libnet perl-DBI
@@ -213,6 +213,7 @@ sed -i -e 's,^KERBINC = ,KERBINC = -I%_includedir/krb5,g' \
 	--with-default-user="%name"
 
 %make_build
+%make_build check
 
 %install
 %make_build install DESTDIR=%buildroot

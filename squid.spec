@@ -7,8 +7,8 @@
 %endif
 
 Name: squid
-Version: 3.0.STABLE13
-Release: alt4
+Version: 3.0.STABLE15
+Release: alt1
 
 Summary: The Squid proxy caching server
 Summary(ru_RU.KOI8-R): Кэширующий прокси-сервер Squid
@@ -361,6 +361,10 @@ chown -R %name:%name %_spooldir/%name >/dev/null 2>&1 ||:
 
 
 %changelog
+* Mon May 18 2009 Grigory Batalov <bga@altlinux.ru> 3.0.STABLE15-alt1
+- New upstream release.
+- Fix building with gcc-4.4.
+
 * Fri May 15 2009 Grigory Batalov <bga@altlinux.ru> 3.0.STABLE13-alt4
 - Set default http_port to 3128.
 

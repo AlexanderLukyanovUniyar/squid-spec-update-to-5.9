@@ -8,7 +8,7 @@
 
 Name: squid
 Version: 3.0.STABLE15
-Release: alt1
+Release: alt2
 
 Summary: The Squid proxy caching server
 Summary(ru_RU.KOI8-R): Кэширующий прокси-сервер Squid
@@ -173,7 +173,7 @@ sed -i -e 's,^KERBINC = ,KERBINC = -I%_includedir/krb5,g' \
 %build
 %configure \
 	--bindir=%_sbindir \
-	--libexecdir=%_libdir/%name \
+	--libexecdir=%_libexecdir/%name \
 	--localstatedir=%_var \
 	--sysconfdir=%_sysconfdir/%name \
 	--datadir=%_datadir/%name \
@@ -252,9 +252,15 @@ install -pD -m644 helpers/external_acl/unix_group/README helpers/doc/unix_group.
 install -pD -m644 helpers/external_acl/unix_group/README helpers/doc/unix_group.README
 install -pD -m644 helpers/ntlm_auth/no_check/README.no_check_ntlm_auth helpers/doc/README.no_check_ntlm_auth
 
-install -p -m755 %SOURCE4 %buildroot%_libdir/%name/
+install -p -m755 %SOURCE4 %buildroot%_libexecdir/%name/
 mkdir -p %buildroot%_datadir/snmp/mibs
 mv %buildroot%_datadir/%name/mib.txt %buildroot%_datadir/snmp/mibs/SQUID-MIB.txt
+
+mkdir -p %buildroot%_sysconfdir/sysconfig
+cat <<EOF > %buildroot%_sysconfdir/sysconfig/%name
+# Kerberos keytab file
+#KRB5_KTNAME=%_sysconfdir/%name/squid.keytab
+EOF
 
 %pre common
 %_sbindir/groupadd -r -f %name
@@ -287,6 +293,7 @@ chown -R %name:%name %_spooldir/%name >/dev/null 2>&1 ||:
 %config(noreplace) %_sysconfdir/%name/%name.conf.default
 %config(noreplace) %_sysconfdir/%name/mime.conf
 %config(noreplace) %_sysconfdir/%name/mime.conf.default
+%config(noreplace) %_sysconfdir/sysconfig/%name
 %config %_initdir/%name
 %config %_sysconfdir/logrotate.d/%name
 %dir %_datadir/%name
@@ -299,9 +306,9 @@ chown -R %name:%name %_spooldir/%name >/dev/null 2>&1 ||:
 %_sbindir/RunCache
 #%_sbindir/cossdump
 %_man8dir/squid.*
-%attr(4710,root,%name) %_libdir/%name/pinger
-%_libdir/%name/unlinkd
-%_libdir/%name/diskd
+%attr(4710,root,%name) %_libexecdir/%name/pinger
+%_libexecdir/%name/unlinkd
+%_libexecdir/%name/diskd
 %attr(3770,root,%name) %dir %_logdir/%name
 %attr(2770,root,%name) %dir %_spooldir/%name
 
@@ -309,31 +316,31 @@ chown -R %name:%name %_spooldir/%name >/dev/null 2>&1 ||:
 %doc helpers/doc/*
 %config(noreplace) %_sysconfdir/%name/msntauth.conf
 %config(noreplace) %_sysconfdir/%name/msntauth.conf.default
-%_libdir/%name/digest_pw_auth
-%_libdir/%name/fakeauth_auth
-%_libdir/%name/getpwname_auth
-%_libdir/%name/ip_user_check
-%_libdir/%name/msnt_auth
-%_libdir/%name/ncsa_auth
-%_libdir/%name/ntlm_auth
+%_libexecdir/%name/digest_pw_auth
+%_libexecdir/%name/fakeauth_auth
+%_libexecdir/%name/getpwname_auth
+%_libexecdir/%name/ip_user_check
+%_libexecdir/%name/msnt_auth
+%_libexecdir/%name/ncsa_auth
+%_libexecdir/%name/ntlm_auth
 # fixing #6321, step 2/2
-%attr(2711,root,auth) %_libdir/%name/pam_auth
-%_libdir/%name/sasl_auth
-%_libdir/%name/smb_auth
-%_libdir/%name/smb_auth.sh
-%_libdir/%name/squid_ldap_auth
-%_libdir/%name/squid_ldap_group
-%_libdir/%name/squid_unix_group
-%_libdir/%name/digest_ldap_auth
-%_libdir/%name/squid_session
-%_libdir/%name/digest_edir_auth
-%_libdir/%name/squid_kerb_auth
-#%_libdir/%name/wb_auth
-#%_libdir/%name/wb_group
-#%_libdir/%name/wb_ntlmauth
-%_libdir/%name/wbinfo_group.sh
-%_libdir/%name/yp_auth
-%_libdir/%name/squid_radius_auth
+%attr(2711,root,auth) %_libexecdir/%name/pam_auth
+%_libexecdir/%name/sasl_auth
+%_libexecdir/%name/smb_auth
+%_libexecdir/%name/smb_auth.sh
+%_libexecdir/%name/squid_ldap_auth
+%_libexecdir/%name/squid_ldap_group
+%_libexecdir/%name/squid_unix_group
+%_libexecdir/%name/digest_ldap_auth
+%_libexecdir/%name/squid_session
+%_libexecdir/%name/digest_edir_auth
+%_libexecdir/%name/squid_kerb_auth
+#%_libexecdir/%name/wb_auth
+#%_libexecdir/%name/wb_group
+#%_libexecdir/%name/wb_ntlmauth
+%_libexecdir/%name/wbinfo_group.sh
+%_libexecdir/%name/yp_auth
+%_libexecdir/%name/squid_radius_auth
 %_man8dir/pam_auth.*
 %_man8dir/ncsa_auth.*
 %_man8dir/squid_ldap_auth.*
@@ -344,24 +351,28 @@ chown -R %name:%name %_spooldir/%name >/dev/null 2>&1 ||:
 
 %files helpers-perl
 %doc scripts/*.pl
-%_libdir/%name/no_check.pl
-%_libdir/%name/smb_auth.pl
-%_libdir/%name/wbinfo_group.pl
-%_libdir/%name/pop3.pl
-%_libdir/%name/squid_db_auth
+%_libexecdir/%name/no_check.pl
+%_libexecdir/%name/smb_auth.pl
+%_libexecdir/%name/wbinfo_group.pl
+%_libexecdir/%name/pop3.pl
+%_libexecdir/%name/squid_db_auth
 %_man8dir/squid_db_auth.*
 
 %files cachemgr
 %config(noreplace) %_sysconfdir/%name/cachemgr.conf
-%_libdir/%name/cachemgr.cgi
+%_libexecdir/%name/cachemgr.cgi
 %_man8dir/cachemgr.cgi.*
 
 %files common
 %attr(750,root,%name) %dir %_sysconfdir/%name
-%attr(750,root,%name) %dir %_libdir/%name
+%attr(750,root,%name) %dir %_libexecdir/%name
 
 
 %changelog
+* Fri Jun 26 2009 Grigory Batalov <bga@altlinux.ru> 3.0.STABLE15-alt2
+- Helpers were moved to %%_libexecdir according to GNU Coding Standards.
+- KRB5_KTNAME was set in the initscript and in the /etc/sysconfig/squid.
+
 * Mon May 18 2009 Grigory Batalov <bga@altlinux.ru> 3.0.STABLE15-alt1
 - New upstream release.
 - Fix building with gcc-4.4.

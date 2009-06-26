@@ -24,6 +24,11 @@ WITHOUT_RC_COMPAT=1
 # Source networking configuration.
 SourceIfNotEmpty /etc/sysconfig/network 
 
+# Kerberos keytab file
+KRB5_KTNAME=/etc/squid/squid.keytab
+# Overwrite something
+SourceIfNotEmpty /etc/sysconfig/squid
+
 SQUID=/usr/sbin/squid
 # default squid options
 # -D disables initial dns checks. If you most likely will not to have an

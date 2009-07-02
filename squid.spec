@@ -7,8 +7,8 @@
 %endif
 
 Name: squid
-Version: 3.0.STABLE15
-Release: alt2
+Version: 3.0.STABLE16
+Release: alt1
 
 Summary: The Squid proxy caching server
 Summary(ru_RU.KOI8-R): Кэширующий прокси-сервер Squid
@@ -22,6 +22,8 @@ Source: %url/Versions/v2/%name-%version.tar
 Source2: %name.init
 Source3: %name.logrotate
 Source4: wbinfo_group.sh
+Source5: %name.sysconfig
+Source6: %name.pam
 
 # Cumulative ALT Linux patch, see git.altlinux.org/people/bga/packages/squid.git
 Patch: %name-%version-%release.patch
@@ -167,9 +169,6 @@ Install squid package to get all Squid parts.
 find . -type f -name '*.pl' -print0 | \
 	xargs -r0 sed -ie 's,/usr/local/bin/perl,/usr/bin/perl,g'
 
-sed -i -e 's,^KERBINC = ,KERBINC = -I%_includedir/krb5,g' \
-	helpers/negotiate_auth/squid_kerb_auth/Makefile.*
-
 %build
 %configure \
 	--bindir=%_sbindir \
@@ -256,11 +255,8 @@ install -p -m755 %SOURCE4 %buildroot%_libexecdir/%name/
 mkdir -p %buildroot%_datadir/snmp/mibs
 mv %buildroot%_datadir/%name/mib.txt %buildroot%_datadir/snmp/mibs/SQUID-MIB.txt
 
-mkdir -p %buildroot%_sysconfdir/sysconfig
-cat <<EOF > %buildroot%_sysconfdir/sysconfig/%name
-# Kerberos keytab file
-#KRB5_KTNAME=%_sysconfdir/%name/squid.keytab
-EOF
+install -D -m644 %SOURCE5 %buildroot%_sysconfdir/sysconfig/%name
+install -D -m644 %SOURCE6 %buildroot%_sysconfdir/pam.d/%name
 
 %pre common
 %_sbindir/groupadd -r -f %name
@@ -323,6 +319,7 @@ chown -R %name:%name %_spooldir/%name >/dev/null 2>&1 ||:
 %_libexecdir/%name/msnt_auth
 %_libexecdir/%name/ncsa_auth
 %_libexecdir/%name/ntlm_auth
+%attr(640,root,auth) %config(noreplace) %_sysconfdir/pam.d/%name
 # fixing #6321, step 2/2
 %attr(2711,root,auth) %_libexecdir/%name/pam_auth
 %_libexecdir/%name/sasl_auth
@@ -369,6 +366,10 @@ chown -R %name:%name %_spooldir/%name >/dev/null 2>&1 ||:
 
 
 %changelog
+* Thu Jul 02 2009 Grigory Batalov <bga@altlinux.ru> 3.0.STABLE16-alt1
+- New upstream release.
+- Include PAM config for pam_auth helper (#20665).
+
 * Fri Jun 26 2009 Grigory Batalov <bga@altlinux.ru> 3.0.STABLE15-alt2
 - Helpers were moved to %%_libexecdir according to GNU Coding Standards.
 - KRB5_KTNAME was set in the initscript and in the /etc/sysconfig/squid.

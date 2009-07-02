@@ -1,0 +1,13 @@
+object 8387eb7d5a59761479a93269ad6f5362161c6441
+type commit
+tag 3.0.STABLE16
+tagger Grigory Batalov <bga@altlinux.org> 1246543174 +0400
+
+squid 3.0.STABLE16
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1.4.9 (GNU/Linux)
+
+iEYEABECAAYFAkpMvUYACgkQTSOu/blIq24YOgCdGo2XCLQvxqEi76WEQlJEf0vQ
+UGUAn0FV+RoDESmmvk0gkIo/o9gCIYdD
+=kfSv
+-----END PGP SIGNATURE-----

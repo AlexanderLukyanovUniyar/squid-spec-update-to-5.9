@@ -23312,6 +23312,13 @@ _ACEOF
           KRB5INCS=`krb5-config --cflags gssapi 2>/dev/null`
           KRB5LIBS=`krb5-config --libs gssapi 2>/dev/null`
        fi
+    fi
+    old_CPPFLAGS=$CPPFLAGS
+    CPPFLAGS="$CPPFLAGS $KRB5INCS"
+    old_CFLAGS=$CFLAGS
+    CFLAGS="$CFLAGS $KRB5INCS"
+    old_LIBS=$LIBS
+    LIBS="$LIBS $KRB5LIBS"
 
 
 
@@ -23465,11 +23472,6 @@ fi
 
 done
 
-    fi
-    old_CPPFLAGS=$CPPFLAGS
-    CPPFLAGS="$CPPFLAGS $KRB5INCS"
-    old_LIBS=$LIBS
-    LIBS="$LIBS $KRB5LIBS"
     { $as_echo "$as_me:$LINENO: checking for SPNEGO support" >&5
 $as_echo_n "checking for SPNEGO support... " >&6; }
 if test "${ac_cv_have_spnego+set}" = set; then
@@ -23570,6 +23572,7 @@ fi
 $as_echo "$ac_cv_have_spnego" >&6; }
   LIBS=$old_LIBS
   CPPFLAGS=$old_CPPFLAGS
+  CFLAGS=$old_CFLAGS
   if test x"$ac_cv_have_spnego" = x"yes"; then
 
 cat >>confdefs.h <<\_ACEOF

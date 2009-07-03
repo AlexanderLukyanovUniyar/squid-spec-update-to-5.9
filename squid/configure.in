@@ -1592,12 +1592,14 @@ if `echo "$NEGOTIATE_AUTH_HELPERS" | $EGREP "squid_kerb_auth|all" >/dev/null`; t
           KRB5INCS=`krb5-config --cflags gssapi 2>/dev/null` 
           KRB5LIBS=`krb5-config --libs gssapi 2>/dev/null` 
        fi
-       AC_CHECK_HEADERS(gssapi.h gssapi/gssapi.h gssapi/gssapi_krb5.h gssapi/gssapi_generic.h)
     fi
     old_CPPFLAGS=$CPPFLAGS
     CPPFLAGS="$CPPFLAGS $KRB5INCS"
+    old_CFLAGS=$CFLAGS
+    CFLAGS="$CFLAGS $KRB5INCS"
     old_LIBS=$LIBS
     LIBS="$LIBS $KRB5LIBS"
+    AC_CHECK_HEADERS(gssapi.h gssapi/gssapi.h gssapi/gssapi_krb5.h gssapi/gssapi_generic.h)
     AC_CACHE_CHECK([for SPNEGO support],ac_cv_have_spnego,[
     AC_TRY_RUN([
 #ifdef HAVE_HEIMDAL_KERBEROS
@@ -1642,6 +1644,7 @@ gss_OID gss_mech_spnego = &_gss_mech_spnego;
   ac_cv_have_spnego=no)])
   LIBS=$old_LIBS
   CPPFLAGS=$old_CPPFLAGS
+  CFLAGS=$old_CFLAGS
   if test x"$ac_cv_have_spnego" = x"yes"; then
     AC_DEFINE(HAVE_SPNEGO,1, [Define to 1 if you have SPNEGO support])
   fi

@@ -7,7 +7,7 @@
 %endif
 
 Name: squid
-Version: 3.0.STABLE16
+Version: 3.0.STABLE17
 Release: alt1
 
 Summary: The Squid proxy caching server
@@ -366,6 +366,12 @@ chown -R %name:%name %_spooldir/%name >/dev/null 2>&1 ||:
 
 
 %changelog
+* Tue Aug 04 2009 Grigory Batalov <bga@altlinux.ru> 3.0.STABLE17-alt1
+- New upstream release, including SQUID-2009:2 fix.
+- squid_unix_group: new -K switch to strip kerberos realm
+  from username (ALT #20840).
+- Require exact sub-packages version by squid umbrella (ALT #20723).
+
 * Thu Jul 02 2009 Grigory Batalov <bga@altlinux.ru> 3.0.STABLE16-alt1
 - New upstream release.
 - Include PAM config for pam_auth helper (#20665).

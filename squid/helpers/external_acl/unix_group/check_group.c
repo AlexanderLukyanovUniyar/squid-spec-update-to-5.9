@@ -130,6 +130,8 @@ usage(char *program)
 	"-p			Verify primary user group as well\n");
     fprintf(stderr,
 	"-s			Strip NT domain from usernames\n");
+    fprintf(stderr,
+	"-K                     Strip Kerberos realm from usernames\n");
 }
 
 
@@ -140,12 +142,13 @@ main(int argc, char *argv[])
     char buf[BUFSIZE];
     char *grents[MAX_GROUP];
     int check_pw = 0, ch, i = 0, j = 0, strip_dm = 0;
+    int strip_kerberos_realm = 0;
 
     /* make standard output line buffered */
     setvbuf(stdout, NULL, _IOLBF, 0);
 
     /* get user options */
-    while ((ch = getopt(argc, argv, "spg:")) != -1) {
+    while ((ch = getopt(argc, argv, "spKg:")) != -1) {
   	switch (ch) {
 	case 's':
 	    strip_dm = 1;
@@ -163,6 +166,9 @@ main(int argc, char *argv[])
 		    "Exceeded maximum number of allowed groups (%i)\n", i);
 		exit(1);
 	    }
+	    break;
+	case 'K':
+	    strip_kerberos_realm = 1;
 	    break;
 	case '?':
 	    if (xisprint(optopt)) {
@@ -204,6 +210,12 @@ main(int argc, char *argv[])
 		suser = strchr(user, '\\');
 		if (!suser) suser = strchr(user, '/');
 		if (suser && suser[1]) user = suser + 1;
+	    }
+	    if (user && strip_kerberos_realm) {
+	        char *u = strchr(user, '@');
+		if (u != NULL) {
+		    *u = '\0';
+		}
 	    }
 	    /* check groups supplied by Squid */
 	    while ((p = strtok(NULL, " ")) != NULL) {

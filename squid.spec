@@ -39,7 +39,7 @@ BuildRequires: cppunit-devel gcc-c++ libdb4-devel libldap-devel libpam-devel lib
 # Used by smb_auth.pl,pop3.pl and squid_db_auth, required on find-requires stage:
 BuildRequires: perl-Authen-Smb perl-libnet perl-DBI
 
-Requires: %name-common %name-server %name-helpers %name-helpers-perl %name-cachemgr
+Requires: %name-common = %version-%release, %name-server = %version-%release, %name-helpers = %version-%release, %name-helpers-perl = %version-%release, %name-cachemgr = %version-%release
 
 %description
 Squid is a high-performance proxy caching server for Web clients,

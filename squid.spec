@@ -7,7 +7,7 @@
 %endif
 
 Name: squid
-Version: 3.0.STABLE17
+Version: 3.0.STABLE18
 Release: alt1
 
 Summary: The Squid proxy caching server
@@ -366,6 +366,9 @@ chown -R %name:%name %_spooldir/%name >/dev/null 2>&1 ||:
 
 
 %changelog
+* Wed Aug 05 2009 Grigory Batalov <bga@altlinux.ru> 3.0.STABLE18-alt1
+- Bugfix for previous release.
+
 * Tue Aug 04 2009 Grigory Batalov <bga@altlinux.ru> 3.0.STABLE17-alt1
 - New upstream release, including SQUID-2009:2 fix.
 - squid_unix_group: new -K switch to strip kerberos realm

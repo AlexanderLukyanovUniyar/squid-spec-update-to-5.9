@@ -154,8 +154,11 @@ bool HttpMsg::parse(MemBuf *buf, bool eof, http_status *error)
 
     // sanity check the start line to see if this is in fact an HTTP message
     if (!sanityCheckStartLine(buf, hdr_len, error)) {
-        debugs(58,1, HERE << "first line of HTTP message is invalid");
-        // NP: sanityCheck sets *error
+        // NP: sanityCheck sets *error and sends debug warnings on syntax errors.
+        // if we have seen the connection close, this is an error too
+        if (eof && *error==HTTP_STATUS_NONE)
+            *error = HTTP_INVALID_HEADER;
+
         return false;
     }
 

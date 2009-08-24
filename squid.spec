@@ -8,7 +8,7 @@
 
 Name: squid
 Version: 3.0.STABLE18
-Release: alt1
+Release: alt2
 
 Summary: The Squid proxy caching server
 Summary(ru_RU.KOI8-R): Кэширующий прокси-сервер Squid
@@ -366,6 +366,9 @@ chown -R %name:%name %_spooldir/%name >/dev/null 2>&1 ||:
 
 
 %changelog
+* Mon Aug 24 2009 Grigory Batalov <bga@altlinux.ru> 3.0.STABLE18-alt2
+- Export Kerberos keytab name (ALT #20413).
+
 * Wed Aug 05 2009 Grigory Batalov <bga@altlinux.ru> 3.0.STABLE18-alt1
 - Bugfix for previous release.
 

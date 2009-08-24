@@ -1,2 +1,2 @@
 # Kerberos keytab file
-#KRB5_KTNAME=%_sysconfdir/%name/squid.keytab
+#export KRB5_KTNAME=/etc/squid/squid.keytab

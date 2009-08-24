@@ -25,7 +25,7 @@ WITHOUT_RC_COMPAT=1
 SourceIfNotEmpty /etc/sysconfig/network 
 
 # Kerberos keytab file
-KRB5_KTNAME=/etc/squid/squid.keytab
+export KRB5_KTNAME=/etc/squid/squid.keytab
 # Overwrite something
 SourceIfNotEmpty /etc/sysconfig/squid
 

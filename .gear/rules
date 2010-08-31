@@ -1,0 +1,7 @@
+copy: *.init
+copy: *.logrotate
+copy: *.sh
+copy: *.pam
+copy: *.sysconfig
+copy: *.patch
+tar: squid

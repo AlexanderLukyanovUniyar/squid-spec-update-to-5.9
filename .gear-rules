@@ -1,7 +1,0 @@
-copy: *.init
-copy: *.logrotate
-copy: *.sh
-copy: *.pam
-copy: *.sysconfig
-tar: @version@:squid
-diff: @version@:squid squid name=@name@-@version@-@release@.patch

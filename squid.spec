@@ -7,7 +7,7 @@
 %endif
 
 Name: squid
-Version: 3.0.STABLE19
+Version: 3.1.7
 Release: alt1
 
 Summary: The Squid proxy caching server
@@ -25,19 +25,22 @@ Source4: wbinfo_group.sh
 Source5: %name.sysconfig
 Source6: %name.pam
 
-# Cumulative ALT Linux patch, see git.altlinux.org/people/bga/packages/squid.git
-Patch: %name-%version-%release.patch
-
 Obsoletes: %name-novm
 
 BuildConflicts: bind-devel
 BuildPreReq: rpm-build >= 4.0.4-alt10
 
 # Automatically added by buildreq on Mon May 18 2009
-BuildRequires: cppunit-devel gcc-c++ libdb4-devel libldap-devel libpam-devel libssl-devel libkrb5-devel
+BuildRequires: cppunit-devel gcc-c++ libdb4-devel libldap-devel libpam-devel libssl-devel libkrb5-devel libcap-devel libltdl-devel
 
 # Used by smb_auth.pl,pop3.pl and squid_db_auth, required on find-requires stage:
 BuildRequires: perl-Authen-Smb perl-libnet perl-DBI
+
+Patch1: squid-3.1.7-kerb_auth-link-alt.patch
+Patch2: squid-3.1.7-install-pinger-alt.patch
+Patch3: squid-3.1.0.9-location.patch
+Patch4: squid-3.1.7-default-logrotate-alt.patch
+Patch5: squid-3.1.7-default-paths-in-var-alt.patch
 
 Requires: %name-common = %version-%release, %name-server = %version-%release, %name-helpers = %version-%release, %name-helpers-perl = %version-%release, %name-cachemgr = %version-%release
 
@@ -164,7 +167,12 @@ Install squid package to get all Squid parts.
 
 %prep
 %setup -q
-%patch -p1
+
+%patch1 -p1
+%patch2 -p1
+%patch3 -p1
+%patch4 -p2
+%patch5 -p1
 
 find . -type f -name '*.pl' -print0 | \
 	xargs -r0 sed -ie 's,/usr/local/bin/perl,/usr/bin/perl,g'
@@ -198,11 +206,11 @@ find . -type f -name '*.pl' -print0 | \
 	--enable-x-accelerator-vary \
 	--enable-auth="basic ntlm digest negotiate" \
 	--enable-basic-auth-helpers="DB LDAP MSNT NCSA PAM POP3 SASL SMB YP getpwnam multi-domain-NTLM squid_radius_auth" \
-	--enable-ntlm-auth-helpers="SMB fakeauth no_check" \
+	--enable-ntlm-auth-helpers="smb_lm fakeauth no_check" \
 	--enable-digest-auth-helpers="ldap password eDirectory" \
 	--enable-negotiate-auth-helpers="squid_kerb_auth" \
 	--enable-external-acl-helpers="ip_user ldap_group unix_group session wbinfo_group" \
-	--enable-storeio="aufs diskd null ufs" \
+	--enable-storeio="aufs diskd ufs" \
 	--enable-disk-io="AIO Blocking DiskDaemon DiskThreads" \
 	--enable-default-err-language="English" \
 	--enable-icap-client \
@@ -287,8 +295,11 @@ chown -R %name:%name %_spooldir/%name >/dev/null 2>&1 ||:
 
 %files server
 %config(noreplace) %_sysconfdir/%name/%name.conf.default
+%config(noreplace) %_sysconfdir/%name/%name.conf.documented
 %config(noreplace) %_sysconfdir/%name/mime.conf
 %config(noreplace) %_sysconfdir/%name/mime.conf.default
+%config(noreplace) %_sysconfdir/%name/errorpage.css
+%config(noreplace) %_sysconfdir/%name/errorpage.css.default
 %config(noreplace) %_sysconfdir/sysconfig/%name
 %config %_initdir/%name
 %config %_sysconfdir/logrotate.d/%name
@@ -298,10 +309,8 @@ chown -R %name:%name %_spooldir/%name >/dev/null 2>&1 ||:
 %_datadir/snmp/mibs/SQUID-MIB.txt
 %_sbindir/%name
 %_sbindir/squidclient
-#%_sbindir/RunAccel
-%_sbindir/RunCache
-#%_sbindir/cossdump
 %_man8dir/squid.*
+%_man1dir/squidclient.*
 %attr(4710,root,%name) %_libexecdir/%name/pinger
 %_libexecdir/%name/unlinkd
 %_libexecdir/%name/diskd
@@ -318,7 +327,7 @@ chown -R %name:%name %_spooldir/%name >/dev/null 2>&1 ||:
 %_libexecdir/%name/ip_user_check
 %_libexecdir/%name/msnt_auth
 %_libexecdir/%name/ncsa_auth
-%_libexecdir/%name/ntlm_auth
+%_libexecdir/%name/ntlm_smb_lm_auth
 %attr(640,root,auth) %config(noreplace) %_sysconfdir/pam.d/%name
 # fixing #6321, step 2/2
 %attr(2711,root,auth) %_libexecdir/%name/pam_auth
@@ -338,6 +347,10 @@ chown -R %name:%name %_spooldir/%name >/dev/null 2>&1 ||:
 %_libexecdir/%name/wbinfo_group.sh
 %_libexecdir/%name/yp_auth
 %_libexecdir/%name/squid_radius_auth
+%_libexecdir/%name/negotiate_kerb_auth
+%_libexecdir/%name/negotiate_kerb_auth_test
+%_libexecdir/%name/squid_kerb_auth_test
+
 %_man8dir/pam_auth.*
 %_man8dir/ncsa_auth.*
 %_man8dir/squid_ldap_auth.*
@@ -357,6 +370,7 @@ chown -R %name:%name %_spooldir/%name >/dev/null 2>&1 ||:
 
 %files cachemgr
 %config(noreplace) %_sysconfdir/%name/cachemgr.conf
+%config(noreplace) %_sysconfdir/%name/cachemgr.conf.default
 %_libexecdir/%name/cachemgr.cgi
 %_man8dir/cachemgr.cgi.*
 
@@ -366,6 +380,9 @@ chown -R %name:%name %_spooldir/%name >/dev/null 2>&1 ||:
 
 
 %changelog
+* Tue Aug 31 2010 Vitaly Kuznetsov <vitty@altlinux.ru> 3.1.7-alt1
+- 3.1.7
+
 * Fri Sep 25 2009 Grigory Batalov <bga@altlinux.ru> 3.0.STABLE19-alt1
 - New upstream release.
 

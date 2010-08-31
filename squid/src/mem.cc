@@ -1,6 +1,5 @@
-
 /*
- * $Id: mem.cc,v 1.106.2.1 2008/02/26 00:15:55 amosjeffries Exp $
+ * $Id$
  *
  * DEBUG: section 13    High Level Memory Pool Management
  * AUTHOR: Harvest Derived
@@ -21,12 +20,12 @@
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation; either version 2 of the License, or
  *  (at your option) any later version.
- *  
+ *
  *  This program is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
- *  
+ *
  *  You should have received a copy of the GNU General Public License
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111, USA.
@@ -34,18 +33,22 @@
  */
 
 #include "squid.h"
-
-#include <iomanip>
-#include <ostream>
-
 #include "event.h"
 #include "CacheManager.h"
+#include "ClientInfo.h"
 #include "Mem.h"
 #include "memMeter.h"
 #include "Store.h"
 #include "StoreEntryStream.h"
 #include "MemBuf.h"
 #include "SquidTime.h"
+
+#if HAVE_IOMANIP
+#include <iomanip>
+#endif
+#if HAVE_OSTREAM
+#include <ostream>
+#endif
 
 /* module globals */
 
@@ -60,27 +63,25 @@ static double xm_deltat = 0;
 /* string pools */
 #define mem_str_pool_count 3
 
-static const struct
-{
+static const struct {
     const char *name;
     size_t obj_size;
 }
 
 StrPoolsAttrs[mem_str_pool_count] = {
 
-                                        {
-                                            "Short Strings", MemAllocator::RoundedSize(36),
-                                        },				/* to fit rfc1123 and similar */
-                                        {
-                                            "Medium Strings", MemAllocator::RoundedSize(128),
-                                        },				/* to fit most urls */
-                                        {
-                                            "Long Strings", MemAllocator::RoundedSize(512)
-                                        }				/* other */
-                                    };
+    {
+        "Short Strings", MemAllocator::RoundedSize(36),
+    },				/* to fit rfc1123 and similar */
+    {
+        "Medium Strings", MemAllocator::RoundedSize(128),
+    },				/* to fit most urls */
+    {
+        "Long Strings", MemAllocator::RoundedSize(512)
+    }				/* other */
+};
 
-static struct
-{
+static struct {
     MemAllocator *pool;
 }
 
@@ -140,17 +141,17 @@ Mem::Stats(StoreEntry * sentry)
     memBufStats(stream);
 #if WITH_VALGRIND
     if (RUNNING_ON_VALGRIND) {
-	long int leaked = 0, dubious = 0, reachable = 0, suppressed = 0;
-	stream << "Valgrind Report:\n";
-	stream << "Type\tAmount\n";
-       debugs(13, 1, "Asking valgrind for memleaks");
-	VALGRIND_DO_LEAK_CHECK;
-       debugs(13, 1, "Getting valgrind statistics");
-	VALGRIND_COUNT_LEAKS(leaked, dubious, reachable, suppressed);
-	stream << "Leaked\t" << leaked << "\n";
-	stream << "Dubious\t" << dubious << "\n";
-	stream << "Reachable\t" << reachable << "\n";
-	stream << "Suppressed\t" << suppressed << "\n";
+        long int leaked = 0, dubious = 0, reachable = 0, suppressed = 0;
+        stream << "Valgrind Report:\n";
+        stream << "Type\tAmount\n";
+        debugs(13, 1, "Asking valgrind for memleaks");
+        VALGRIND_DO_LEAK_CHECK;
+        debugs(13, 1, "Getting valgrind statistics");
+        VALGRIND_COUNT_LEAKS(leaked, dubious, reachable, suppressed);
+        stream << "Leaked\t" << leaked << "\n";
+        stream << "Dubious\t" << dubious << "\n";
+        stream << "Reachable\t" << reachable << "\n";
+        stream << "Suppressed\t" << suppressed << "\n";
     }
 #endif
     stream.flush();
@@ -165,11 +166,12 @@ Mem::Stats(StoreEntry * sentry)
  * max_pages for now
  */
 void
-memDataInit(mem_type type, const char *name, size_t size, int max_pages_notused)
+memDataInit(mem_type type, const char *name, size_t size, int max_pages_notused, bool zeroOnPush)
 {
     assert(name && size);
     assert(MemPools[type] == NULL);
     MemPools[type] = memPoolCreate(name, size);
+    MemPools[type]->zeroOnPush(zeroOnPush);
 }
 
 
@@ -344,18 +346,21 @@ Mem::CleanIdlePools(void *unused)
 void
 memConfigure(void)
 {
-    size_t new_pool_limit;
-    /* set to configured value first */
+    int64_t new_pool_limit;
 
+    /** Set to configured value first */
     if (!Config.onoff.mem_pools)
         new_pool_limit = 0;
     else if (Config.MemPools.limit > 0)
         new_pool_limit = Config.MemPools.limit;
-    else
-        new_pool_limit = mem_unlimited_size;
+    else {
+        if (Config.MemPools.limit == 0)
+            debugs(13, 1, "memory_pools_limit 0 has been chagned to memory_pools_limit none. Please update your config");
+        new_pool_limit = -1;
+    }
 
 #if 0
-    /*
+    /** \par
      * DPW 2007-04-12
      * No debugging here please because this method is called before
      * the debug log is configured and we'll get the message on
@@ -376,27 +381,32 @@ Mem::Init(void)
 {
     int i;
 
-    /*
+    /** \par
      * NOTE: Mem::Init() is called before the config file is parsed
      * and before the debugging module has been initialized.  Any
      * debug messages here at level 0 or 1 will always be printed
      * on stderr.
      */
 
-    /* set all pointers to null */
+    /** \par
+     * Set all pointers to null. */
     memset(MemPools, '\0', sizeof(MemPools));
-    /*
-     * it does not hurt much to have a lot of pools since sizeof(MemPool) is
+    /**
+     * Then initialize all pools.
+     * \par
+     * Starting with generic 2kB - 64kB buffr pools, then specific object types.
+     * \par
+     * It does not hurt much to have a lot of pools since sizeof(MemPool) is
      * small; someday we will figure out what to do with all the entries here
      * that are never used or used only once; perhaps we should simply use
      * malloc() for those? @?@
      */
-    memDataInit(MEM_2K_BUF, "2K Buffer", 2048, 10);
-    memDataInit(MEM_4K_BUF, "4K Buffer", 4096, 10);
-    memDataInit(MEM_8K_BUF, "8K Buffer", 8192, 10);
-    memDataInit(MEM_16K_BUF, "16K Buffer", 16384, 10);
-    memDataInit(MEM_32K_BUF, "32K Buffer", 32768, 10);
-    memDataInit(MEM_64K_BUF, "64K Buffer", 65536, 10);
+    memDataInit(MEM_2K_BUF, "2K Buffer", 2048, 10, false);
+    memDataInit(MEM_4K_BUF, "4K Buffer", 4096, 10, false);
+    memDataInit(MEM_8K_BUF, "8K Buffer", 8192, 10, false);
+    memDataInit(MEM_16K_BUF, "16K Buffer", 16384, 10, false);
+    memDataInit(MEM_32K_BUF, "32K Buffer", 32768, 10, false);
+    memDataInit(MEM_64K_BUF, "64K Buffer", 65536, 10, false);
     memDataInit(MEM_ACL_DENY_INFO_LIST, "acl_deny_info_list",
                 sizeof(acl_deny_info_list), 0);
     memDataInit(MEM_ACL_NAME_LIST, "acl_name_list", sizeof(acl_name_list), 0);
@@ -418,31 +428,34 @@ Mem::Init(void)
     memDataInit(MEM_MD5_DIGEST, "MD5 digest", SQUID_MD5_DIGEST_LENGTH, 0);
     MemPools[MEM_MD5_DIGEST]->setChunkSize(512 * 1024);
 
-    /* init string pools */
-
+    /** Lastly init the string pools. */
     for (i = 0; i < mem_str_pool_count; i++) {
         StrPools[i].pool = memPoolCreate(StrPoolsAttrs[i].name, StrPoolsAttrs[i].obj_size);
+        StrPools[i].pool->zeroOnPush(false);
 
         if (StrPools[i].pool->objectSize() != StrPoolsAttrs[i].obj_size)
             debugs(13, 1, "Notice: " << StrPoolsAttrs[i].name << " is " << StrPools[i].pool->objectSize() << " bytes instead of requested " << StrPoolsAttrs[i].obj_size << " bytes");
     }
+
+    /** \par
+     * finally register with the cache manager */
+    RegisterWithCacheManager();
 }
 
 void
 Mem::Report()
 {
     debugs(13, 3, "Memory pools are '" <<
-        (Config.onoff.mem_pools ? "on" : "off")  << "'; limit: " <<
-        std::setprecision(3) << toMB(MemPools::GetInstance().idleLimit()) <<
-        " MB");
+           (Config.onoff.mem_pools ? "on" : "off")  << "'; limit: " <<
+           std::setprecision(3) << toMB(MemPools::GetInstance().idleLimit()) <<
+           " MB");
 }
 
 void
-Mem::RegisterWithCacheManager(CacheManager & manager)
+Mem::RegisterWithCacheManager(void)
 {
-    manager.registerAction("mem",
-                           "Memory Utilization",
-                           Mem::Stats, 0, 1);
+    CacheManager::GetInstance()->registerAction("mem", "Memory Utilization",
+            Mem::Stats, 0, 1);
 }
 
 mem_type &operator++ (mem_type &aMem)
@@ -494,7 +507,7 @@ memInUse(mem_type type)
 
 /* ick */
 
-static void
+void
 memFree2K(void *p)
 {
     memFree(p, MEM_2K_BUF);
@@ -512,19 +525,19 @@ memFree8K(void *p)
     memFree(p, MEM_8K_BUF);
 }
 
-static void
+void
 memFree16K(void *p)
 {
     memFree(p, MEM_16K_BUF);
 }
 
-static void
+void
 memFree32K(void *p)
 {
     memFree(p, MEM_32K_BUF);
 }
 
-static void
+void
 memFree64K(void *p)
 {
     memFree(p, MEM_64K_BUF);
@@ -570,27 +583,38 @@ Mem::PoolReport(const MemPoolStats * mp_st, const MemPoolMeter * AllMeter, std::
     MemPoolMeter *pm = mp_st->meter;
     const char *delim = "\t ";
 
+#if HAVE_IOMANIP
+    stream.setf(std::ios_base::fixed);
+#endif
     stream << std::setw(20) << std::left << mp_st->label << delim;
     stream << std::setw(4) << std::right << mp_st->obj_size << delim;
 
     /* Chunks */
-    stream << std::setw(4) << toKB(mp_st->obj_size * mp_st->chunk_capacity) << delim;
-    stream << std::setw(4) << mp_st->chunk_capacity << delim;
-
     if (mp_st->chunk_capacity) {
+        stream << std::setw(4) << toKB(mp_st->obj_size * mp_st->chunk_capacity) << delim;
+        stream << std::setw(4) << mp_st->chunk_capacity << delim;
+
         needed = mp_st->items_inuse / mp_st->chunk_capacity;
 
         if (mp_st->items_inuse % mp_st->chunk_capacity)
             needed++;
 
         excess = mp_st->chunks_inuse - needed;
-    }
 
-    stream << std::setw(4) << mp_st->chunks_alloc << delim;
-    stream << std::setw(4) << mp_st->chunks_inuse << delim;
-    stream << std::setw(4) << mp_st->chunks_free << delim;
-    stream << std::setw(4) << mp_st->chunks_partial << delim;
-    stream << std::setprecision(3) << xpercent(excess, needed) << delim;
+        stream << std::setw(4) << mp_st->chunks_alloc << delim;
+        stream << std::setw(4) << mp_st->chunks_inuse << delim;
+        stream << std::setw(4) << mp_st->chunks_free << delim;
+        stream << std::setw(4) << mp_st->chunks_partial << delim;
+        stream << std::setprecision(3) << xpercent(excess, needed) << delim;
+    } else {
+        stream << delim;
+        stream << delim;
+        stream << delim;
+        stream << delim;
+        stream << delim;
+        stream << delim;
+        stream << delim;
+    }
     /*
      *  Fragmentation calculation:
      *    needed = inuse.level / chunk_capacity
@@ -617,10 +641,10 @@ Mem::PoolReport(const MemPoolStats * mp_st, const MemPoolMeter * AllMeter, std::
     stream << toKB(mp_st->obj_size * pm->idle.hwater_level) << delim;
     /* saved */
     stream << (int)pm->gb_saved.count << delim;
-    stream << std::setprecision(3) << xpercent(pm->gb_saved.count, AllMeter->gb_saved.count) << delim;
-    stream << std::setprecision(3) << xpercent(pm->gb_saved.bytes, AllMeter->gb_saved.bytes) << delim;
-    stream << std::setprecision(3) << xdiv(pm->gb_saved.count - pm->gb_osaved.count, xm_deltat) << "\n";
-    pm->gb_osaved.count = pm->gb_saved.count;
+    stream << std::setprecision(3) << xpercent(pm->gb_saved.count, AllMeter->gb_allocated.count) << delim;
+    stream << std::setprecision(3) << xpercent(pm->gb_saved.bytes, AllMeter->gb_allocated.bytes) << delim;
+    stream << std::setprecision(3) << xdiv(pm->gb_allocated.count - pm->gb_oallocated.count, xm_deltat) << "\n";
+    pm->gb_oallocated.count = pm->gb_allocated.count;
 }
 
 static int
@@ -673,7 +697,7 @@ Mem::Report(std::ostream &stream)
     "In Use\t\t\t\t\t"
     "Idle\t\t\t"
     "Allocations Saved\t\t\t"
-    "Hit Rate\t"
+    "Rate\t"
     "\n"
     " \t (bytes)\t"
     "KB/ch\t obj/ch\t"
@@ -682,7 +706,7 @@ Mem::Report(std::ostream &stream)
     "(#)\t (KB)\t high (KB)\t high (hrs)\t %alloc\t"
     "(#)\t (KB)\t high (KB)\t"
     "(#)\t %cnt\t %vol\t"
-    "(#) / sec\t"
+    "(#)/sec\t"
     "\n";
     xm_deltat = current_dtime - xm_time;
     xm_time = current_dtime;
@@ -702,7 +726,7 @@ Mem::Report(std::ostream &stream)
         if (!mp_stats.pool)	/* pool destroyed */
             continue;
 
-        if (mp_stats.pool->getMeter().gb_saved.count > 0)	/* this pool has been used */
+        if (mp_stats.pool->getMeter().gb_allocated.count > 0)	/* this pool has been used */
             sortme[npools++] = mp_stats;
         else
             not_used++;
@@ -736,12 +760,13 @@ Mem::Report(std::ostream &stream)
     PoolReport(&mp_stats, mp_total.TheMeter, stream);
 
     /* Cumulative */
-    stream << "Cumulative allocated volume: "<< double_to_str(buf, 64, mp_total.TheMeter->gb_saved.bytes) << "\n";
+    stream << "Cumulative allocated volume: "<< double_to_str(buf, 64, mp_total.TheMeter->gb_allocated.bytes) << "\n";
     /* overhead */
     stream << "Current overhead: " << mp_total.tot_overhead << " bytes (" <<
     std::setprecision(3) << xpercent(mp_total.tot_overhead, mp_total.TheMeter->inuse.level) << "%)\n";
     /* limits */
-    stream << "Idle pool limit: " << std::setprecision(2) << toMB(mp_total.mem_idle_limit) << " MB\n";
+    if (mp_total.mem_idle_limit >= 0)
+        stream << "Idle pool limit: " << std::setprecision(2) << toMB(mp_total.mem_idle_limit) << " MB\n";
     /* limits */
     stream << "Total Pools created: " << mp_total.tot_pools_alloc << "\n";
     stream << "Pools ever used:     " << mp_total.tot_pools_alloc - not_used << " (shown above)\n";

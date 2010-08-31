@@ -7,13 +7,13 @@
 # Autotool versions preferred. To override either edit the script
 # to match the versions you want to use, or set the variables on
 # the command line like "env acver=.. amver=... ./bootstrap.sh"
-acversions="${acver:-2.62 2.61 2.59 2.57 2.53 2.52}"
+acversions="${acver:-2.63 2.62 2.61}"
 amversions="${amver:-1.11 1.10 1.9}"
-ltversions="${ltver:-1.5 1.4}"
+ltversions="${ltver:-2.2 1.5 1.4}"
 
 check_version()
 {
-  eval $2 --version 2>/dev/null | grep -i "$1.*$3" >/dev/null
+  eval $2 --version 2>/dev/null | grep -i "$1.* $3" >/dev/null
 }
 
 show_version()
@@ -64,6 +64,18 @@ find_variant()
   echo $found
 }
 
+find_path()
+{
+  tool=$1
+  path=`which $tool`
+  if test $? -gt 0 ; then
+    # path for $tool not found. Not defining, and hoping for the best
+    echo 
+    return
+  fi
+  echo $(dirname $path)
+}
+
 bootstrap() {
   if "$@"; then
     true # Everything OK
@@ -73,6 +85,48 @@ bootstrap() {
     echo "before you can develop on this source tree" 
     exit 1
   fi
+}
+
+bootstrap_libtoolize() {
+    ltver=$1
+
+    # TODO: when we have libtool2, tell libtoolize where to put its files
+    # instead of manualy moving files from ltdl to lib/libLtdl
+    if egrep -q '^[[:space:]]*AC_LIBLTDL_' configure.in
+    then
+	ltdl="--ltdl"
+    else
+        ltdl=""
+    fi
+
+    bootstrap libtoolize$ltver $ltdl --force --copy --automake
+
+    # customize generated libltdl, if any
+    if test -d libltdl
+    then
+        src=libltdl
+
+        # do not bundle with the huge standard license text
+        rm -f $src/COPYING.LIB
+        makefile=$src/Makefile.in
+        sed 's/COPYING.LIB/ /g' $makefile > $makefile.new;
+        chmod u+w $makefile
+        mv $makefile.new $makefile
+        chmod u-w $makefile
+
+        # Libtool 2.2.6b we bundle is slightly broken with non-portable dependencies
+        # HACK: Make it backward-compatible by linking the bundled headers.
+        for f in ltdl.h libltdl/lt_error.h libltdl/lt_system.h libltdl/lt_dlloader.h libltdl/slist.h; do
+            echo "Fixing $f ..."
+            sed 's/<libltdl\/lt_system.h>/\"libltdl\/lt_system.h\"/g' $src/$f |
+                sed 's/<libltdl\/lt__glibc.h>/\"libltdl\/lt__glibc.h\"/g' |
+                sed 's/<libltdl\/lt_error.h>/\"libltdl\/lt_error.h\"/g' |
+                sed 's/<libltdl\/lt_dlloader.h>/\"libltdl\/lt_dlloader.h\"/g' > $src/$f.new;
+            chmod u+w $src/$f
+            mv $src/$f.new $src/$f
+            chmod u-w $src/$f
+        done
+    fi
 }
 
 # Adjust paths of required autool packages
@@ -85,16 +139,21 @@ amversion=`show_version automake ${amversions}`
 acversion=`show_version autoconf ${acversions}`
 ltversion=`show_version libtool ${ltversions}`
 
+# Find the libtool path to get the right aclocal includes
+ltpath=`find_path libtool$ltver`
+
 # Set environment variable to tell automake which autoconf to use.
 AUTOCONF="autoconf${acver}" ; export AUTOCONF
 
 echo "automake ($amversion) : automake$amver"
 echo "autoconf ($acversion) : autoconf$acver"
 echo "libtool  ($ltversion) : libtool$ltver"
+echo "libtool path : $ltpath"
 
 for dir in \
 	"" \
-	lib/libTrie
+	lib/libTrie \
+	helpers/negotiate_auth/squid_kerb_auth
 do
     if [ -z "$dir" ] || [ -d $dir ]; then
 	if (
@@ -105,11 +164,17 @@ do
 	elif [ ! -f $dir/configure ]; then
 	    # Make sure cfgaux exists
 	    mkdir -p cfgaux
+            
+            if test -n "$ltpath"; then
+              acincludeflag="-I $ltpath/../share/aclocal"
+            else
+              acincludeflag=""
+            fi
 
 	    # Bootstrap the autotool subsystems
-	    bootstrap aclocal$amver
+	    bootstrap aclocal$amver $acincludeflag
 	    bootstrap autoheader$acver
-	    bootstrap libtoolize$ltver --force --copy --automake
+	    bootstrap_libtoolize $ltver
 	    bootstrap automake$amver --foreign --add-missing --copy -f
 	    bootstrap autoconf$acver --force
 	fi ); then

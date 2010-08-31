@@ -1,7 +1,7 @@
 #
 #  Makefile for the Squid Object Cache server
 #
-#  $Id: Makefile.am,v 1.3 2007/07/19 02:54:21 hno Exp $
+#  $Id$
 #
 #  Uncomment and customize the following to suit your needs:
 #
@@ -11,10 +11,11 @@ CLEANFILES = squid_db_auth squid_db_auth.8
 do_subst = sed -e 's,[@]PERL[@],$(PERL),g'
 man_MANS 	= squid_db_auth.8
 EXTRA_DIST	= passwd.sql \
-		  squid_db_auth.in
+		  squid_db_auth.in \
+		  config.test
 
 squid_db_auth.8: squid_db_auth
-	pod2man squid_db_auth squid_db_auth.8
+	pod2man -s 8 squid_db_auth squid_db_auth.8
 
 squid_db_auth: squid_db_auth.in
 	$(do_subst) < $(srcdir)/squid_db_auth.in  >squid_db_auth

@@ -1,6 +1,6 @@
 
 /*
- * $Id: HttpHdrRange.cc,v 1.45 2007/08/13 17:20:51 hno Exp $
+ * $Id$
  *
  * DEBUG: section 64    HTTP Range Header
  * AUTHOR: Alex Rousskov
@@ -21,12 +21,12 @@
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation; either version 2 of the License, or
  *  (at your option) any later version.
- *  
+ *
  *  This program is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
- *  
+ *
  *  You should have received a copy of the GNU General Public License
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111, USA.
@@ -69,7 +69,7 @@ int64_t const HttpHdrRangeSpec::UnknownPosition = -1;
  * Range-Spec
  */
 
-HttpHdrRangeSpec::HttpHdrRangeSpec() : offset(UnknownPosition), length(UnknownPosition){}
+HttpHdrRangeSpec::HttpHdrRangeSpec() : offset(UnknownPosition), length(UnknownPosition) {}
 
 /* parses range-spec and returns new object on success */
 HttpHdrRangeSpec *
@@ -98,7 +98,7 @@ HttpHdrRangeSpec::parseInit(const char *field, int flen)
     } else
         /* must have a '-' somewhere in _this_ field */
         if (!((p = strchr(field, '-')) || (p - field >= flen))) {
-            debugs(64, 2, "ignoring invalid (missing '-') range-spec near: '" << field << "'");
+            debugs(64, 2, "invalid (missing '-') range-spec near: '" << field << "'");
             return false;
         } else {
             if (!httpHeaderParseOffset(field, &offset))
@@ -113,17 +113,17 @@ HttpHdrRangeSpec::parseInit(const char *field, int flen)
                 if (!httpHeaderParseOffset(p, &last_pos))
                     return false;
 
+                // RFC 2616 s14.35.1 MUST: last-byte-pos >= first-byte-pos
+                if (last_pos < offset) {
+                    debugs(64, 2, "invalid (last-byte-pos < first-byte-pos) range-spec near: " << field);
+                    return false;
+                }
+
                 HttpHdrRangeSpec::HttpRange aSpec (offset, last_pos + 1);
 
                 length = aSpec.size();
             }
         }
-
-    /* we managed to parse, check if the result makes sence */
-    if (length == 0) {
-        debugs(64, 2, "ignoring invalid (zero length) range-spec near: '" << field << "'");
-        return false;
-    }
 
     return true;
 }
@@ -158,12 +158,10 @@ HttpHdrRangeSpec::canonize(int64_t clen)
     outputInfo ("have");
     HttpRange object(0, clen);
 
-    if (!known_spec(offset))	/* suffix */
-    {
+    if (!known_spec(offset)) {	/* suffix */
         assert(known_spec(length));
         offset = object.intersection(HttpRange (clen - length, clen)).start;
-    } else if (!known_spec(length))		/* trailer */
-    {
+    } else if (!known_spec(length)) {	/* trailer */
         assert(known_spec(offset));
         HttpRange newRange = object.intersection(HttpRange (offset, clen));
         length = newRange.size();
@@ -250,35 +248,36 @@ HttpHdrRange::parseInit(const String * range_spec)
     const char *item;
     const char *pos = NULL;
     int ilen;
-    int count = 0;
     assert(this && range_spec);
     ++ParsedCount;
-    debugs(64, 8, "parsing range field: '" << range_spec->buf() << "'");
+    debugs(64, 8, "parsing range field: '" << range_spec << "'");
     /* check range type */
 
     if (range_spec->caseCmp("bytes=", 6))
         return 0;
 
     /* skip "bytes="; hack! */
-    pos = range_spec->buf() + 6;
+    pos = range_spec->termedBuf() + 6;
 
     /* iterate through comma separated list */
     while (strListGetItem(range_spec, ',', &item, &ilen, &pos)) {
         HttpHdrRangeSpec *spec = HttpHdrRangeSpec::Create(item, ilen);
         /*
-         * HTTP/1.1 draft says we must ignore the whole header field if one spec
-         * is invalid. However, RFC 2068 just says that we must ignore that spec.
+         * RFC 2616 section 14.35.1: MUST ignore Range with
+         * at least one syntactically invalid byte-range-specs.
          */
+        if (!spec) {
+            while (!specs.empty())
+                delete specs.pop_back();
+            debugs(64, 2, "ignoring invalid range field: '" << range_spec << "'");
+            break;
+        }
 
-        if (spec)
-            specs.push_back(spec);
-
-        ++count;
+        specs.push_back(spec);
     }
 
-    debugs(64, 8, "parsed range range count: " << count << ", kept " <<
-           specs.size());
-    return specs.count != 0;
+    debugs(64, 8, "got range specs: " << specs.size());
+    return !specs.empty();
 }
 
 HttpHdrRange::~HttpHdrRange()
@@ -343,7 +342,7 @@ HttpHdrRange::merge (Vector<HttpHdrRangeSpec *> &basis)
     /* reset old array */
     specs.clean();
     /* merge specs:
-     * take one spec from "goods" and merge it with specs from 
+     * take one spec from "goods" and merge it with specs from
      * "specs" (if any) until there is no overlap */
     iterator i = basis.begin();
 
@@ -383,9 +382,9 @@ HttpHdrRange::getCanonizedSpecs (Vector<HttpHdrRangeSpec *> &copy)
 
 /*
  * canonizes all range specs within a set preserving the order
- * returns true if the set is valid after canonization; 
- * the set is valid if 
- *   - all range specs are valid and 
+ * returns true if the set is valid after canonization;
+ * the set is valid if
+ *   - all range specs are valid and
  *   - there is at least one range spec
  */
 int
@@ -528,7 +527,7 @@ HttpHdrRange::lowestOffset(int64_t size) const
 /*
  * Return true if the first range offset is larger than the configured
  * limit.
- * Note that exceeding the limit (returning true) results in only 
+ * Note that exceeding the limit (returning true) results in only
  * grabbing the needed range elements from the origin.
  */
 bool
@@ -539,8 +538,8 @@ HttpHdrRange::offsetLimitExceeded() const
         return false;
 
     if (Config.rangeOffsetLimit == 0)
-	/* disabled */
-	return true;
+        /* disabled */
+        return true;
 
     if (-1 == Config.rangeOffsetLimit)
         /* forced */

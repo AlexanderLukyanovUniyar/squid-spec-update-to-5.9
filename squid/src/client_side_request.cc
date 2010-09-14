@@ -962,9 +962,6 @@ clientInterpretRequestHeaders(ClientHttpRequest * http)
     }
 
 #endif
-    if (request->method == METHOD_TRACE || request->method == METHOD_OPTIONS) {
-        request->max_forwards = req_hdr->getInt64(HDR_MAX_FORWARDS);
-    }
 
     request->flags.cachable = http->request->cacheable();
 
@@ -1368,11 +1365,11 @@ ClientHttpRequest::startAdaptation(const Adaptation::ServiceGroupPointer &g)
     assert(!virginHeadSource);
     assert(!adaptedBodySource);
     virginHeadSource = initiateAdaptation(
-                           new Adaptation::Iterator(this, request, NULL, g));
+                           new Adaptation::Iterator(request, NULL, g));
 
     // we could try to guess whether we can bypass this adaptation
     // initiation failure, but it should not really happen
-    assert(virginHeadSource != NULL); // Must, really
+    Must(initiated(virginHeadSource));
 }
 
 void

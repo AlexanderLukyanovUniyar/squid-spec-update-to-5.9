@@ -1391,7 +1391,6 @@ clientReplyContext::buildReplyHeader()
         request->flags.proxy_keepalive = 0;
     }
 
-
     /* Append VIA */
     if (Config.onoff.via) {
         LOCAL_ARRAY(char, bbuf, MAX_URL + 32);
@@ -1613,7 +1612,7 @@ clientGetMoreData(clientStreamNode * aNode, ClientHttpRequest * http)
         return;
     }
 
-    /* TODO: handle OPTIONS request on max_forwards == 0 as well */
+    // OPTIONS with Max-Forwards:0 handled in clientProcessRequest()
 
     if (context->http->request->method == METHOD_TRACE) {
         if (context->http->request->max_forwards == 0) {

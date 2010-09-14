@@ -47,6 +47,7 @@ TESTS = debug$(EXEEXT) syntheticoperators$(EXEEXT) \
 	VirtualDeleteOperator$(EXEEXT) StackTest$(EXEEXT) \
 	refcount$(EXEEXT) splay$(EXEEXT) MemPoolTest$(EXEEXT) \
 	mem_node_test$(EXEEXT) mem_hdr_test$(EXEEXT) $(am__EXEEXT_2)
+@USE_LOADABLE_MODULES_TRUE@am__append_1 = $(INCLTDL)
 EXTRA_PROGRAMS = mem_node_test$(EXEEXT) membanger$(EXEEXT) \
 	splay$(EXEEXT) tcp-banger2$(EXEEXT)
 subdir = test-suite
@@ -355,7 +356,8 @@ AM_CFLAGS = $(SQUID_CFLAGS)
 AM_CXXFLAGS = $(SQUID_CXXFLAGS)
 CLEANFILES = 
 INCLUDES = -I$(top_srcdir) -I$(top_srcdir)/include -I$(top_srcdir)/src \
-	-I$(top_builddir)/include $(SQUID_CPPUNIT_INC) -I$(srcdir)
+	-I$(top_builddir)/include $(SQUID_CPPUNIT_INC) $(am__append_1) \
+	-I$(srcdir)
 AUTOMAKE_OPTIONS = subdir-objects
 LDADD = \
 	$(top_builddir)/compat/libcompat.la \

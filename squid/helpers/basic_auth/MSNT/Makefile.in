@@ -37,6 +37,7 @@ DIST_COMMON = $(srcdir)/Makefile.am $(srcdir)/Makefile.in \
 	$(top_srcdir)/src/Common.am
 check_PROGRAMS =
 TESTS =
+@USE_LOADABLE_MODULES_TRUE@am__append_1 = $(INCLTDL)
 libexec_PROGRAMS = msnt_auth$(EXEEXT)
 subdir = helpers/basic_auth/MSNT
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
@@ -285,7 +286,8 @@ AM_CFLAGS = $(SQUID_CFLAGS)
 AM_CXXFLAGS = $(SQUID_CXXFLAGS)
 CLEANFILES = 
 INCLUDES = -I$(top_srcdir) -I$(top_srcdir)/include -I$(top_srcdir)/src \
-	-I$(top_builddir)/include $(SQUID_CPPUNIT_INC) -I$(srcdir)
+	-I$(top_builddir)/include $(SQUID_CPPUNIT_INC) $(am__append_1) \
+	-I$(srcdir)
 MSNTAUTH_CONF = $(sysconfdir)/msntauth.conf
 msnt_auth_SOURCES = md4.c rfcnb-io.c rfcnb-util.c session.c msntauth.c \
 		msntauth.h smbdes.c smbencrypt.c smblib-util.c smblib.c \

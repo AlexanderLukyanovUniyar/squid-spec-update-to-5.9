@@ -40,6 +40,7 @@ host_triplet = @host@
 DIST_COMMON = $(srcdir)/Makefile.am $(srcdir)/Makefile.in \
 	$(top_srcdir)/src/Common.am
 check_PROGRAMS =
+@USE_LOADABLE_MODULES_TRUE@am__append_1 = $(INCLTDL)
 subdir = src/repl
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/acinclude.m4 \
@@ -288,7 +289,8 @@ AM_CXXFLAGS = $(SQUID_CXXFLAGS)
 CLEANFILES = testHeaders
 TESTS = testHeaders
 INCLUDES = -I$(top_srcdir) -I$(top_srcdir)/include -I$(top_srcdir)/src \
-	-I$(top_builddir)/include $(SQUID_CPPUNIT_INC) -I$(srcdir)
+	-I$(top_builddir)/include $(SQUID_CPPUNIT_INC) $(am__append_1) \
+	-I$(srcdir)
 AUTOMAKE_OPTIONS = subdir-objects
 
 # No recursion is needed for the subdirs, we build from here.

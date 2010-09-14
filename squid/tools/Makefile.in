@@ -42,6 +42,7 @@ DIST_COMMON = $(srcdir)/Makefile.am $(srcdir)/Makefile.in \
 	$(top_srcdir)/src/Common.am
 check_PROGRAMS =
 TESTS =
+@USE_LOADABLE_MODULES_TRUE@am__append_1 = $(INCLTDL)
 bin_PROGRAMS = squidclient$(EXEEXT)
 libexec_PROGRAMS = cachemgr$(CGIEXT)$(EXEEXT)
 subdir = tools
@@ -310,7 +311,8 @@ AM_CFLAGS = $(SQUID_CFLAGS)
 AM_CXXFLAGS = $(SQUID_CXXFLAGS)
 CLEANFILES = stub_debug.cc time.cc
 INCLUDES = -I$(top_srcdir) -I$(top_srcdir)/include -I$(top_srcdir)/src \
-	-I$(top_builddir)/include $(SQUID_CPPUNIT_INC) -I$(srcdir)
+	-I$(top_builddir)/include $(SQUID_CPPUNIT_INC) $(am__append_1) \
+	-I$(srcdir)
 AUTOMAKE_OPTIONS = subdir-objects
 
 # Neither of these should be disted from here.

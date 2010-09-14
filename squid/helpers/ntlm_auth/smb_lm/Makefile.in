@@ -36,6 +36,7 @@ DIST_COMMON = $(srcdir)/Makefile.am $(srcdir)/Makefile.in \
 	$(top_srcdir)/src/Common.am
 check_PROGRAMS =
 TESTS =
+@USE_LOADABLE_MODULES_TRUE@am__append_1 = $(INCLTDL)
 libexec_PROGRAMS = ntlm_smb_lm_auth$(EXEEXT)
 subdir = helpers/ntlm_auth/smb_lm
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
@@ -284,8 +285,8 @@ AM_CFLAGS = $(SQUID_CFLAGS)
 AM_CXXFLAGS = $(SQUID_CXXFLAGS)
 CLEANFILES = 
 INCLUDES = -I$(top_srcdir) -I$(top_srcdir)/include -I$(top_srcdir)/src \
-	-I$(top_builddir)/include $(SQUID_CPPUNIT_INC) -I$(srcdir) \
-	-I$(srcdir)/smbval
+	-I$(top_builddir)/include $(SQUID_CPPUNIT_INC) $(am__append_1) \
+	-I$(srcdir) -I$(srcdir)/smbval
 SUBDIRS = smbval
 ntlm_smb_lm_auth_SOURCES = libntlmssp.c ntlm_smb_lm_auth.c ntlm_smb_lm_auth.h
 LDADD = \

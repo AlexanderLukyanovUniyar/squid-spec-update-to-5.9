@@ -35,8 +35,9 @@ host_triplet = @host@
 DIST_COMMON = $(srcdir)/Makefile.am $(srcdir)/Makefile.in \
 	$(top_srcdir)/src/Common.am $(top_srcdir)/src/TestHeaders.am
 check_PROGRAMS =
-@ENABLE_SSL_TRUE@am__append_1 = $(SSL_ACLS)
-@ENABLE_ARP_ACL_TRUE@am__append_2 = $(ARP_ACLS)
+@USE_LOADABLE_MODULES_TRUE@am__append_1 = $(INCLTDL)
+@ENABLE_SSL_TRUE@am__append_2 = $(SSL_ACLS)
+@ENABLE_ARP_ACL_TRUE@am__append_3 = $(ARP_ACLS)
 subdir = src/acl
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/acinclude.m4 \
@@ -318,13 +319,8 @@ AM_CFLAGS = $(SQUID_CFLAGS)
 AM_CXXFLAGS = $(SQUID_CXXFLAGS)
 CLEANFILES = testHeaders
 TESTS = testHeaders
-INCLUDES = \
-	-I$(top_srcdir) \
-	-I$(top_srcdir)/include \
-	-I$(top_srcdir)/src \
-	-I$(top_builddir)/include \
-	$(SQUID_CPPUNIT_INC)
-
+INCLUDES = -I$(top_srcdir) -I$(top_srcdir)/include -I$(top_srcdir)/src \
+	-I$(top_builddir)/include $(SQUID_CPPUNIT_INC) $(am__append_1)
 noinst_LTLIBRARIES = libapi.la libstate.la libacls.la
 libapi_la_SOURCES = \
 	Acl.cc \
@@ -357,8 +353,8 @@ libacls_la_SOURCES = IntRange.cc IntRange.h RegexData.cc RegexData.h \
 	RequestMimeType.cc RequestMimeType.h SourceAsn.h \
 	SourceDomain.cc SourceDomain.h SourceIp.cc SourceIp.h Tag.cc \
 	Tag.h Url.cc Url.h UrlPath.cc UrlPath.h UrlPort.cc UrlPort.h \
-	UserData.cc UserData.h Gadgets.cc Gadgets.h $(am__append_1) \
-	$(am__append_2)
+	UserData.cc UserData.h Gadgets.cc Gadgets.h $(am__append_2) \
+	$(am__append_3)
 EXTRA_libacls_la_SOURCES = $(SSL_ACLS) $(ARP_ACLS)
 SSL_ACLS = \
         CertificateData.cc \

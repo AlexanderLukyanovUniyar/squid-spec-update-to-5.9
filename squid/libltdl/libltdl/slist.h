@@ -42,8 +42,8 @@ or obtained by writing to the Free Software Foundation, Inc.,
 #define SLIST_H 1
 
 #if defined(LTDL)
-#  include "libltdl/lt__glibc.h"
-#  include "libltdl/lt_system.h"
+#  include <libltdl/lt__glibc.h>
+#  include <libltdl/lt_system.h>
 #else
 #  define LT_SCOPE
 #endif

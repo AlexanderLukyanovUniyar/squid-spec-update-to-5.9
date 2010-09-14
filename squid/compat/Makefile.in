@@ -40,6 +40,7 @@ DIST_COMMON = $(srcdir)/Makefile.am $(srcdir)/Makefile.in \
 	$(top_srcdir)/src/Common.am
 check_PROGRAMS = testPreCompiler$(EXEEXT)
 TESTS = testPreCompiler$(EXEEXT) testHeaders
+@USE_LOADABLE_MODULES_TRUE@am__append_1 = $(INCLTDL)
 subdir = compat
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/acinclude.m4 \
@@ -287,13 +288,8 @@ top_srcdir = @top_srcdir@
 AM_CFLAGS = $(SQUID_CFLAGS)
 AM_CXXFLAGS = $(SQUID_CXXFLAGS)
 CLEANFILES = testHeaders
-INCLUDES = \
-	-I$(top_srcdir) \
-	-I$(top_srcdir)/include \
-	-I$(top_srcdir)/src \
-	-I$(top_builddir)/include \
-	$(SQUID_CPPUNIT_INC)
-
+INCLUDES = -I$(top_srcdir) -I$(top_srcdir)/include -I$(top_srcdir)/src \
+	-I$(top_builddir)/include $(SQUID_CPPUNIT_INC) $(am__append_1)
 
 # Ideally this would be 100% inline functions and macro wrappers.
 

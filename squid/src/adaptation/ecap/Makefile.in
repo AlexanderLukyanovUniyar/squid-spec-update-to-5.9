@@ -35,6 +35,7 @@ host_triplet = @host@
 DIST_COMMON = $(srcdir)/Makefile.am $(srcdir)/Makefile.in \
 	$(top_srcdir)/src/Common.am $(top_srcdir)/src/TestHeaders.am
 check_PROGRAMS =
+@USE_LOADABLE_MODULES_TRUE@am__append_1 = $(INCLTDL)
 subdir = src/adaptation/ecap
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/acinclude.m4 \
@@ -275,13 +276,8 @@ AM_CFLAGS = $(SQUID_CFLAGS)
 AM_CXXFLAGS = $(SQUID_CXXFLAGS)
 CLEANFILES = testHeaders
 TESTS = testHeaders
-INCLUDES = \
-	-I$(top_srcdir) \
-	-I$(top_srcdir)/include \
-	-I$(top_srcdir)/src \
-	-I$(top_builddir)/include \
-	$(SQUID_CPPUNIT_INC)
-
+INCLUDES = -I$(top_srcdir) -I$(top_srcdir)/include -I$(top_srcdir)/src \
+	-I$(top_builddir)/include $(SQUID_CPPUNIT_INC) $(am__append_1)
 noinst_LTLIBRARIES = libecap.la
 libecap_la_SOURCES = \
 	Config.h \

@@ -42,6 +42,7 @@ DIST_COMMON = $(srcdir)/Makefile.am $(srcdir)/Makefile.in \
 	$(top_srcdir)/src/Common.am
 check_PROGRAMS =
 TESTS =
+@USE_LOADABLE_MODULES_TRUE@am__append_1 = $(INCLTDL)
 libexec_PROGRAMS = mswin_negotiate_auth$(EXEEXT)
 subdir = helpers/negotiate_auth/mswin_sspi
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
@@ -278,7 +279,8 @@ AM_CFLAGS = $(SQUID_CFLAGS)
 AM_CXXFLAGS = $(SQUID_CXXFLAGS)
 CLEANFILES = 
 INCLUDES = -I$(top_srcdir) -I$(top_srcdir)/include -I$(top_srcdir)/src \
-	-I$(top_builddir)/include $(SQUID_CPPUNIT_INC) -I$(srcdir)
+	-I$(top_builddir)/include $(SQUID_CPPUNIT_INC) $(am__append_1) \
+	-I$(srcdir)
 mswin_negotiate_auth_SOURCES = libnegotiatessp.c negotiate_auth.c negotiate.h
 LDADD = -L$(top_builddir)/lib -lsspwin32 -ladvapi32 -lmiscutil $(XTRA_LIBS)
 EXTRA_DIST = readme.txt config.test

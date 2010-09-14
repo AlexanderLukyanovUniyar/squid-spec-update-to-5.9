@@ -52,8 +52,9 @@ check_PROGRAMS = tests/testAuth$(EXEEXT) \
 	tests/testHttpRequest$(EXEEXT) tests/testStore$(EXEEXT) \
 	tests/testString$(EXEEXT) tests/testURL$(EXEEXT) \
 	$(STORE_TESTS)
-@USE_ADAPTATION_TRUE@am__append_1 = adaptation
-@USE_ESI_TRUE@am__append_2 = esi
+@USE_LOADABLE_MODULES_TRUE@am__append_1 = $(INCLTDL)
+@USE_ADAPTATION_TRUE@am__append_2 = adaptation
+@USE_ESI_TRUE@am__append_3 = esi
 EXTRA_PROGRAMS = DiskIO/DiskDaemon/diskd$(EXEEXT) unlinkd$(EXEEXT) \
 	dnsserver$(EXEEXT) recv-announce$(EXEEXT) \
 	tests/testUfs$(EXEEXT) tests/testCoss$(EXEEXT) \
@@ -62,8 +63,8 @@ noinst_PROGRAMS = cf_gen$(EXEEXT)
 sbin_PROGRAMS = squid$(EXEEXT)
 bin_PROGRAMS =
 libexec_PROGRAMS = $(am__EXEEXT_1) $(DISK_PROGRAMS) $(am__EXEEXT_2)
-@USE_LOADABLE_MODULES_TRUE@am__append_3 = $(LOADABLE_MODULES_SOURCES)
-@USE_LOADABLE_MODULES_TRUE@am__append_4 = \
+@USE_LOADABLE_MODULES_TRUE@am__append_4 = $(LOADABLE_MODULES_SOURCES)
+@USE_LOADABLE_MODULES_TRUE@am__append_5 = \
 @USE_LOADABLE_MODULES_TRUE@	$(LIBLTDL)
 
 subdir = src
@@ -1555,7 +1556,7 @@ CLEANFILES = cf_gen_defines.cci cf.data cf_parser.cci \
 	test_tools.cc *.a testHeaders
 TESTS = $(check_PROGRAMS) testHeaders
 INCLUDES = -I$(top_srcdir) -I$(top_srcdir)/include -I$(top_srcdir)/src \
-	-I$(top_builddir)/include $(SQUID_CPPUNIT_INC) \
+	-I$(top_builddir)/include $(SQUID_CPPUNIT_INC) $(am__append_1) \
 	-I$(top_builddir)/src
 AUTOMAKE_OPTIONS = subdir-objects
 @USE_DNSSERVER_FALSE@DNSSOURCE = dns_internal.cc DnsLookupDetails.h \
@@ -1576,8 +1577,8 @@ LOADABLE_MODULES_SOURCES = \
 	LoadableModules.h \
 	LoadableModules.cc
 
-SUBDIRS = base acl fs repl auth ip icmp ident $(am__append_1) \
-	$(am__append_2)
+SUBDIRS = base acl fs repl auth ip icmp ident $(am__append_2) \
+	$(am__append_3)
 @USE_ESI_TRUE@ESI_LOCAL_LIBS = \
 @USE_ESI_TRUE@	esi/libesi.la \
 @USE_ESI_TRUE@	$(top_builddir)/lib/libTrie/src/libTrie.a
@@ -1793,7 +1794,7 @@ squid_SOURCES = $(ACL_REGISTRATION_SOURCES) access_log.cc \
 	typedefs.h $(UNLINKDSOURCE) url.cc URL.h URLScheme.cc \
 	URLScheme.h urn.cc useragent.cc wccp.cc wccp2.cc whois.cc \
 	wordlist.cc wordlist.h $(WIN32_SOURCE) $(WINSVC_SOURCE) \
-	$(am__append_3)
+	$(am__append_4)
 noinst_HEADERS = \
 	client_side_request.cci \
 	MemBuf.cci \
@@ -1816,7 +1817,7 @@ squid_LDADD = $(COMMON_LIBS) icmp/libicmp.la icmp/libicmp-core.la \
 	$(REPL_OBJS) $(DISK_LIBS) $(DISK_OS_LIBS) $(CRYPTLIB) \
 	$(REGEXLIB) $(SNMPLIB) ${ADAPTATION_LIBS} $(ESI_LIBS) \
 	$(SSLLIB) -lmiscutil $(EPOLL_LIBS) $(MINGW_LIBS) $(XTRA_LIBS) \
-	$(am__append_4)
+	$(am__append_5)
 squid_DEPENDENCIES = $(top_builddir)/lib/libmiscutil.a \
 	$(DISK_LIBS) \
 	$(DISK_LINKOBJS) \

@@ -35,11 +35,12 @@ host_triplet = @host@
 DIST_COMMON = $(srcdir)/Makefile.am $(srcdir)/Makefile.in \
 	$(top_srcdir)/src/Common.am $(top_srcdir)/src/TestHeaders.am
 check_PROGRAMS =
-@HAVE_LIBEXPAT_TRUE@am__append_1 = \
+@USE_LOADABLE_MODULES_TRUE@am__append_1 = $(INCLTDL)
+@HAVE_LIBEXPAT_TRUE@am__append_2 = \
 @HAVE_LIBEXPAT_TRUE@	ExpatParser.cc \
 @HAVE_LIBEXPAT_TRUE@	ExpatParser.h
 
-@HAVE_LIBXML2_TRUE@am__append_2 = \
+@HAVE_LIBXML2_TRUE@am__append_3 = \
 @HAVE_LIBXML2_TRUE@	Libxml2Parser.cc \
 @HAVE_LIBXML2_TRUE@	Libxml2Parser.h
 
@@ -295,12 +296,12 @@ AM_CXXFLAGS = $(SQUID_CXXFLAGS)
 CLEANFILES = testHeaders
 TESTS = testHeaders
 INCLUDES = -I$(top_srcdir) -I$(top_srcdir)/include -I$(top_srcdir)/src \
-	-I$(top_builddir)/include $(SQUID_CPPUNIT_INC) \
+	-I$(top_builddir)/include $(SQUID_CPPUNIT_INC) $(am__append_1) \
 	-I$(top_srcdir)/lib/libTrie/include \
 	-I$(top_builddir)/lib/libTrie/include
 noinst_LTLIBRARIES = libesi.la
-ESI_PARSER_SOURCES = CustomParser.cc CustomParser.h $(am__append_1) \
-	$(am__append_2)
+ESI_PARSER_SOURCES = CustomParser.cc CustomParser.h $(am__append_2) \
+	$(am__append_3)
 libesi_la_SOURCES = \
 	Assign.cc \
 	Assign.h \

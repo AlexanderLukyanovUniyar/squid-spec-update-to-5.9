@@ -42,7 +42,8 @@ DIST_COMMON = $(srcdir)/Makefile.am $(srcdir)/Makefile.in \
 	strsep.c strtoll.c tempnam.c
 check_PROGRAMS = tests/testAll$(EXEEXT)
 TESTS = tests/testAll$(EXEEXT) testHeaders
-@USE_ESI_TRUE@am__append_1 = libTrie
+@USE_LOADABLE_MODULES_TRUE@am__append_1 = $(INCLTDL)
+@USE_ESI_TRUE@am__append_2 = libTrie
 subdir = lib
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/acinclude.m4 \
@@ -336,14 +337,9 @@ top_srcdir = @top_srcdir@
 AM_CFLAGS = $(SQUID_CFLAGS)
 AM_CXXFLAGS = $(SQUID_CXXFLAGS)
 CLEANFILES = testHeaders
-INCLUDES = \
-	-I$(top_srcdir) \
-	-I$(top_srcdir)/include \
-	-I$(top_srcdir)/src \
-	-I$(top_builddir)/include \
-	$(SQUID_CPPUNIT_INC)
-
-SUBDIRS = $(am__append_1)
+INCLUDES = -I$(top_srcdir) -I$(top_srcdir)/include -I$(top_srcdir)/src \
+	-I$(top_builddir)/include $(SQUID_CPPUNIT_INC) $(am__append_1)
+SUBDIRS = $(am__append_2)
 @ENABLE_XPROF_STATS_FALSE@XPROF_STATS_SOURCE = 
 @ENABLE_XPROF_STATS_TRUE@XPROF_STATS_SOURCE = Profiler.c
 @ENABLE_WIN32SPECIFIC_FALSE@LIBSSPWIN32 = 

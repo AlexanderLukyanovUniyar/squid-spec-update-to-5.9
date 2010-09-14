@@ -35,6 +35,7 @@ host_triplet = @host@
 DIST_COMMON = $(srcdir)/Makefile.am $(srcdir)/Makefile.in \
 	$(top_srcdir)/src/Common.am
 check_PROGRAMS =
+@USE_LOADABLE_MODULES_TRUE@am__append_1 = $(INCLTDL)
 subdir = src/auth
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/acinclude.m4 \
@@ -295,7 +296,8 @@ AM_CXXFLAGS = $(SQUID_CXXFLAGS)
 CLEANFILES = testHeaders
 TESTS = testHeaders
 INCLUDES = -I$(top_srcdir) -I$(top_srcdir)/include -I$(top_srcdir)/src \
-	-I$(top_builddir)/include $(SQUID_CPPUNIT_INC) -I$(srcdir)
+	-I$(top_builddir)/include $(SQUID_CPPUNIT_INC) $(am__append_1) \
+	-I$(srcdir)
 noinst_LTLIBRARIES = libauth.la libacls.la $(AUTH_LIBS_TO_BUILD)
 EXTRA_LTLIBRARIES = libbasic.la libdigest.la libntlm.la libnegotiate.la
 libauth_la_SOURCES = \

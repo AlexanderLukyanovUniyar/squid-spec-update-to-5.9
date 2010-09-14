@@ -37,6 +37,7 @@ DIST_COMMON = $(srcdir)/Makefile.am $(srcdir)/Makefile.in \
 	$(top_srcdir)/src/Common.am $(top_srcdir)/src/TestHeaders.am
 check_PROGRAMS = testIcmp$(EXEEXT)
 TESTS = testHeaders testIcmp$(EXEEXT)
+@USE_LOADABLE_MODULES_TRUE@am__append_1 = $(INCLTDL)
 EXTRA_PROGRAMS = pinger$(EXEEXT) testIcmp$(EXEEXT)
 libexec_PROGRAMS = $(am__EXEEXT_1)
 subdir = src/icmp
@@ -306,13 +307,8 @@ top_srcdir = @top_srcdir@
 AM_CFLAGS = $(SQUID_CFLAGS)
 AM_CXXFLAGS = $(SQUID_CXXFLAGS)
 CLEANFILES = testHeaders
-INCLUDES = \
-	-I$(top_srcdir) \
-	-I$(top_srcdir)/include \
-	-I$(top_srcdir)/src \
-	-I$(top_builddir)/include \
-	$(SQUID_CPPUNIT_INC)
-
+INCLUDES = -I$(top_srcdir) -I$(top_srcdir)/include -I$(top_srcdir)/src \
+	-I$(top_builddir)/include $(SQUID_CPPUNIT_INC) $(am__append_1)
 @ENABLE_PINGER_FALSE@PINGER = 
 
 # ICMP Specific Configurations

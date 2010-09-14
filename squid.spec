@@ -71,6 +71,7 @@ Requires: %name-common
 Provides: %name-conf = %version-%release, %_sysconfdir/%name/%name.conf
 %{expand:%%global o_list %(for n in host2cat; do echo -n "%name-conf-$n "; done)}
 %{?o_list:Conflicts: %o_list}
+BuildArch: noarch
 
 %description conf-default
 This package contains default %name config
@@ -123,6 +124,7 @@ Summary(ru_RU.KOI8-R): общие файлы для Squid
 Group: System/Servers
 PreReq: shadow-groups
 Conflicts: %name <= 2.5.STABLE9-alt3
+BuildArch: noarch
 
 %description common
 This package contains common Squid files.
@@ -155,6 +157,7 @@ Summary(ru_RU.KOI8-R): вспомогательные Perl-программы для squid-server
 Group: System/Servers
 Requires: %name-common
 Conflicts: %name <= 2.5.STABLE9-alt3
+BuildArch: noarch
 
 %description helpers-perl
 This package contains Perl Squid helpers for different kinds of authentication.

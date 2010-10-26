@@ -43,7 +43,7 @@
 #include "fde.h"
 #include "ip/tools.h"
 #include "MemBuf.h"
-
+#include "util.h"
 #include "wordlist.h"
 
 #if HAVE_ARPA_NAMESER_H
@@ -258,6 +258,7 @@ idnsAddPathComponent(const char *buf)
 
     assert(npc < npc_alloc);
     strcpy(searchpath[npc].domain, buf);
+    Tolower(searchpath[npc].domain);
     debugs(78, 3, "idnsAddPathComponent: Added domain #" << npc << ": " << searchpath[npc].domain);
     npc++;
 }
@@ -1110,6 +1111,7 @@ idnsGrokReply(const char *buf, size_t sz)
         safe_free(message->answer);
 
         message->answer = result;
+        message->ancount += q->initial_AAAA.count;
         n += q->initial_AAAA.count;
         q->initial_AAAA.count=0;
     } else if (q->initial_AAAA.count > 0 && n <= 0) {

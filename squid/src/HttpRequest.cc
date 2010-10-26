@@ -51,6 +51,8 @@ HttpRequest::HttpRequest() : HttpMsg(hoRequest)
 
 HttpRequest::HttpRequest(const HttpRequestMethod& aMethod, protocol_t aProtocol, const char *aUrlpath) : HttpMsg(hoRequest)
 {
+    static unsigned int id = 1;
+    debugs(93,7, HERE << "constructed, this=" << this << " id=" << ++id);
     init();
     initHTTP(aMethod, aProtocol, aUrlpath);
 }
@@ -58,6 +60,7 @@ HttpRequest::HttpRequest(const HttpRequestMethod& aMethod, protocol_t aProtocol,
 HttpRequest::~HttpRequest()
 {
     clean();
+    debugs(93,7, HERE << "destructed, this=" << this);
 }
 
 void
@@ -96,6 +99,7 @@ HttpRequest::init()
     peer_login = NULL;		// not allocated/deallocated by this class
     peer_domain = NULL;		// not allocated/deallocated by this class
     vary_headers = NULL;
+    myportname = null_string;
     tag = null_string;
     extacl_user = null_string;
     extacl_passwd = null_string;
@@ -142,6 +146,8 @@ HttpRequest::clean()
 
     if (pinned_connection)
         cbdataReferenceDone(pinned_connection);
+
+    myportname.clean();
 
     tag.clean();
 
@@ -202,6 +208,7 @@ HttpRequest::clone() const
     copy->vary_headers = vary_headers ? xstrdup(vary_headers) : NULL;
     // XXX: what to do with copy->peer_domain?
 
+    copy->myportname = myportname;
     copy->tag = tag;
     copy->extacl_user = extacl_user;
     copy->extacl_passwd = extacl_passwd;

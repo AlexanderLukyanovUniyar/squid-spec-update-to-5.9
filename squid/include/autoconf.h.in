@@ -297,6 +297,9 @@
 /* Define to 1 if you have the <inttypes.h> header file. */
 #undef HAVE_INTTYPES_H
 
+/* Define to 1 if you have the `ioctl' function. */
+#undef HAVE_IOCTL
+
 /* Define to 1 if you have the <iomanip> header file. */
 #undef HAVE_IOMANIP
 
@@ -759,6 +762,9 @@
 /* Define to 1 if you have the <sys/capability.h> header file. */
 #undef HAVE_SYS_CAPABILITY_H
 
+/* Define to 1 if you have the <sys/devpoll.h> header file. */
+#undef HAVE_SYS_DEVPOLL_H
+
 /* Define to 1 if you have the <sys/dir.h> header file, and it defines `DIR'.
    */
 #undef HAVE_SYS_DIR_H
@@ -904,6 +910,9 @@
 
 /* This value is set to 1 to indicate that the system argz facility works */
 #undef HAVE_WORKING_ARGZ
+
+/* Define to 1 if you have the `write' function. */
+#undef HAVE_WRITE
 
 /* __int64 is defined in system headers */
 #undef HAVE___INT64
@@ -1117,6 +1126,9 @@
 
 /* Define to Enable chunked Memory Pools support (experimental) */
 #undef USE_CHUNKEDMEMPOOLS
+
+/* Use /dev/poll for the IO loop */
+#undef USE_DEVPOLL
 
 /* DiskIO modules are expected to be available. */
 #undef USE_DISKIO

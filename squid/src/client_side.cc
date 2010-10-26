@@ -575,9 +575,9 @@ ClientHttpRequest::logRequest()
         }
 
         delete checklist;
-
-        accessLogFreeMemory(&al);
     }
+
+    accessLogFreeMemory(&al);
 }
 
 void
@@ -1075,7 +1075,7 @@ clientIfRangeMatch(ClientHttpRequest * http, HttpReply * rep)
             return 0;		/* must use strong validator for sub-range requests */
         }
 
-        return etagIsEqual(&rep_tag, &spec.tag);
+        return etagIsStrongEqual(rep_tag, spec.tag);
     }
 
     /* got modification time? */
@@ -1161,8 +1161,6 @@ ClientSocketContext::buildRangeHeader(HttpReply * rep)
         debugs(33, 3, "clientBuildRangeHeader: range spec count: " <<
                spec_count << " virgin clen: " << rep->content_length);
         assert(spec_count > 0);
-        /* ETags should not be returned with Partial Content replies? */
-        hdr->delById(HDR_ETAG);
         /* append appropriate header(s) */
 
         if (spec_count == 1) {
@@ -1798,7 +1796,7 @@ prepareAcceleratedURL(ConnStateData * conn, ClientHttpRequest *http, char *url, 
     int vhost = conn->port->vhost;
     int vport = conn->port->vport;
     char *host;
-    char ntoabuf[MAX_IPSTRLEN];
+    char ipbuf[MAX_IPSTRLEN];
 
     http->flags.accel = 1;
 
@@ -1855,19 +1853,19 @@ prepareAcceleratedURL(ConnStateData * conn, ClientHttpRequest *http, char *url, 
         /* Put the local socket IP address as the hostname.  */
         int url_sz = strlen(url) + 32 + Config.appendDomainLen;
         http->uri = (char *)xcalloc(url_sz, 1);
+        http->getConn()->me.ToHostname(ipbuf,MAX_IPSTRLEN);
         snprintf(http->uri, url_sz, "%s://%s:%d%s",
                  http->getConn()->port->protocol,
-                 http->getConn()->me.NtoA(ntoabuf,MAX_IPSTRLEN),
-                 http->getConn()->me.GetPort(), url);
+                 ipbuf, http->getConn()->me.GetPort(), url);
         debugs(33, 5, "ACCEL VPORT REWRITE: '" << http->uri << "'");
     } else if (vport > 0) {
         /* Put the local socket IP address as the hostname, but static port  */
         int url_sz = strlen(url) + 32 + Config.appendDomainLen;
         http->uri = (char *)xcalloc(url_sz, 1);
+        http->getConn()->me.ToHostname(ipbuf,MAX_IPSTRLEN);
         snprintf(http->uri, url_sz, "%s://%s:%d%s",
                  http->getConn()->port->protocol,
-                 http->getConn()->me.NtoA(ntoabuf,MAX_IPSTRLEN),
-                 vport, url);
+                 ipbuf, vport, url);
         debugs(33, 5, "ACCEL VPORT REWRITE: '" << http->uri << "'");
     }
 }
@@ -1876,7 +1874,7 @@ static void
 prepareTransparentURL(ConnStateData * conn, ClientHttpRequest *http, char *url, const char *req_hdr)
 {
     char *host;
-    char ntoabuf[MAX_IPSTRLEN];
+    char ipbuf[MAX_IPSTRLEN];
 
     if (*url != '/')
         return; /* already in good shape */
@@ -1894,10 +1892,10 @@ prepareTransparentURL(ConnStateData * conn, ClientHttpRequest *http, char *url, 
         /* Put the local socket IP address as the hostname.  */
         int url_sz = strlen(url) + 32 + Config.appendDomainLen;
         http->uri = (char *)xcalloc(url_sz, 1);
+        http->getConn()->me.ToHostname(ipbuf,MAX_IPSTRLEN),
         snprintf(http->uri, url_sz, "%s://%s:%d%s",
                  http->getConn()->port->protocol,
-                 http->getConn()->me.NtoA(ntoabuf,MAX_IPSTRLEN),
-                 http->getConn()->me.GetPort(), url);
+                 ipbuf, http->getConn()->me.GetPort(), url);
         debugs(33, 5, "TRANSPARENT REWRITE: '" << http->uri << "'");
     }
 }
@@ -2413,6 +2411,7 @@ clientProcessRequest(ConnStateData *conn, HttpParser *hp, ClientSocketContext *c
     request->indirect_client_addr = conn->peer;
 #endif /* FOLLOW_X_FORWARDED_FOR */
     request->my_addr = conn->me;
+    request->myportname = conn->port->name;
     request->http_ver = http_ver;
 
     tePresent = request->header.has(HDR_TRANSFER_ENCODING);

@@ -258,6 +258,7 @@ squid_COMMSOURCES = \
 	comm_select_win32.cc \
 	comm_poll.cc \
 	comm_poll.h \
+	comm_devpoll.cc \
 	comm_epoll.cc \
 	comm_epoll.h \
 	comm_kqueue.cc \
@@ -805,6 +806,7 @@ install-data-local: install-sysconfDATA install-dataDATA
 	echo "$(INSTALL_DATA) squid.conf.documented $(DESTDIR)$(DEFAULT_CONFIG_FILE).documented"; \
 	$(INSTALL_DATA) squid.conf.documented $(DESTDIR)$(DEFAULT_CONFIG_FILE).documented; \
 	$(mkinstalldirs) $(DESTDIR)$(DEFAULT_LOG_PREFIX); \
+	$(mkinstalldirs) $(DESTDIR)$(DEFAULT_SWAP_DIR); \
 	$(mkinstalldirs) $(DESTDIR)`dirname $(DEFAULT_PIDFILE)`
 
 uninstall-local: squid.conf.default

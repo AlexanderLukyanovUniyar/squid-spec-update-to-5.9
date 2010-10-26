@@ -65,6 +65,8 @@ class HttpRequest: public HttpMsg
 {
 
 public:
+    typedef HttpMsgPointerT<HttpRequest> Pointer;
+
     MEMPROXY_CLASS(HttpRequest);
     HttpRequest();
     HttpRequest(const HttpRequestMethod& aMethod, protocol_t aProtocol, const char *aUrlpath);
@@ -184,6 +186,8 @@ public:
     const char *vary_headers;	/* Used when varying entities are detected. Changes how the store key is calculated */
 
     char *peer_domain;		/* Configured peer forceddomain */
+
+    String myportname; // Internal tag name= value from port this requests arrived in.
 
     String tag;			/* Internal tag for this request */
 

@@ -184,7 +184,7 @@ static http_hdr_type ListHeadersArr[] = {
     HDR_UPGRADE,
     HDR_VARY,
     HDR_VIA,
-    /* HDR_WARNING, */
+    HDR_WARNING,
     HDR_WWW_AUTHENTICATE,
     HDR_AUTHENTICATION_INFO,
     HDR_PROXY_AUTHENTICATION_INFO,
@@ -1186,6 +1186,14 @@ HttpHeader::putSc(HttpHdrSc *sc)
     /* cleanup */
     packerClean(&p);
     mb.clean();
+}
+
+void
+HttpHeader::putWarning(const int code, const char *const text)
+{
+    char buf[512];
+    snprintf(buf, sizeof(buf), "%i %s \"%s\"", code, visible_appname_string, text);
+    putStr(HDR_WARNING, buf);
 }
 
 /* add extension header (these fields are not parsed/analyzed/joined, etc.) */

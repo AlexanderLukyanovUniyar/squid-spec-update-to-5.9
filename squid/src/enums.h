@@ -41,7 +41,8 @@ typedef enum {
     LOG_TCP_HIT,
     LOG_TCP_MISS,
     LOG_TCP_REFRESH_UNMODIFIED, // refresh from origin revalidated existing entry
-    LOG_TCP_REFRESH_FAIL,       // refresh from origin failed
+    LOG_TCP_REFRESH_FAIL_OLD,   // refresh from origin failed, stale reply sent
+    LOG_TCP_REFRESH_FAIL_ERR,   // refresh from origin failed, error forwarded
     LOG_TCP_REFRESH_MODIFIED,   // refresh from origin replaced existing entry
     LOG_TCP_CLIENT_REFRESH_MISS,
     LOG_TCP_IMS_HIT,
@@ -143,6 +144,7 @@ typedef enum {
     CC_MAX_AGE,
     CC_S_MAXAGE,
     CC_MAX_STALE,
+    CC_MIN_FRESH,
     CC_ONLY_IF_CACHED,
     CC_OTHER,
     CC_ENUM_END

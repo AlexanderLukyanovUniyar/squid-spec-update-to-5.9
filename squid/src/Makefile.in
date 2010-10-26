@@ -174,17 +174,18 @@ am__squid_SOURCES_DIST = AclRegs.cc AuthReg.cc access_log.cc \
 	ClientRequestContext.h clientStream.cc clientStream.h CommIO.h \
 	CompletionDispatcher.cc CompletionDispatcher.h comm_select.cc \
 	comm_select.h comm_select_win32.cc comm_poll.cc comm_poll.h \
-	comm_epoll.cc comm_epoll.h comm_kqueue.cc comm_kqueue.h \
-	CommRead.h ConfigOption.cc ConfigParser.cc ConfigParser.h \
-	ConnectionDetail.h debug.cc Debug.h defines.h CommonPool.h \
-	CompositePoolNode.h delay_pools.cc DelayId.cc DelayId.h \
-	DelayIdComposite.h DelayBucket.cc DelayBucket.h DelayConfig.cc \
-	DelayConfig.h DelayPool.cc DelayPool.h DelayPools.h \
-	DelaySpec.cc DelaySpec.h DelayTagged.cc DelayTagged.h \
-	DelayUser.cc DelayUser.h DelayVector.cc DelayVector.h \
-	NullDelayId.cc NullDelayId.h disk.cc DiskIO/DiskIOModule.cc \
-	DiskIO/ReadRequest.cc DiskIO/ReadRequest.h \
-	DiskIO/WriteRequest.cc DiskIO/WriteRequest.h DiskIO/DiskFile.h \
+	comm_devpoll.cc comm_epoll.cc comm_epoll.h comm_kqueue.cc \
+	comm_kqueue.h CommRead.h ConfigOption.cc ConfigParser.cc \
+	ConfigParser.h ConnectionDetail.h debug.cc Debug.h defines.h \
+	CommonPool.h CompositePoolNode.h delay_pools.cc DelayId.cc \
+	DelayId.h DelayIdComposite.h DelayBucket.cc DelayBucket.h \
+	DelayConfig.cc DelayConfig.h DelayPool.cc DelayPool.h \
+	DelayPools.h DelaySpec.cc DelaySpec.h DelayTagged.cc \
+	DelayTagged.h DelayUser.cc DelayUser.h DelayVector.cc \
+	DelayVector.h NullDelayId.cc NullDelayId.h disk.cc \
+	DiskIO/DiskIOModule.cc DiskIO/ReadRequest.cc \
+	DiskIO/ReadRequest.h DiskIO/WriteRequest.cc \
+	DiskIO/WriteRequest.h DiskIO/DiskFile.h \
 	DiskIO/DiskIOStrategy.h DiskIO/IORequestor.h \
 	DiskIO/DiskIOModule.h dlink.h dlink.cc dns_internal.cc \
 	DnsLookupDetails.h DnsLookupDetails.cc dns.cc enums.h \
@@ -230,7 +231,8 @@ am__squid_SOURCES_DIST = AclRegs.cc AuthReg.cc access_log.cc \
 	LoadableModule.cc LoadableModules.h LoadableModules.cc
 am__objects_4 = AclRegs.$(OBJEXT) AuthReg.$(OBJEXT)
 am__objects_5 = comm_select.$(OBJEXT) comm_select_win32.$(OBJEXT) \
-	comm_poll.$(OBJEXT) comm_epoll.$(OBJEXT) comm_kqueue.$(OBJEXT)
+	comm_poll.$(OBJEXT) comm_devpoll.$(OBJEXT) \
+	comm_epoll.$(OBJEXT) comm_kqueue.$(OBJEXT)
 am__objects_6 = delay_pools.$(OBJEXT) DelayId.$(OBJEXT) \
 	DelayBucket.$(OBJEXT) DelayConfig.$(OBJEXT) \
 	DelayPool.$(OBJEXT) DelaySpec.$(OBJEXT) DelayTagged.$(OBJEXT) \
@@ -397,33 +399,33 @@ am__tests_testCacheManager_SOURCES_DIST = debug.cc HttpRequest.cc \
 	client_db.cc client_side.cc client_side_reply.cc \
 	client_side_request.cc ClientInfo.h clientStream.cc \
 	comm_select.cc comm_select.h comm_select_win32.cc comm_poll.cc \
-	comm_poll.h comm_epoll.cc comm_epoll.h comm_kqueue.cc \
-	comm_kqueue.h ConfigOption.cc ConfigParser.cc CommonPool.h \
-	CompositePoolNode.h delay_pools.cc DelayId.cc DelayId.h \
-	DelayIdComposite.h DelayBucket.cc DelayBucket.h DelayConfig.cc \
-	DelayConfig.h DelayPool.cc DelayPool.h DelayPools.h \
-	DelaySpec.cc DelaySpec.h DelayTagged.cc DelayTagged.h \
-	DelayUser.cc DelayUser.h DelayVector.cc DelayVector.h \
-	NullDelayId.cc NullDelayId.h disk.cc dlink.h dlink.cc \
-	dns_internal.cc DnsLookupDetails.h DnsLookupDetails.cc dns.cc \
-	errorpage.cc ETag.cc external_acl.cc ExternalACLEntry.cc fd.cc \
-	fde.cc forward.cc fqdncache.cc ftp.cc gopher.cc helper.cc \
-	htcp.cc htcp.h http.cc HttpBody.cc HttpHeader.cc \
-	HttpHeaderTools.cc HttpHdrCc.cc HttpHdrContRange.cc \
-	HttpHdrRange.cc HttpHdrSc.cc HttpHdrScTarget.cc HttpMsg.cc \
-	HttpReply.cc HttpStatusLine.cc icp_v2.cc icp_v3.cc ipc.cc \
-	ipc_win32.cc ipcache.cc int.cc internal.cc list.cc logfile.cc \
-	multicast.cc mem_node.cc MemBuf.cc MemObject.cc mime.cc \
-	mime_header.cc neighbors.cc Packer.cc Parsing.cc pconn.cc \
-	peer_digest.cc peer_select.cc peer_sourcehash.cc \
-	peer_userhash.cc redirect.cc referer.cc refresh.cc \
-	RemovalPolicy.cc Server.cc snmp_core.cc snmp_agent.cc \
-	ssl_support.cc ssl_support.h SquidMath.h SquidMath.cc stat.cc \
-	StatHist.cc stmem.cc store.cc store_client.cc store_digest.cc \
-	store_dir.cc store_io.cc store_key_md5.cc store_log.cc \
-	store_rebuild.cc store_swapin.cc store_swapmeta.cc \
-	store_swapout.cc StoreFileSystem.cc StoreIOState.cc \
-	StoreMeta.cc StoreMetaMD5.cc StoreMetaSTD.cc \
+	comm_poll.h comm_devpoll.cc comm_epoll.cc comm_epoll.h \
+	comm_kqueue.cc comm_kqueue.h ConfigOption.cc ConfigParser.cc \
+	CommonPool.h CompositePoolNode.h delay_pools.cc DelayId.cc \
+	DelayId.h DelayIdComposite.h DelayBucket.cc DelayBucket.h \
+	DelayConfig.cc DelayConfig.h DelayPool.cc DelayPool.h \
+	DelayPools.h DelaySpec.cc DelaySpec.h DelayTagged.cc \
+	DelayTagged.h DelayUser.cc DelayUser.h DelayVector.cc \
+	DelayVector.h NullDelayId.cc NullDelayId.h disk.cc dlink.h \
+	dlink.cc dns_internal.cc DnsLookupDetails.h \
+	DnsLookupDetails.cc dns.cc errorpage.cc ETag.cc \
+	external_acl.cc ExternalACLEntry.cc fd.cc fde.cc forward.cc \
+	fqdncache.cc ftp.cc gopher.cc helper.cc htcp.cc htcp.h http.cc \
+	HttpBody.cc HttpHeader.cc HttpHeaderTools.cc HttpHdrCc.cc \
+	HttpHdrContRange.cc HttpHdrRange.cc HttpHdrSc.cc \
+	HttpHdrScTarget.cc HttpMsg.cc HttpReply.cc HttpStatusLine.cc \
+	icp_v2.cc icp_v3.cc ipc.cc ipc_win32.cc ipcache.cc int.cc \
+	internal.cc list.cc logfile.cc multicast.cc mem_node.cc \
+	MemBuf.cc MemObject.cc mime.cc mime_header.cc neighbors.cc \
+	Packer.cc Parsing.cc pconn.cc peer_digest.cc peer_select.cc \
+	peer_sourcehash.cc peer_userhash.cc redirect.cc referer.cc \
+	refresh.cc RemovalPolicy.cc Server.cc snmp_core.cc \
+	snmp_agent.cc ssl_support.cc ssl_support.h SquidMath.h \
+	SquidMath.cc stat.cc StatHist.cc stmem.cc store.cc \
+	store_client.cc store_digest.cc store_dir.cc store_io.cc \
+	store_key_md5.cc store_log.cc store_rebuild.cc store_swapin.cc \
+	store_swapmeta.cc store_swapout.cc StoreFileSystem.cc \
+	StoreIOState.cc StoreMeta.cc StoreMetaMD5.cc StoreMetaSTD.cc \
 	StoreMetaSTDLFS.cc StoreMetaUnpacker.cc StoreMetaURL.cc \
 	StoreMetaVary.cc StoreSwapLogData.cc event.cc tools.cc \
 	tunnel.cc SwapDir.cc url.cc URLScheme.cc urn.cc useragent.cc \
@@ -621,37 +623,37 @@ am__tests_testEvent_SOURCES_DIST = debug.cc EventLoop.h EventLoop.cc \
 	ChunkedCodingParser.cc client_db.cc client_side.cc \
 	client_side_reply.cc client_side_request.cc ClientInfo.h \
 	clientStream.cc comm_select.cc comm_select.h \
-	comm_select_win32.cc comm_poll.cc comm_poll.h comm_epoll.cc \
-	comm_epoll.h comm_kqueue.cc comm_kqueue.h ConfigOption.cc \
-	ConfigParser.cc CommonPool.h CompositePoolNode.h \
-	delay_pools.cc DelayId.cc DelayId.h DelayIdComposite.h \
-	DelayBucket.cc DelayBucket.h DelayConfig.cc DelayConfig.h \
-	DelayPool.cc DelayPool.h DelayPools.h DelaySpec.cc DelaySpec.h \
-	DelayTagged.cc DelayTagged.h DelayUser.cc DelayUser.h \
-	DelayVector.cc DelayVector.h NullDelayId.cc NullDelayId.h \
-	disk.cc dlink.h dlink.cc dns_internal.cc DnsLookupDetails.h \
-	DnsLookupDetails.cc dns.cc errorpage.cc ETag.cc \
-	external_acl.cc ExternalACLEntry.cc fd.cc fde.cc forward.cc \
-	fqdncache.cc ftp.cc gopher.cc helper.cc htcp.cc htcp.h http.cc \
-	HttpBody.cc HttpHeader.cc HttpHeaderTools.cc HttpHdrCc.cc \
-	HttpHdrContRange.cc HttpHdrRange.cc HttpHdrSc.cc \
-	HttpHdrScTarget.cc HttpMsg.cc HttpReply.cc HttpStatusLine.cc \
-	icp_v2.cc icp_v3.cc ipc.cc ipc_win32.cc ipcache.cc int.cc \
-	internal.cc list.cc logfile.cc multicast.cc mem_node.cc \
-	MemBuf.cc MemObject.cc mime.cc mime_header.cc neighbors.cc \
-	Packer.cc Parsing.cc pconn.cc peer_digest.cc peer_select.cc \
-	peer_sourcehash.cc peer_userhash.cc redirect.cc referer.cc \
-	refresh.cc Server.cc snmp_core.cc snmp_agent.cc ssl_support.cc \
-	ssl_support.h SquidMath.h SquidMath.cc stat.cc StatHist.cc \
-	stmem.cc store.cc store_client.cc store_digest.cc store_dir.cc \
-	store_io.cc store_key_md5.cc store_log.cc store_rebuild.cc \
-	store_swapin.cc store_swapmeta.cc store_swapout.cc \
-	StoreFileSystem.cc StoreIOState.cc StoreMeta.cc \
-	StoreMetaMD5.cc StoreMetaSTD.cc StoreMetaSTDLFS.cc \
-	StoreMetaUnpacker.cc StoreMetaURL.cc StoreMetaVary.cc \
-	StoreSwapLogData.cc event.cc tools.cc tunnel.cc SwapDir.cc \
-	url.cc URLScheme.cc urn.cc useragent.cc wccp2.cc whois.cc \
-	win32.cc wordlist.cc
+	comm_select_win32.cc comm_poll.cc comm_poll.h comm_devpoll.cc \
+	comm_epoll.cc comm_epoll.h comm_kqueue.cc comm_kqueue.h \
+	ConfigOption.cc ConfigParser.cc CommonPool.h \
+	CompositePoolNode.h delay_pools.cc DelayId.cc DelayId.h \
+	DelayIdComposite.h DelayBucket.cc DelayBucket.h DelayConfig.cc \
+	DelayConfig.h DelayPool.cc DelayPool.h DelayPools.h \
+	DelaySpec.cc DelaySpec.h DelayTagged.cc DelayTagged.h \
+	DelayUser.cc DelayUser.h DelayVector.cc DelayVector.h \
+	NullDelayId.cc NullDelayId.h disk.cc dlink.h dlink.cc \
+	dns_internal.cc DnsLookupDetails.h DnsLookupDetails.cc dns.cc \
+	errorpage.cc ETag.cc external_acl.cc ExternalACLEntry.cc fd.cc \
+	fde.cc forward.cc fqdncache.cc ftp.cc gopher.cc helper.cc \
+	htcp.cc htcp.h http.cc HttpBody.cc HttpHeader.cc \
+	HttpHeaderTools.cc HttpHdrCc.cc HttpHdrContRange.cc \
+	HttpHdrRange.cc HttpHdrSc.cc HttpHdrScTarget.cc HttpMsg.cc \
+	HttpReply.cc HttpStatusLine.cc icp_v2.cc icp_v3.cc ipc.cc \
+	ipc_win32.cc ipcache.cc int.cc internal.cc list.cc logfile.cc \
+	multicast.cc mem_node.cc MemBuf.cc MemObject.cc mime.cc \
+	mime_header.cc neighbors.cc Packer.cc Parsing.cc pconn.cc \
+	peer_digest.cc peer_select.cc peer_sourcehash.cc \
+	peer_userhash.cc redirect.cc referer.cc refresh.cc Server.cc \
+	snmp_core.cc snmp_agent.cc ssl_support.cc ssl_support.h \
+	SquidMath.h SquidMath.cc stat.cc StatHist.cc stmem.cc store.cc \
+	store_client.cc store_digest.cc store_dir.cc store_io.cc \
+	store_key_md5.cc store_log.cc store_rebuild.cc store_swapin.cc \
+	store_swapmeta.cc store_swapout.cc StoreFileSystem.cc \
+	StoreIOState.cc StoreMeta.cc StoreMetaMD5.cc StoreMetaSTD.cc \
+	StoreMetaSTDLFS.cc StoreMetaUnpacker.cc StoreMetaURL.cc \
+	StoreMetaVary.cc StoreSwapLogData.cc event.cc tools.cc \
+	tunnel.cc SwapDir.cc url.cc URLScheme.cc urn.cc useragent.cc \
+	wccp2.cc whois.cc win32.cc wordlist.cc
 am_tests_testEvent_OBJECTS = debug.$(OBJEXT) EventLoop.$(OBJEXT) \
 	HttpRequest.$(OBJEXT) HttpRequestMethod.$(OBJEXT) \
 	mem.$(OBJEXT) RemovalPolicy.$(OBJEXT) String.$(OBJEXT) \
@@ -715,37 +717,37 @@ am__tests_testEventLoop_SOURCES_DIST = debug.cc EventLoop.h \
 	ChunkedCodingParser.cc client_db.cc client_side.cc \
 	client_side_reply.cc client_side_request.cc ClientInfo.h \
 	clientStream.cc comm_select.cc comm_select.h \
-	comm_select_win32.cc comm_poll.cc comm_poll.h comm_epoll.cc \
-	comm_epoll.h comm_kqueue.cc comm_kqueue.h ConfigOption.cc \
-	ConfigParser.cc CommonPool.h CompositePoolNode.h \
-	delay_pools.cc DelayId.cc DelayId.h DelayIdComposite.h \
-	DelayBucket.cc DelayBucket.h DelayConfig.cc DelayConfig.h \
-	DelayPool.cc DelayPool.h DelayPools.h DelaySpec.cc DelaySpec.h \
-	DelayTagged.cc DelayTagged.h DelayUser.cc DelayUser.h \
-	DelayVector.cc DelayVector.h NullDelayId.cc NullDelayId.h \
-	disk.cc dlink.h dlink.cc dns_internal.cc DnsLookupDetails.h \
-	DnsLookupDetails.cc dns.cc errorpage.cc ETag.cc \
-	external_acl.cc ExternalACLEntry.cc fd.cc fde.cc forward.cc \
-	fqdncache.cc ftp.cc gopher.cc helper.cc htcp.cc htcp.h http.cc \
-	HttpBody.cc HttpHeader.cc HttpHeaderTools.cc HttpHdrCc.cc \
-	HttpHdrContRange.cc HttpHdrRange.cc HttpHdrSc.cc \
-	HttpHdrScTarget.cc HttpMsg.cc HttpReply.cc HttpStatusLine.cc \
-	icp_v2.cc icp_v3.cc ipc.cc ipc_win32.cc ipcache.cc int.cc \
-	internal.cc list.cc logfile.cc multicast.cc mem_node.cc \
-	MemBuf.cc MemObject.cc mime.cc mime_header.cc neighbors.cc \
-	Packer.cc Parsing.cc pconn.cc peer_digest.cc peer_select.cc \
-	peer_sourcehash.cc peer_userhash.cc redirect.cc referer.cc \
-	refresh.cc Server.cc snmp_core.cc snmp_agent.cc ssl_support.cc \
-	ssl_support.h SquidMath.h SquidMath.cc stat.cc StatHist.cc \
-	stmem.cc store.cc store_client.cc store_digest.cc store_dir.cc \
-	store_io.cc store_key_md5.cc store_log.cc store_rebuild.cc \
-	store_swapin.cc store_swapmeta.cc store_swapout.cc \
-	StoreFileSystem.cc StoreIOState.cc StoreMeta.cc \
-	StoreMetaMD5.cc StoreMetaSTD.cc StoreMetaSTDLFS.cc \
-	StoreMetaUnpacker.cc StoreMetaURL.cc StoreMetaVary.cc \
-	StoreSwapLogData.cc event.cc tools.cc tunnel.cc SwapDir.cc \
-	url.cc URLScheme.cc urn.cc useragent.cc wccp2.cc whois.cc \
-	win32.cc wordlist.cc
+	comm_select_win32.cc comm_poll.cc comm_poll.h comm_devpoll.cc \
+	comm_epoll.cc comm_epoll.h comm_kqueue.cc comm_kqueue.h \
+	ConfigOption.cc ConfigParser.cc CommonPool.h \
+	CompositePoolNode.h delay_pools.cc DelayId.cc DelayId.h \
+	DelayIdComposite.h DelayBucket.cc DelayBucket.h DelayConfig.cc \
+	DelayConfig.h DelayPool.cc DelayPool.h DelayPools.h \
+	DelaySpec.cc DelaySpec.h DelayTagged.cc DelayTagged.h \
+	DelayUser.cc DelayUser.h DelayVector.cc DelayVector.h \
+	NullDelayId.cc NullDelayId.h disk.cc dlink.h dlink.cc \
+	dns_internal.cc DnsLookupDetails.h DnsLookupDetails.cc dns.cc \
+	errorpage.cc ETag.cc external_acl.cc ExternalACLEntry.cc fd.cc \
+	fde.cc forward.cc fqdncache.cc ftp.cc gopher.cc helper.cc \
+	htcp.cc htcp.h http.cc HttpBody.cc HttpHeader.cc \
+	HttpHeaderTools.cc HttpHdrCc.cc HttpHdrContRange.cc \
+	HttpHdrRange.cc HttpHdrSc.cc HttpHdrScTarget.cc HttpMsg.cc \
+	HttpReply.cc HttpStatusLine.cc icp_v2.cc icp_v3.cc ipc.cc \
+	ipc_win32.cc ipcache.cc int.cc internal.cc list.cc logfile.cc \
+	multicast.cc mem_node.cc MemBuf.cc MemObject.cc mime.cc \
+	mime_header.cc neighbors.cc Packer.cc Parsing.cc pconn.cc \
+	peer_digest.cc peer_select.cc peer_sourcehash.cc \
+	peer_userhash.cc redirect.cc referer.cc refresh.cc Server.cc \
+	snmp_core.cc snmp_agent.cc ssl_support.cc ssl_support.h \
+	SquidMath.h SquidMath.cc stat.cc StatHist.cc stmem.cc store.cc \
+	store_client.cc store_digest.cc store_dir.cc store_io.cc \
+	store_key_md5.cc store_log.cc store_rebuild.cc store_swapin.cc \
+	store_swapmeta.cc store_swapout.cc StoreFileSystem.cc \
+	StoreIOState.cc StoreMeta.cc StoreMetaMD5.cc StoreMetaSTD.cc \
+	StoreMetaSTDLFS.cc StoreMetaUnpacker.cc StoreMetaURL.cc \
+	StoreMetaVary.cc StoreSwapLogData.cc event.cc tools.cc \
+	tunnel.cc SwapDir.cc url.cc URLScheme.cc urn.cc useragent.cc \
+	wccp2.cc whois.cc win32.cc wordlist.cc
 am_tests_testEventLoop_OBJECTS = debug.$(OBJEXT) EventLoop.$(OBJEXT) \
 	HttpRequest.$(OBJEXT) HttpRequestMethod.$(OBJEXT) \
 	mem.$(OBJEXT) RemovalPolicy.$(OBJEXT) String.$(OBJEXT) \
@@ -826,33 +828,34 @@ am__tests_testHttpRequest_SOURCES_DIST = debug.cc HttpRequest.cc \
 	ChunkedCodingParser.cc client_db.cc client_side.cc \
 	client_side_reply.cc client_side_request.cc ClientInfo.h \
 	clientStream.cc comm_select.cc comm_select.h \
-	comm_select_win32.cc comm_poll.cc comm_poll.h comm_epoll.cc \
-	comm_epoll.h comm_kqueue.cc comm_kqueue.h ConfigOption.cc \
-	ConfigParser.cc CommonPool.h CompositePoolNode.h \
-	delay_pools.cc DelayId.cc DelayId.h DelayIdComposite.h \
-	DelayBucket.cc DelayBucket.h DelayConfig.cc DelayConfig.h \
-	DelayPool.cc DelayPool.h DelayPools.h DelaySpec.cc DelaySpec.h \
-	DelayTagged.cc DelayTagged.h DelayUser.cc DelayUser.h \
-	DelayVector.cc DelayVector.h NullDelayId.cc NullDelayId.h \
-	disk.cc dlink.h dlink.cc dns_internal.cc DnsLookupDetails.h \
-	DnsLookupDetails.cc dns.cc errorpage.cc ETag.cc \
-	external_acl.cc ExternalACLEntry.cc fd.cc fde.cc forward.cc \
-	fqdncache.cc ftp.cc gopher.cc helper.cc htcp.cc htcp.h http.cc \
-	HttpBody.cc HttpHeader.cc HttpHeaderTools.cc HttpHdrCc.cc \
-	HttpHdrContRange.cc HttpHdrRange.cc HttpHdrSc.cc \
-	HttpHdrScTarget.cc HttpMsg.cc HttpReply.cc HttpStatusLine.cc \
-	icp_v2.cc icp_v3.cc ipc.cc ipc_win32.cc ipcache.cc int.cc \
-	internal.cc list.cc logfile.cc multicast.cc mem_node.cc \
-	MemBuf.cc MemObject.cc mime.cc mime_header.cc neighbors.cc \
-	Packer.cc Parsing.cc pconn.cc peer_digest.cc peer_select.cc \
-	peer_sourcehash.cc peer_userhash.cc redirect.cc referer.cc \
-	refresh.cc RemovalPolicy.cc Server.cc snmp_core.cc \
-	snmp_agent.cc ssl_support.cc ssl_support.h SquidMath.h \
-	SquidMath.cc stat.cc StatHist.cc stmem.cc store.cc \
-	store_client.cc store_digest.cc store_dir.cc store_io.cc \
-	store_key_md5.cc store_log.cc store_rebuild.cc store_swapin.cc \
-	store_swapmeta.cc store_swapout.cc StoreFileSystem.cc \
-	StoreIOState.cc StoreMeta.cc StoreMetaMD5.cc StoreMetaSTD.cc \
+	comm_select_win32.cc comm_poll.cc comm_poll.h comm_devpoll.cc \
+	comm_epoll.cc comm_epoll.h comm_kqueue.cc comm_kqueue.h \
+	ConfigOption.cc ConfigParser.cc CommonPool.h \
+	CompositePoolNode.h delay_pools.cc DelayId.cc DelayId.h \
+	DelayIdComposite.h DelayBucket.cc DelayBucket.h DelayConfig.cc \
+	DelayConfig.h DelayPool.cc DelayPool.h DelayPools.h \
+	DelaySpec.cc DelaySpec.h DelayTagged.cc DelayTagged.h \
+	DelayUser.cc DelayUser.h DelayVector.cc DelayVector.h \
+	NullDelayId.cc NullDelayId.h disk.cc dlink.h dlink.cc \
+	dns_internal.cc DnsLookupDetails.h DnsLookupDetails.cc dns.cc \
+	errorpage.cc ETag.cc external_acl.cc ExternalACLEntry.cc fd.cc \
+	fde.cc forward.cc fqdncache.cc ftp.cc gopher.cc helper.cc \
+	htcp.cc htcp.h http.cc HttpBody.cc HttpHeader.cc \
+	HttpHeaderTools.cc HttpHdrCc.cc HttpHdrContRange.cc \
+	HttpHdrRange.cc HttpHdrSc.cc HttpHdrScTarget.cc HttpMsg.cc \
+	HttpReply.cc HttpStatusLine.cc icp_v2.cc icp_v3.cc ipc.cc \
+	ipc_win32.cc ipcache.cc int.cc internal.cc list.cc logfile.cc \
+	multicast.cc mem_node.cc MemBuf.cc MemObject.cc mime.cc \
+	mime_header.cc neighbors.cc Packer.cc Parsing.cc pconn.cc \
+	peer_digest.cc peer_select.cc peer_sourcehash.cc \
+	peer_userhash.cc redirect.cc referer.cc refresh.cc \
+	RemovalPolicy.cc Server.cc snmp_core.cc snmp_agent.cc \
+	ssl_support.cc ssl_support.h SquidMath.h SquidMath.cc stat.cc \
+	StatHist.cc stmem.cc store.cc store_client.cc store_digest.cc \
+	store_dir.cc store_io.cc store_key_md5.cc store_log.cc \
+	store_rebuild.cc store_swapin.cc store_swapmeta.cc \
+	store_swapout.cc StoreFileSystem.cc StoreIOState.cc \
+	StoreMeta.cc StoreMetaMD5.cc StoreMetaSTD.cc \
 	StoreMetaSTDLFS.cc StoreMetaUnpacker.cc StoreMetaURL.cc \
 	StoreMetaVary.cc StoreSwapLogData.cc event.cc tools.cc \
 	tunnel.cc SwapDir.cc url.cc URLScheme.cc urn.cc useragent.cc \
@@ -1010,36 +1013,37 @@ am__tests_testURL_SOURCES_DIST = debug.cc url.cc URLScheme.cc \
 	ChunkedCodingParser.cc client_db.cc client_side.cc \
 	client_side_reply.cc client_side_request.cc ClientInfo.h \
 	clientStream.cc comm_select.cc comm_select.h \
-	comm_select_win32.cc comm_poll.cc comm_poll.h comm_epoll.cc \
-	comm_epoll.h comm_kqueue.cc comm_kqueue.h ConfigOption.cc \
-	ConfigParser.cc CommonPool.h CompositePoolNode.h \
-	delay_pools.cc DelayId.cc DelayId.h DelayIdComposite.h \
-	DelayBucket.cc DelayBucket.h DelayConfig.cc DelayConfig.h \
-	DelayPool.cc DelayPool.h DelayPools.h DelaySpec.cc DelaySpec.h \
-	DelayTagged.cc DelayTagged.h DelayUser.cc DelayUser.h \
-	DelayVector.cc DelayVector.h NullDelayId.cc NullDelayId.h \
-	disk.cc dlink.h dlink.cc dns_internal.cc DnsLookupDetails.h \
-	DnsLookupDetails.cc dns.cc errorpage.cc ETag.cc \
-	external_acl.cc ExternalACLEntry.cc fd.cc fde.cc forward.cc \
-	fqdncache.cc ftp.cc gopher.cc helper.cc htcp.cc htcp.h http.cc \
-	HttpBody.cc HttpHeader.cc HttpHeaderTools.cc HttpHdrCc.cc \
-	HttpHdrContRange.cc HttpHdrRange.cc HttpHdrSc.cc \
-	HttpHdrScTarget.cc HttpMsg.cc HttpReply.cc HttpStatusLine.cc \
-	icp_v2.cc icp_v3.cc ipc.cc ipc_win32.cc ipcache.cc int.cc \
-	internal.cc list.cc logfile.cc multicast.cc mem_node.cc \
-	MemBuf.cc MemObject.cc mime.cc mime_header.cc neighbors.cc \
-	Packer.cc Parsing.cc pconn.cc peer_digest.cc peer_select.cc \
-	peer_sourcehash.cc peer_userhash.cc redirect.cc referer.cc \
-	refresh.cc Server.cc snmp_core.cc snmp_agent.cc ssl_support.cc \
-	ssl_support.h SquidMath.h SquidMath.cc stat.cc StatHist.cc \
-	stmem.cc store.cc store_client.cc store_digest.cc store_dir.cc \
-	store_io.cc store_key_md5.cc store_log.cc store_rebuild.cc \
-	store_swapin.cc store_swapmeta.cc store_swapout.cc \
-	StoreFileSystem.cc StoreIOState.cc StoreMeta.cc \
-	StoreMetaMD5.cc StoreMetaSTD.cc StoreMetaSTDLFS.cc \
-	StoreMetaUnpacker.cc StoreMetaURL.cc StoreMetaVary.cc \
-	StoreSwapLogData.cc event.cc tools.cc tunnel.cc SwapDir.cc \
-	urn.cc useragent.cc wccp2.cc whois.cc win32.cc wordlist.cc
+	comm_select_win32.cc comm_poll.cc comm_poll.h comm_devpoll.cc \
+	comm_epoll.cc comm_epoll.h comm_kqueue.cc comm_kqueue.h \
+	ConfigOption.cc ConfigParser.cc CommonPool.h \
+	CompositePoolNode.h delay_pools.cc DelayId.cc DelayId.h \
+	DelayIdComposite.h DelayBucket.cc DelayBucket.h DelayConfig.cc \
+	DelayConfig.h DelayPool.cc DelayPool.h DelayPools.h \
+	DelaySpec.cc DelaySpec.h DelayTagged.cc DelayTagged.h \
+	DelayUser.cc DelayUser.h DelayVector.cc DelayVector.h \
+	NullDelayId.cc NullDelayId.h disk.cc dlink.h dlink.cc \
+	dns_internal.cc DnsLookupDetails.h DnsLookupDetails.cc dns.cc \
+	errorpage.cc ETag.cc external_acl.cc ExternalACLEntry.cc fd.cc \
+	fde.cc forward.cc fqdncache.cc ftp.cc gopher.cc helper.cc \
+	htcp.cc htcp.h http.cc HttpBody.cc HttpHeader.cc \
+	HttpHeaderTools.cc HttpHdrCc.cc HttpHdrContRange.cc \
+	HttpHdrRange.cc HttpHdrSc.cc HttpHdrScTarget.cc HttpMsg.cc \
+	HttpReply.cc HttpStatusLine.cc icp_v2.cc icp_v3.cc ipc.cc \
+	ipc_win32.cc ipcache.cc int.cc internal.cc list.cc logfile.cc \
+	multicast.cc mem_node.cc MemBuf.cc MemObject.cc mime.cc \
+	mime_header.cc neighbors.cc Packer.cc Parsing.cc pconn.cc \
+	peer_digest.cc peer_select.cc peer_sourcehash.cc \
+	peer_userhash.cc redirect.cc referer.cc refresh.cc Server.cc \
+	snmp_core.cc snmp_agent.cc ssl_support.cc ssl_support.h \
+	SquidMath.h SquidMath.cc stat.cc StatHist.cc stmem.cc store.cc \
+	store_client.cc store_digest.cc store_dir.cc store_io.cc \
+	store_key_md5.cc store_log.cc store_rebuild.cc store_swapin.cc \
+	store_swapmeta.cc store_swapout.cc StoreFileSystem.cc \
+	StoreIOState.cc StoreMeta.cc StoreMetaMD5.cc StoreMetaSTD.cc \
+	StoreMetaSTDLFS.cc StoreMetaUnpacker.cc StoreMetaURL.cc \
+	StoreMetaVary.cc StoreSwapLogData.cc event.cc tools.cc \
+	tunnel.cc SwapDir.cc urn.cc useragent.cc wccp2.cc whois.cc \
+	win32.cc wordlist.cc
 am_tests_testURL_OBJECTS = debug.$(OBJEXT) url.$(OBJEXT) \
 	URLScheme.$(OBJEXT) HttpRequest.$(OBJEXT) \
 	HttpRequestMethod.$(OBJEXT) mem.$(OBJEXT) \
@@ -1144,34 +1148,34 @@ am__tests_test_http_range_SOURCES_DIST = tests/test_http_range.cc \
 	ChunkedCodingParser.cc client_db.cc client_side.cc \
 	client_side_reply.cc client_side_request.cc ClientInfo.h \
 	clientStream.cc comm_select.cc comm_select.h \
-	comm_select_win32.cc comm_poll.cc comm_poll.h comm_epoll.cc \
-	comm_epoll.h comm_kqueue.cc comm_kqueue.h ConfigOption.cc \
-	ConfigParser.cc debug.cc CommonPool.h CompositePoolNode.h \
-	delay_pools.cc DelayId.cc DelayId.h DelayIdComposite.h \
-	DelayBucket.cc DelayBucket.h DelayConfig.cc DelayConfig.h \
-	DelayPool.cc DelayPool.h DelayPools.h DelaySpec.cc DelaySpec.h \
-	DelayTagged.cc DelayTagged.h DelayUser.cc DelayUser.h \
-	DelayVector.cc DelayVector.h NullDelayId.cc NullDelayId.h \
-	disk.cc dlink.h dlink.cc dns_internal.cc DnsLookupDetails.h \
-	DnsLookupDetails.cc dns.cc errorpage.cc ETag.cc \
-	external_acl.cc ExternalACLEntry.cc fd.cc fde.cc forward.cc \
-	fqdncache.cc ftp.cc gopher.cc helper.cc htcp.cc htcp.h http.cc \
-	HttpBody.cc HttpHdrCc.cc HttpHdrContRange.cc HttpHdrRange.cc \
-	HttpHdrSc.cc HttpHdrScTarget.cc HttpHeader.cc \
-	HttpHeaderTools.cc HttpMsg.cc HttpReply.cc HttpRequest.cc \
-	HttpRequestMethod.cc HttpStatusLine.cc icp_v2.cc icp_v3.cc \
-	int.cc internal.cc ipc.cc ipc_win32.cc ipcache.cc list.cc \
-	logfile.cc mem.cc mem_node.cc MemObject.cc mime.cc \
-	mime_header.cc multicast.cc neighbors.cc Parsing.cc \
-	peer_digest.cc peer_select.cc peer_sourcehash.cc \
-	peer_userhash.cc pconn.cc redirect.cc referer.cc refresh.cc \
-	RemovalPolicy.cc Server.cc snmp_core.cc snmp_agent.cc \
-	ssl_support.cc ssl_support.h SquidMath.h SquidMath.cc stat.cc \
-	StatHist.cc stmem.cc store.cc store_client.cc store_digest.cc \
-	store_dir.cc store_key_md5.cc store_io.cc store_log.cc \
-	store_rebuild.cc store_swapin.cc store_swapmeta.cc \
-	store_swapout.cc StoreFileSystem.cc StoreIOState.cc \
-	StoreMeta.cc StoreMetaMD5.cc StoreMetaSTD.cc \
+	comm_select_win32.cc comm_poll.cc comm_poll.h comm_devpoll.cc \
+	comm_epoll.cc comm_epoll.h comm_kqueue.cc comm_kqueue.h \
+	ConfigOption.cc ConfigParser.cc debug.cc CommonPool.h \
+	CompositePoolNode.h delay_pools.cc DelayId.cc DelayId.h \
+	DelayIdComposite.h DelayBucket.cc DelayBucket.h DelayConfig.cc \
+	DelayConfig.h DelayPool.cc DelayPool.h DelayPools.h \
+	DelaySpec.cc DelaySpec.h DelayTagged.cc DelayTagged.h \
+	DelayUser.cc DelayUser.h DelayVector.cc DelayVector.h \
+	NullDelayId.cc NullDelayId.h disk.cc dlink.h dlink.cc \
+	dns_internal.cc DnsLookupDetails.h DnsLookupDetails.cc dns.cc \
+	errorpage.cc ETag.cc external_acl.cc ExternalACLEntry.cc fd.cc \
+	fde.cc forward.cc fqdncache.cc ftp.cc gopher.cc helper.cc \
+	htcp.cc htcp.h http.cc HttpBody.cc HttpHdrCc.cc \
+	HttpHdrContRange.cc HttpHdrRange.cc HttpHdrSc.cc \
+	HttpHdrScTarget.cc HttpHeader.cc HttpHeaderTools.cc HttpMsg.cc \
+	HttpReply.cc HttpRequest.cc HttpRequestMethod.cc \
+	HttpStatusLine.cc icp_v2.cc icp_v3.cc int.cc internal.cc \
+	ipc.cc ipc_win32.cc ipcache.cc list.cc logfile.cc mem.cc \
+	mem_node.cc MemObject.cc mime.cc mime_header.cc multicast.cc \
+	neighbors.cc Parsing.cc peer_digest.cc peer_select.cc \
+	peer_sourcehash.cc peer_userhash.cc pconn.cc redirect.cc \
+	referer.cc refresh.cc RemovalPolicy.cc Server.cc snmp_core.cc \
+	snmp_agent.cc ssl_support.cc ssl_support.h SquidMath.h \
+	SquidMath.cc stat.cc StatHist.cc stmem.cc store.cc \
+	store_client.cc store_digest.cc store_dir.cc store_key_md5.cc \
+	store_io.cc store_log.cc store_rebuild.cc store_swapin.cc \
+	store_swapmeta.cc store_swapout.cc StoreFileSystem.cc \
+	StoreIOState.cc StoreMeta.cc StoreMetaMD5.cc StoreMetaSTD.cc \
 	StoreMetaSTDLFS.cc StoreMetaUnpacker.cc StoreMetaURL.cc \
 	StoreMetaVary.cc StoreSwapLogData.cc String.cc SwapDir.cc \
 	event.cc time.cc tools.cc tunnel.cc url.cc URLScheme.cc urn.cc \
@@ -1721,6 +1725,7 @@ squid_COMMSOURCES = \
 	comm_select_win32.cc \
 	comm_poll.cc \
 	comm_poll.h \
+	comm_devpoll.cc \
 	comm_epoll.cc \
 	comm_epoll.h \
 	comm_kqueue.cc \
@@ -3903,6 +3908,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/client_side_reply.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/client_side_request.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/comm.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/comm_devpoll.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/comm_epoll.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/comm_kqueue.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/comm_poll.Po@am__quote@
@@ -4611,6 +4617,7 @@ install-data-local: install-sysconfDATA install-dataDATA
 	echo "$(INSTALL_DATA) squid.conf.documented $(DESTDIR)$(DEFAULT_CONFIG_FILE).documented"; \
 	$(INSTALL_DATA) squid.conf.documented $(DESTDIR)$(DEFAULT_CONFIG_FILE).documented; \
 	$(mkinstalldirs) $(DESTDIR)$(DEFAULT_LOG_PREFIX); \
+	$(mkinstalldirs) $(DESTDIR)$(DEFAULT_SWAP_DIR); \
 	$(mkinstalldirs) $(DESTDIR)`dirname $(DEFAULT_PIDFILE)`
 
 uninstall-local: squid.conf.default

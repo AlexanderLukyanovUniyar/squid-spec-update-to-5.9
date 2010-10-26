@@ -350,21 +350,18 @@ clientReplyContext::handleIMSReply(StoreIOBuffer result)
     // request to origin was aborted
     if (EBIT_TEST(http->storeEntry()->flags, ENTRY_ABORTED)) {
         debugs(88, 3, "handleIMSReply: request to origin aborted '" << http->storeEntry()->url() << "', sending old entry to client" );
-        http->logType = LOG_TCP_REFRESH_FAIL;
+        http->logType = LOG_TCP_REFRESH_FAIL_OLD;
         sendClientOldEntry();
     }
 
     HttpReply *old_rep = (HttpReply *) old_entry->getReply();
 
     // origin replied 304
-    // TODO FIXME: old_rep2 was forcibly unshadowed, used to be old_rep. Are we sure
-    //  that the right semantics were preserved?
     if (status == HTTP_NOT_MODIFIED) {
         http->logType = LOG_TCP_REFRESH_UNMODIFIED;
 
         // update headers on existing entry
-        HttpReply *old_rep2 = (HttpReply *) old_entry->getReply();
-        old_rep2->updateOnNotModified(http->storeEntry()->getReply());
+        old_rep->updateOnNotModified(http->storeEntry()->getReply());
         old_entry->timestampsSet();
 
         // if client sent IMS
@@ -376,7 +373,7 @@ clientReplyContext::handleIMSReply(StoreIOBuffer result)
         } else {
             // send existing entry, it's still valid
             debugs(88, 3, "handleIMSReply: origin replied 304, revalidating existing entry and sending " <<
-                   old_rep2->sline.status << " to client");
+                   old_rep->sline.status << " to client");
             sendClientOldEntry();
         }
     }
@@ -390,9 +387,14 @@ clientReplyContext::handleIMSReply(StoreIOBuffer result)
     }
 
     // origin replied with an error
-    else {
+    else if (http->request->flags.fail_on_validation_err) {
+        http->logType = LOG_TCP_REFRESH_FAIL_ERR;
+        debugs(88, 3, "handleIMSReply: origin replied with error " << status <<
+               ", forwarding to client due to fail_on_validation_err");
+        sendClientUpstreamResponse();
+    } else {
         // ignore and let client have old entry
-        http->logType = LOG_TCP_REFRESH_FAIL;
+        http->logType = LOG_TCP_REFRESH_FAIL_OLD;
         debugs(88, 3, "handleIMSReply: origin replied with error " <<
                status << ", sending old entry (" << old_rep->sline.status << ") to client");
         sendClientOldEntry();
@@ -514,7 +516,7 @@ clientReplyContext::cacheHit(StoreIOBuffer result)
        ) {
         http->logType = LOG_TCP_NEGATIVE_HIT;
         sendMoreData(result);
-    } else if (!Config.onoff.offline && refreshCheckHTTP(e, r) && !http->flags.internal) {
+    } else if (!http->flags.internal && refreshCheckHTTP(e, r)) {
         debugs(88, 5, "clientCacheHit: in refreshCheck() block");
         /*
          * We hold a stale copy; it needs to be validated
@@ -1296,6 +1298,13 @@ clientReplyContext::buildReplyHeader()
             debugs(88,1,"WARNING: An error inside Squid has caused an HTTP reply without Date:. Please report this");
             /* TODO: dump something useful about the problem */
         }
+    }
+
+    // add Warnings required by RFC 2616 if serving a stale hit
+    if (http->request->flags.stale_if_hit && logTypeIsATcpHit(http->logType)) {
+        hdr->putWarning(110, "Response is stale");
+        if (http->request->flags.need_validation)
+            hdr->putWarning(111, "Revalidation failed");
     }
 
     /* Filter unproxyable authentication types */

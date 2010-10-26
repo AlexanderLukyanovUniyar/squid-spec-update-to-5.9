@@ -372,6 +372,12 @@ HttpStateData::cacheableReply()
     if (surrogateNoStore)
         return 0;
 
+    // RFC 2616: do not cache replies to responses with no-store CC directive
+    if (request && request->cache_control &&
+            EBIT_TEST(request->cache_control->mask, CC_NO_STORE) &&
+            !REFRESH_OVERRIDE(ignore_no_store))
+        return 0;
+
     if (!ignoreCacheControl) {
         if (EBIT_TEST(cc_mask, CC_PRIVATE)) {
             if (!REFRESH_OVERRIDE(ignore_private))
@@ -681,6 +687,7 @@ HttpStateData::processReplyHeader()
         tmprep->header.putExt("X-Transformed-From", "HTTP/0.9");
         mb = tmprep->pack();
         newrep->parse(mb, eof, &error);
+        delete mb;
         delete tmprep;
     } else {
         if (!parsed && error > 0) { // unrecoverable parsing error
@@ -707,6 +714,8 @@ HttpStateData::processReplyHeader()
         header_bytes_read = headersEnd(readBuf->content(), readBuf->contentSize());
         readBuf->consume(header_bytes_read);
     }
+
+    newrep->removeStaleWarnings();
 
     /* Skip 1xx messages for now. Advertised in Via as an internal 1.0 hop */
     if (newrep->sline.protocol == PROTO_HTTP && newrep->sline.status >= 100 && newrep->sline.status < 200) {
@@ -896,9 +905,9 @@ HttpStateData::haveParsedReplyHeaders()
 no_cache:
 
     if (!ignoreCacheControl && rep->cache_control) {
-        if (EBIT_TEST(rep->cache_control->mask, CC_PROXY_REVALIDATE))
-            EBIT_SET(entry->flags, ENTRY_REVALIDATE);
-        else if (EBIT_TEST(rep->cache_control->mask, CC_MUST_REVALIDATE))
+        if (EBIT_TEST(rep->cache_control->mask, CC_PROXY_REVALIDATE) ||
+                EBIT_TEST(rep->cache_control->mask, CC_MUST_REVALIDATE) ||
+                EBIT_TEST(rep->cache_control->mask, CC_S_MAXAGE))
             EBIT_SET(entry->flags, ENTRY_REVALIDATE);
     }
 
@@ -1490,7 +1499,7 @@ HttpStateData::httpBuildRequestHeader(HttpRequest * request,
                                       HttpRequest * orig_request,
                                       StoreEntry * entry,
                                       HttpHeader * hdr_out,
-                                      http_state_flags flags)
+                                      const http_state_flags flags)
 {
     /* building buffer for complex strings */
 #define BBUF_SZ (MAX_URL+32)
@@ -1930,8 +1939,7 @@ mb_size_t
 HttpStateData::buildRequestPrefix(HttpRequest * aRequest,
                                   HttpRequest * original_request,
                                   StoreEntry * sentry,
-                                  MemBuf * mb,
-                                  http_state_flags stateFlags)
+                                  MemBuf * mb)
 {
     const int offset = mb->size;
     HttpVersion httpver(1,1);
@@ -1943,7 +1951,7 @@ HttpStateData::buildRequestPrefix(HttpRequest * aRequest,
     {
         HttpHeader hdr(hoRequest);
         Packer p;
-        httpBuildRequestHeader(aRequest, original_request, sentry, &hdr, stateFlags);
+        httpBuildRequestHeader(aRequest, original_request, sentry, &hdr, flags);
 
         if (aRequest->flags.pinned && aRequest->flags.connection_auth)
             aRequest->flags.auth_sent = 1;
@@ -2031,7 +2039,7 @@ HttpStateData::sendRequest()
     }
 
     mb.init();
-    buildRequestPrefix(request, orig_request, entry, &mb, flags);
+    buildRequestPrefix(request, orig_request, entry, &mb);
     debugs(11, 6, "httpSendRequest: FD " << fd << ":\n" << mb.buf);
     comm_write_mbuf(fd, &mb, requestSender);
 

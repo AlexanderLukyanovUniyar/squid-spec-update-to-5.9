@@ -207,7 +207,8 @@ ConnStateData::readSomeData()
 
     debugs(33, 4, "clientReadSomeData: FD " << fd << ": reading request...");
 
-    makeSpaceAvailable();
+    if (!maybeMakeSpaceAvailable())
+        return;
 
     typedef CommCbMemFunT<ConnStateData, CommIoCbParams> Dialer;
     reader = JobCallback(33, 5,
@@ -2153,13 +2154,22 @@ ConnStateData::getAvailableBufferLength() const
     return result;
 }
 
-void
-ConnStateData::makeSpaceAvailable()
+bool
+ConnStateData::maybeMakeSpaceAvailable()
 {
     if (getAvailableBufferLength() < 2) {
-        in.buf = (char *)memReallocBuf(in.buf, in.allocatedSize * 2, &in.allocatedSize);
+        size_t newSize;
+        if (in.allocatedSize >= Config.maxRequestBufferSize) {
+            debugs(33, 4, "request buffer full: client_request_buffer_max_size=" << Config.maxRequestBufferSize);
+            return false;
+        }
+        if ((newSize=in.allocatedSize * 2) > Config.maxRequestBufferSize) {
+            newSize=Config.maxRequestBufferSize;
+        }
+        in.buf = (char *)memReallocBuf(in.buf, newSize, &in.allocatedSize);
         debugs(33, 2, "growing request buffer: notYetUsed=" << in.notYetUsed << " size=" << in.allocatedSize);
     }
+    return true;
 }
 
 void
@@ -2424,10 +2434,8 @@ clientProcessRequest(ConnStateData *conn, HttpParser *hp, ClientSocketContext *c
     } else
         conn->cleanDechunkingRequest();
 
-    if (method == METHOD_TRACE || method == METHOD_OPTIONS)
-        request->max_forwards = request->header.getInt64(HDR_MAX_FORWARDS);
-
-    mustReplyToOptions = (method == METHOD_OPTIONS) && (request->max_forwards == 0);
+    mustReplyToOptions = (method == METHOD_OPTIONS) &&
+                         (request->header.getInt64(HDR_MAX_FORWARDS) == 0);
     unsupportedTe = tePresent && !deChunked;
     if (!urlCheckRequest(request) || mustReplyToOptions || unsupportedTe) {
         clientStreamNode *node = context->getClientReplyContext();
@@ -2780,7 +2788,7 @@ ConnStateData::handleReadData(char *buf, size_t size)
  * called when new request body data has been buffered in in.buf
  * may close the connection if we were closing and piped everything out
  */
-void
+bool
 ConnStateData::handleRequestBodyData()
 {
     assert(bodyPipe != NULL);
@@ -2866,14 +2874,19 @@ ConnStateData::handleRequestBodyData()
              * because mayNeedMoreData is true if request size is not known.
              */
             comm_close(fd);
+            return false;
         }
     }
+    return true;
 }
 
 void
 ConnStateData::noteMoreBodySpaceAvailable(BodyPipe::Pointer )
 {
-    handleRequestBodyData();
+    if (!handleRequestBodyData())
+        return;
+
+    readSomeData();
 }
 
 void

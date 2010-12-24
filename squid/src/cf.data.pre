@@ -59,6 +59,56 @@ COMMENT_START
   configuration files.
 COMMENT_END
 
+# Options Removed in 3.1
+NAME: dns_testnames
+TYPE: obsolete
+DOC_START
+	Remove this line. DNS is no longer tested on startup.
+DOC_END
+
+NAME: extension_methods
+TYPE: obsolete
+DOC_START
+	Remove this line. All valid methods for HTTP are accepted by default.
+DOC_END
+
+# 2.7 Options Removed/Replaced in 3.1
+NAME: incoming_rate
+TYPE: obsolete
+DOC_NONE
+
+NAME: server_http11
+TYPE: obsolete
+DOC_START
+	Remove this line. HTTP/1.1 is supported by default.
+DOC_END
+
+NAME: upgrade_http0.9
+TYPE: obsolete
+DOC_START
+	Remove this line. ICY/1.0 streaming protocol is supported by default.
+DOC_END
+
+NAME: zph_local zph_mode zph_option zph_parent zph_sibling
+TYPE: obsolete
+DOC_START
+	Alter these entries. Use the qos_flows directive instead.
+DOC_END
+
+# Options Removed in 3.0
+NAME: header_access
+TYPE: obsolete
+DOC_START
+	Since squid-3.0 replace with request_header_access or reply_header_access
+	depending on whether you wish to match client requests or server replies.
+DOC_END
+
+NAME: httpd_accel_no_pmtu_disc
+TYPE: obsolete
+DOC_START
+	Since squid-3.0 use the 'disable-pmtu-discovery' flag on http_port instead.
+DOC_END
+
 COMMENT_START
  OPTIONS FOR AUTHENTICATION
  -----------------------------------------------------------------------------
@@ -1789,8 +1839,8 @@ DOC_START
 			which parent to fectch from. If the rtt is less than the
 			base time the rtt is set to a minimal value.
 	
-	ttl=N		Specify a IP multicast TTL to use when sending an ICP
-			queries to this address.
+	ttl=N		Specify a TTL to use when sending multicast ICP queries
+			to this address.
 			Only useful when sending to a multicast group.
 			Because we don't accept ICP replies from random
 			hosts, you must configure other group members as
@@ -2294,8 +2344,8 @@ DOC_START
 
 	no-store, no new objects should be stored to this cache_dir
 
-	max-size=n, refers to the max object size this storedir supports.
-	It is used to initially choose the storedir to dump the object.
+	max-size=n, refers to the max object size in bytes this cache_dir
+	supports.  It is used to select the cache_dir to store the object.
 	Note: To make optimal use of the max-size limits you should order
 	the cache_dir lines with the smallest max-size value first and the
 	ones with no max-size specification last.
@@ -3539,6 +3589,17 @@ DOC_START
 	than this limit receives an "Invalid Request" error message.
 	If you set this parameter to a zero (the default), there will
 	be no limit imposed.
+DOC_END
+
+NAME: client_request_buffer_max_size
+COMMENT: (bytes)
+TYPE: b_size_t
+DEFAULT: 512 KB
+LOC: Config.maxRequestBufferSize
+DOC_START
+	This specifies the maximum buffer size of a client request.
+	It prevents squid eating too much memory when somebody uploads
+	a large file.
 DOC_END
 
 NAME: chunked_request_body_max_size

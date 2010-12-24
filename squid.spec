@@ -7,8 +7,8 @@
 %endif
 
 Name: squid
-Version: 3.1.9
-Release: alt2
+Version: 3.1.10
+Release: alt1
 
 Summary: The Squid proxy caching server
 Summary(ru_RU.KOI8-R): Кэширующий прокси-сервер Squid
@@ -383,6 +383,9 @@ chown -R %name:%name %_spooldir/%name >/dev/null 2>&1 ||:
 
 
 %changelog
+* Fri Dec 24 2010 Vitaly Kuznetsov <vitty@altlinux.ru> 3.1.10-alt1
+- 3.1.10
+
 * Mon Nov 15 2010 Vitaly Kuznetsov <vitty@altlinux.ru> 3.1.9-alt2
 - fix build
 

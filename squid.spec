@@ -8,7 +8,7 @@
 
 Name: squid
 Version: 3.1.11
-Release: alt1
+Release: alt2
 
 Summary: The Squid proxy caching server
 Summary(ru_RU.KOI8-R): Кэширующий прокси-сервер Squid
@@ -31,7 +31,7 @@ BuildConflicts: bind-devel
 BuildPreReq: rpm-build >= 4.0.4-alt10
 
 # Automatically added by buildreq on Mon May 18 2009
-BuildRequires: cppunit-devel gcc-c++ libdb4-devel libldap-devel libpam-devel libssl-devel libkrb5-devel libcap-devel libltdl-devel perl-Pod-Parser
+BuildRequires: cppunit-devel gcc-c++ libdb4-devel libldap-devel libpam-devel libssl-devel libkrb5-devel libcap-devel libltdl-devel perl-Pod-Parser libsasl2-devel
 
 # Used by smb_auth.pl,pop3.pl and squid_db_auth, required on find-requires stage:
 BuildRequires: perl-Authen-Smb perl-libnet perl-DBI
@@ -383,6 +383,9 @@ chown -R %name:%name %_spooldir/%name >/dev/null 2>&1 ||:
 
 
 %changelog
+* Wed Mar 23 2011 Vitaly Kuznetsov <vitty@altlinux.ru> 3.1.11-alt2
+- repair build
+
 * Tue Feb 08 2011 Vitaly Kuznetsov <vitty@altlinux.ru> 3.1.11-alt1
 - 3.1.11
 

@@ -33,7 +33,7 @@ SQUID=/usr/sbin/squid
 # default squid options
 # -D disables initial dns checks. If you most likely will not to have an
 #    internet connection when you start squid, uncomment this
-SQUID_OPTS="-D"
+SQUID_OPTS=""
 
 #Uncomment for makes squid write info in access.log by pieces as far as the
 #receipt of data but not after downloading whole file.

@@ -7,7 +7,7 @@
 %endif
 
 Name: squid
-Version: 3.1.12
+Version: 3.1.13
 Release: alt1
 
 Summary: The Squid proxy caching server
@@ -383,6 +383,9 @@ chown -R %name:%name %_spooldir/%name >/dev/null 2>&1 ||:
 
 
 %changelog
+* Fri Jul 01 2011 Vitaly Kuznetsov <vitty@altlinux.ru> 3.1.13-alt1
+- 3.1.13
+
 * Mon Apr 11 2011 Vitaly Kuznetsov <vitty@altlinux.ru> 3.1.12-alt1
 - 3.1.12
 

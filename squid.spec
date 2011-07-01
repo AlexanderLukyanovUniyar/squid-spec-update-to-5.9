@@ -40,7 +40,7 @@ Patch1: squid-3.1.7-kerb_auth-link-alt.patch
 Patch2: squid-3.1.7-install-pinger-alt.patch
 Patch3: squid-3.1.0.9-location.patch
 Patch4: squid-3.1.7-default-logrotate-alt.patch
-Patch5: squid-3.1.7-default-paths-in-var-alt.patch
+Patch5: squid-3.1.13-default-paths-in-var-alt.patch
 
 Requires: %name-common = %version-%release, %name-server = %version-%release, %name-helpers = %version-%release, %name-helpers-perl = %version-%release, %name-cachemgr = %version-%release
 

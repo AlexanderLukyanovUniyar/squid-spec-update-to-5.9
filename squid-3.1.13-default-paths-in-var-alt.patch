@@ -1,10 +1,10 @@
 diff -ur squid/src/Makefile.am squid.new/src/Makefile.am
---- squid/src/Makefile.am	2010-08-24 05:41:26 +0000
-+++ squid.new/src/Makefile.am	2010-08-31 16:33:11 +0000
-@@ -714,13 +714,13 @@
- DEFAULT_CONFIG_FILE     = $(DEFAULT_CONFIG_DIR)/squid.conf
+--- squid/src/Makefile.am	2011-07-01 02:48:17 +0000
++++ squid.new/src/Makefile.am	2011-07-01 13:32:41 +0000
+@@ -723,13 +723,13 @@
  DEFAULT_MIME_TABLE	= $(DEFAULT_CONFIG_DIR)/mime.conf
  DEFAULT_DNSSERVER       = $(libexecdir)/`echo dnsserver | sed '$(transform);s/$$/$(EXEEXT)/'`
+ DEFAULT_SSL_CRTD	= $(libexecdir)/`echo ssl_crtd  | sed '$(transform);s/$$/$(EXEEXT)/'`
 -DEFAULT_LOG_PREFIX	= $(DEFAULT_LOG_DIR)
 +DEFAULT_LOG_PREFIX	= $(localstatedir)/log/squid
  DEFAULT_CACHE_LOG       = $(DEFAULT_LOG_PREFIX)/cache.log
@@ -15,16 +15,17 @@ diff -ur squid/src/Makefile.am squid.new/src/Makefile.am
  DEFAULT_NETDB_FILE      = $(DEFAULT_LOG_PREFIX)/netdb.state
 -DEFAULT_SWAP_DIR        = $(localstatedir)/cache
 +DEFAULT_SWAP_DIR        = $(localstatedir)/spool/squid
+ DEFAULT_SSL_DB_DIR	= $(localstatedir)/lib/ssl_db
  DEFAULT_PINGER		= $(libexecdir)/`echo pinger | sed '$(transform);s/$$/$(EXEEXT)/'`
  DEFAULT_UNLINKD		= $(libexecdir)/`echo unlinkd | sed '$(transform);s/$$/$(EXEEXT)/'`
- DEFAULT_DISKD		= $(libexecdir)/`echo diskd | sed '$(transform);s/$$/$(EXEEXT)/'`
+Только в squid.new/src: Makefile.am~
 diff -ur squid/src/Makefile.in squid.new/src/Makefile.in
---- squid/src/Makefile.in	2010-08-24 05:42:37 +0000
-+++ squid.new/src/Makefile.in	2010-08-31 16:33:26 +0000
-@@ -1970,13 +1970,13 @@
- DEFAULT_CONFIG_FILE = $(DEFAULT_CONFIG_DIR)/squid.conf
+--- squid/src/Makefile.in	2011-07-01 02:49:49 +0000
++++ squid.new/src/Makefile.in	2011-07-01 13:33:32 +0000
+@@ -2055,13 +2055,13 @@
  DEFAULT_MIME_TABLE = $(DEFAULT_CONFIG_DIR)/mime.conf
  DEFAULT_DNSSERVER = $(libexecdir)/`echo dnsserver | sed '$(transform);s/$$/$(EXEEXT)/'`
+ DEFAULT_SSL_CRTD = $(libexecdir)/`echo ssl_crtd  | sed '$(transform);s/$$/$(EXEEXT)/'`
 -DEFAULT_LOG_PREFIX = $(DEFAULT_LOG_DIR)
 +DEFAULT_LOG_PREFIX = $(localstatedir)/log/squid
  DEFAULT_CACHE_LOG = $(DEFAULT_LOG_PREFIX)/cache.log
@@ -35,6 +36,7 @@ diff -ur squid/src/Makefile.in squid.new/src/Makefile.in
  DEFAULT_NETDB_FILE = $(DEFAULT_LOG_PREFIX)/netdb.state
 -DEFAULT_SWAP_DIR = $(localstatedir)/cache
 +DEFAULT_SWAP_DIR = $(localstatedir)/spool/squid
+ DEFAULT_SSL_DB_DIR = $(localstatedir)/lib/ssl_db
  DEFAULT_PINGER = $(libexecdir)/`echo pinger | sed '$(transform);s/$$/$(EXEEXT)/'`
  DEFAULT_UNLINKD = $(libexecdir)/`echo unlinkd | sed '$(transform);s/$$/$(EXEEXT)/'`
- DEFAULT_DISKD = $(libexecdir)/`echo diskd | sed '$(transform);s/$$/$(EXEEXT)/'`
+Только в squid.new/src: Makefile.in~

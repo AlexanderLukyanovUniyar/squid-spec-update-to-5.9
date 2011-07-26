@@ -7,7 +7,7 @@
 %endif
 
 Name: squid
-Version: 3.1.13
+Version: 3.1.14
 Release: alt1
 
 Summary: The Squid proxy caching server
@@ -41,6 +41,7 @@ Patch2: squid-3.1.7-install-pinger-alt.patch
 Patch3: squid-3.1.0.9-location.patch
 Patch4: squid-3.1.7-default-logrotate-alt.patch
 Patch5: squid-3.1.13-default-paths-in-var-alt.patch
+Patch6: squid-3.1.14-openssl-1.0.patch
 
 Requires: %name-common = %version-%release, %name-server = %version-%release, %name-helpers = %version-%release, %name-helpers-perl = %version-%release, %name-cachemgr = %version-%release
 
@@ -176,6 +177,7 @@ Install squid package to get all Squid parts.
 %patch3 -p1
 %patch4 -p2
 %patch5 -p1
+%patch6 -p1
 
 find . -type f -name '*.pl' -print0 | \
 	xargs -r0 sed -ie 's,/usr/local/bin/perl,/usr/bin/perl,g'
@@ -383,6 +385,9 @@ chown -R %name:%name %_spooldir/%name >/dev/null 2>&1 ||:
 
 
 %changelog
+* Tue Jul 26 2011 Vitaly Kuznetsov <vitty@altlinux.ru> 3.1.14-alt1
+- 3.1.14
+
 * Fri Jul 01 2011 Vitaly Kuznetsov <vitty@altlinux.ru> 3.1.13-alt1
 - 3.1.13
 

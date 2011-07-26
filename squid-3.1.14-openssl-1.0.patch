@@ -1,0 +1,135 @@
+diff -ur squid/src/ssl/certificate_db.cc squid.new/src/ssl/certificate_db.cc
+--- squid/src/ssl/certificate_db.cc	2011-07-04 04:38:34 +0000
++++ squid.new/src/ssl/certificate_db.cc	2011-07-26 09:54:57 +0000
+@@ -394,11 +394,19 @@
+         corrupt = true;
+ 
+     // Create indexes in db.
++#if OPENSSL_VERSION_NUMBER > 0x10000000L
++    if (!corrupt && !TXT_DB_create_index(temp_db.get(), cnlSerial, NULL, LHASH_HASH_FN(index_serial), LHASH_COMP_FN(index_serial)))
++        corrupt = true;
++
++    if (!corrupt && !TXT_DB_create_index(temp_db.get(), cnlName, NULL, LHASH_HASH_FN(index_name), LHASH_COMP_FN(index_name)))
++        corrupt = true;
++#else
+     if (!corrupt && !TXT_DB_create_index(temp_db.get(), cnlSerial, NULL, LHASH_HASH_FN(index_serial_hash), LHASH_COMP_FN(index_serial_cmp)))
+         corrupt = true;
+ 
+     if (!corrupt && !TXT_DB_create_index(temp_db.get(), cnlName, NULL, LHASH_HASH_FN(index_name_hash), LHASH_COMP_FN(index_name_cmp)))
+         corrupt = true;
++#endif
+ 
+     if (corrupt)
+         throw std::runtime_error("The SSL certificate database " + db_path + " is curruted. Please rebuild");
+@@ -426,13 +434,22 @@
+         return false;
+ 
+     bool removed_one = false;
++#if OPENSSL_VERSION_NUMBER > 0x10000000L
++    for (int i = 0; i < sk_OPENSSL_PSTRING_num(db.get()->data); i++) {
++        const char ** current_row = ((const char **)sk_OPENSSL_PSTRING_value(db.get()->data, i));
++#else
+     for (int i = 0; i < sk_num(db.get()->data); i++) {
+         const char ** current_row = ((const char **)sk_value(db.get()->data, i));
++#endif
+ 
+         if (!sslDateIsInTheFuture(current_row[cnlExp_date])) {
+             std::string filename(cert_full + "/" + current_row[cnlSerial] + ".pem");
+             FileLocker cert_locker(filename);
++#if OPENSSL_VERSION_NUMBER > 0x10000000L
++            sk_OPENSSL_PSTRING_delete(db.get()->data, i);
++#else
+             sk_delete(db.get()->data, i);
++#endif
+             subSize(filename);
+             remove(filename.c_str());
+             removed_one = true;
+@@ -450,12 +467,27 @@
+     if (!db)
+         return false;
+ 
++#if OPENSSL_VERSION_NUMBER > 0x10000000L
++    if (sk_OPENSSL_PSTRING_num(db.get()->data) == 0)
++#else
+     if (sk_num(db.get()->data) == 0)
++#endif
+         return false;
+ 
+-    std::string filename(cert_full + "/" + ((const char **)sk_value(db.get()->data, 0))[cnlSerial] + ".pem");
++#if OPENSSL_VERSION_NUMBER > 0x10000000L
++    const char **row = (const char **)sk_OPENSSL_PSTRING_value(db.get()->data, 0);
++#else
++    const char **row = (const char **)sk_value(db.get()->data, 0);
++#endif
++    std::string filename(cert_full + "/" + row[cnlSerial] + ".pem");
+     FileLocker cert_locker(filename);
++
++#if OPENSSL_VERSION_NUMBER > 0x10000000L
++    sk_OPENSSL_PSTRING_delete(db.get()->data, 0);
++#else
+     sk_delete(db.get()->data, 0);
++#endif
++
+     subSize(filename);
+     remove(filename.c_str());
+ 
+@@ -467,12 +499,21 @@
+     if (!db)
+         return false;
+ 
++#if OPENSSL_VERSION_NUMBER > 0x10000000L
++    for (int i = 0; i < sk_OPENSSL_PSTRING_num(db.get()->data); i++) {
++        const char ** current_row = ((const char **)sk_OPENSSL_PSTRING_value(db.get()->data, i));
++#else
+     for (int i = 0; i < sk_num(db.get()->data); i++) {
+         const char ** current_row = ((const char **)sk_value(db.get()->data, i));
++#endif
+         if (host == current_row[cnlName]) {
+             std::string filename(cert_full + "/" + current_row[cnlSerial] + ".pem");
+             FileLocker cert_locker(filename);
++#if OPENSSL_VERSION_NUMBER > 0x10000000L
++            sk_OPENSSL_PSTRING_delete(db.get()->data, i);
++#else
+             sk_delete(db.get()->data, i);
++#endif
+             subSize(filename);
+             remove(filename.c_str());
+             return true;
+Только в squid.new/src/ssl: certificate_db.cc.orig
+diff -ur squid/src/ssl/certificate_db.h squid.new/src/ssl/certificate_db.h
+--- squid/src/ssl/certificate_db.h	2011-07-04 04:38:34 +0000
++++ squid.new/src/ssl/certificate_db.h	2011-07-26 09:54:57 +0000
+@@ -10,6 +10,7 @@
+ #if HAVE_STRING
+ #include <string>
+ #endif
++#include <openssl/opensslv.h>
+ 
+ namespace Ssl
+ {
+@@ -110,10 +111,25 @@
+ 
+     /// Definitions required by openSSL, to use the index_* functions defined above
+     ///with TXT_DB_create_index.
++#if OPENSSL_VERSION_NUMBER > 0x10000000L
++    static unsigned long index_serial_LHASH_HASH(const void *a) {
++        return index_serial_hash((const char **)a);
++    }
++    static int index_serial_LHASH_COMP(const void *arg1, const void *arg2){
++        return index_serial_cmp((const char **)arg1, (const char **)arg2);
++    }
++    static unsigned long index_name_LHASH_HASH(const void *a) {
++        return index_name_hash((const char **)a);
++    }
++    static int index_name_LHASH_COMP(const void *arg1, const void *arg2) {
++        return index_name_cmp((const char **)arg1, (const char **)arg2);
++    }
++#else
+     static IMPLEMENT_LHASH_HASH_FN(index_serial_hash,const char **)
+     static IMPLEMENT_LHASH_COMP_FN(index_serial_cmp,const char **)
+     static IMPLEMENT_LHASH_HASH_FN(index_name_hash,const char **)
+     static IMPLEMENT_LHASH_COMP_FN(index_name_cmp,const char **)
++#endif
+ 
+     static const std::string serial_file; ///< Base name of the file to store serial number.
+     static const std::string db_file; ///< Base name of the database index file.

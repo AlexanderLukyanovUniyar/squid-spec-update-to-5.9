@@ -8,7 +8,7 @@
 
 Name: squid
 Version: 3.1.19
-Release: alt1
+Release: alt2
 
 Summary: The Squid proxy caching server
 Summary(ru_RU.KOI8-R): Кэширующий прокси-сервер Squid
@@ -24,6 +24,7 @@ Source3: %name.logrotate
 Source4: wbinfo_group.sh
 Source5: %name.sysconfig
 Source6: %name.pam
+Source7: %name.service
 
 Obsoletes: %name-novm
 
@@ -268,6 +269,7 @@ mv %buildroot%_datadir/%name/mib.txt %buildroot%_datadir/snmp/mibs/SQUID-MIB.txt
 
 install -D -m644 %SOURCE5 %buildroot%_sysconfdir/sysconfig/%name
 install -D -m644 %SOURCE6 %buildroot%_sysconfdir/pam.d/%name
+install -D -m644 %SOURCE7 %buildroot%systemd_unitdir/%name.service
 
 %pre common
 %_sbindir/groupadd -r -f %name
@@ -304,7 +306,8 @@ chown -R %name:%name %_spooldir/%name >/dev/null 2>&1 ||:
 %config(noreplace) %_sysconfdir/%name/errorpage.css
 %config(noreplace) %_sysconfdir/%name/errorpage.css.default
 %config(noreplace) %_sysconfdir/sysconfig/%name
-%config %_initdir/%name
+%_initdir/%name
+%systemd_unitdir/%name.service
 %config %_sysconfdir/logrotate.d/%name
 %dir %_datadir/%name
 %_datadir/%name/errors
@@ -383,6 +386,9 @@ chown -R %name:%name %_spooldir/%name >/dev/null 2>&1 ||:
 
 
 %changelog
+* Fri May 04 2012 Vitaly Kuznetsov <vitty@altlinux.ru> 3.1.19-alt2
+- Add systemd unit file
+
 * Mon Apr 23 2012 Vitaly Kuznetsov <vitty@altlinux.ru> 3.1.19-alt1
 - 3.1.19
 

@@ -4,4 +4,5 @@ copy: *.sh
 copy: *.pam
 copy: *.sysconfig
 copy: *.patch
+copy: *.service
 tar: squid

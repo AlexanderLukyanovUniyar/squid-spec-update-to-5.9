@@ -1,8 +1,3 @@
 tar: @version@:.
-copy: *.init
-copy: *.logrotate
-copy: *.sh
-copy: *.pam
-copy: *.sysconfig
-copy: *.patch
-copy: *.service
+diff: @version@:. @version@-alt:.
+copy: *.init *.logrotate *.sh *.pam *.sysconfig *.service

@@ -8,7 +8,7 @@
 
 Name: squid
 Version: 3.1.22
-Release: alt1
+Release: alt2
 
 Summary: The Squid proxy caching server
 Summary(ru_RU.KOI8-R): Кэширующий прокси-сервер Squid
@@ -17,13 +17,14 @@ Group: System/Servers
 
 Url: http://www.squid-cache.org/
 
-Source: %url/Versions/v2/%name-%version.tar
+Source: %name-%version.tar
 Source2: %name.init
 Source3: %name.logrotate
 Source4: wbinfo_group.sh
 Source5: %name.sysconfig
 Source6: %name.pam
 Source7: %name.service
+Patch: %name-%version-%release.patch
 
 Obsoletes: %name-novm
 
@@ -35,10 +36,6 @@ BuildRequires: cppunit-devel gcc-c++ libdb4-devel libldap-devel libpam-devel lib
 
 # Used by smb_auth.pl,pop3.pl and squid_db_auth, required on find-requires stage:
 BuildRequires: perl-Authen-Smb perl-libnet perl-DBI
-
-Patch3: squid-3.1.0.9-location.patch
-Patch4: squid-3.1.7-default-logrotate-alt.patch
-Patch5: squid-3.1.13-default-paths-in-var-alt.patch
 
 Requires: %name-common = %version-%release, %name-server = %version-%release, %name-helpers = %version-%release, %name-helpers-perl = %version-%release, %name-cachemgr = %version-%release
 
@@ -168,13 +165,10 @@ Install squid package to get all Squid parts.
 
 %prep
 %setup -q
+%patch0 -p1
 
-%patch3 -p1
-%patch4 -p2
-%patch5 -p1
-
-find . -type f -name '*.pl' -print0 | \
-	xargs -r0 sed -ie 's,/usr/local/bin/perl,/usr/bin/perl,g'
+#find . -type f -name '*.pl' -print0 | \
+#	xargs -r0 sed -ie 's,/usr/local/bin/perl,/usr/bin/perl,g'
 
 %build
 %autoreconf
@@ -184,7 +178,7 @@ find . -type f -name '*.pl' -print0 | \
 	--localstatedir=%_var \
 	--sysconfdir=%_sysconfdir/%name \
 	--datadir=%_datadir/%name \
-	--disable-strict-error-checking \
+	--enable-strict-error-checking \
 	%{subst_enable poll} \
 	%{subst_enable epoll} \
 	--enable-snmp \
@@ -384,6 +378,10 @@ chown -R %name:%name %_spooldir/%name >/dev/null 2>&1 ||:
 
 
 %changelog
+* Tue Dec 18 2012 Led <led@altlinux.ru> 3.1.22-alt2
+- fixed build with --enable-strict-error-checking
+- enabled strict-error-checking
+
 * Tue Dec 18 2012 Led <led@altlinux.ru> 3.1.22-alt1
 - 3.1.22
 - moved tests to %%check section

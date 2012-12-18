@@ -1,3 +1,4 @@
+tar: @version@:.
 copy: *.init
 copy: *.logrotate
 copy: *.sh
@@ -5,4 +6,3 @@ copy: *.pam
 copy: *.sysconfig
 copy: *.patch
 copy: *.service
-tar: squid

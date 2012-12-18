@@ -11,7 +11,8 @@ AC_DEFUN([AC_TEST_CHECKFORHUGEOBJECTS],[
   AC_MSG_CHECKING([whether compiler accepts -fhuge-objects])
   AC_CACHE_VAL([ac_cv_test_checkforhugeobjects],[
     ac_cv_test_checkforhugeobjects=`echo "int main(int argc, char **argv) { int foo; }" > conftest.cc
-${CXX} -Werror -fhuge-objects -o conftest.bin conftest.cc 2>/dev/null | grep -qv -- '-fhuge-objects'
+${CXX} -Werror -fhuge-objects -o conftest.bin conftest.cc 2>/dev/null &&
+${CXX} -Werror -fhuge-objects -o conftest.bin conftest.cc 2>&1 | grep -qv -- 'warning:.*-fhuge-objects'
 res=$?
 rm -f conftest.*
 echo yes

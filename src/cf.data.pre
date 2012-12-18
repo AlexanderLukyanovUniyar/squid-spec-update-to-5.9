@@ -3407,9 +3407,13 @@ DOC_END
 
 NAME: logfile_rotate
 TYPE: int
-DEFAULT: 10
+DEFAULT: 0
 LOC: Config.Log.rotateNumber
 DOC_START
+	ALT Linux is using the logrotate mechanism and therefore the
+	rotation is done externaly, which means a default of 0 is
+	required and therefore set. Modify /etc/logrotate.d/squid instead.
+
 	Specifies the number of logfile rotations to make when you
 	type 'squid -k rotate'. The default is 10, which will rotate
 	with extensions 0 through 9. Setting logfile_rotate to 0 will

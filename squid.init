@@ -22,22 +22,18 @@ WITHOUT_RC_COMPAT=1
 . /etc/init.d/functions
 
 # Source networking configuration.
-SourceIfNotEmpty /etc/sysconfig/network 
+SourceIfNotEmpty /etc/sysconfig/network
 
 # Kerberos keytab file
-export KRB5_KTNAME=/etc/squid/squid.keytab
+KRB5_KTNAME=/etc/squid/squid.keytab
+
 # Overwrite something
 SourceIfNotEmpty /etc/sysconfig/squid
 
 SQUID=/usr/sbin/squid
-# default squid options
-# -D disables initial dns checks. If you most likely will not to have an
-#    internet connection when you start squid, uncomment this
-SQUID_OPTS=""
+[ -n "$SQUID_CONF" ] || SQUID_CONF="/etc/squid/squid.conf"
 
-#Uncomment for makes squid write info in access.log by pieces as far as the
-#receipt of data but not after downloading whole file.
-#SQUID_OPTS="-D -x /tmp/squid"
+export KRB5_KTNAME
 
 LOCKFILE=/var/lock/subsys/squid
 PIDFILE=/var/run/squid.pid
@@ -47,7 +43,7 @@ start()
 {
 	is_yes "$NETWORKING" || return 0
 
-	CACHE_SWAP=`sed -e 's/#.*//g' /etc/squid/squid.conf | \
+	CACHE_SWAP=`sed -e 's/#.*//g' "$SQUID_CONF" | \
     		    grep cache_dir | sed -e 's/cache_dir//' | \
 		    sed -e 's/^ *//g' | cut -d ' ' -f 2`
 	[ -z "$CACHE_SWAP" ] && CACHE_SWAP=/var/spool/squid
@@ -59,7 +55,7 @@ start()
 	done
 	
 	ulimit -n 16384
-	start_daemon --pidfile "$PIDFILE" --lockfile "$LOCKFILE" --expect-user root -- squid $SQUID_OPTS
+	start_daemon --pidfile "$PIDFILE" --lockfile "$LOCKFILE" --expect-user root -- squid -f "$SQUID_CONF" $SQUID_OPTS
 	RETVAL=$?
 	return $RETVAL
 }	

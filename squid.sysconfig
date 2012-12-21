@@ -14,5 +14,8 @@ SQUID_OPTS=""
 # most of the time.
 SQUID_SHUTDOWN_TIMEOUT=100
 
+# default ulimit to set
+SQUID_ULIMT=16384
+
 # default squid conf file
 SQUID_CONF="/etc/squid/squid.conf"

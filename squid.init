@@ -44,10 +44,8 @@ start()
 {
 	is_yes "$NETWORKING" || return 0
 
-	CACHE_SWAP=$(sed -r -n '/^[[:blank:]]*cache_dir[[:blank:]]/s/^[[:blank:]]*cache_dir[[:blank:]]+[^[:blank:]]+[[:blank:]]+([^[:blank:]]+)[[:blank:]].*$/\1/p' "$SQUID_CONF")
-	[ -n "$CACHE_SWAP" ] || CACHE_SWAP=/var/spool/squid
-
-	for adir in $CACHE_SWAP; do
+	([ -s "$SQUID_CONF" ] && grep '^[[:blank:]]*cache_dir[[:blank:]]' "$SQUID_CONF"; echo "cache_dir type /var/spool/squid") |
+	while read tag type adir dummy; do
 		if [ ! -d $adir/00 ]; then
 			$SQUID -z -F 2>/dev/null
 			break

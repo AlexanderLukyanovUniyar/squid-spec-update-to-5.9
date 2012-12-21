@@ -212,13 +212,13 @@ install -p -m 0644 helpers/basic_auth/{MSNT/msntauth.conf.default,SMB/smb_auth.s
 
 
 %pre
+%_sbindir/groupadd -r -f %name 2>/dev/null ||:
+%_sbindir/useradd -r -N -M -g %name -d %_spooldir/%name -s /dev/null %name 2>/dev/null ||:
+# fixing #6321, step 1/2
+%_bindir/gpasswd -a squid shadow >/dev/null ||:
+
 chown %name:%name %_logdir/%name/*.log >/dev/null 2>&1 ||:
 chmod 660 %_logdir/%name/*.log >/dev/null 2>&1 ||:
-
-%_sbindir/groupadd -r -f %name
-%_sbindir/useradd -r -n -g %name -d %_spooldir/%name -s /dev/null %name >/dev/null 2>&1 ||:
-# fixing #6321, step 1/2
-%_bindir/gpasswd -a squid shadow
 
 
 %triggerpostun -- squid < 2.4.STABLE4-alt1

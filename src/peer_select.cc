@@ -47,6 +47,8 @@
 #include "SquidTime.h"
 #include "icmp/net_db.h"
 #include "ipcache.h"
+#include "ip/tools.h"
+#include "URL.h"
 
 static struct {
     int timeouts;
@@ -242,15 +244,18 @@ peerSelectDnsPaths(ps_state *psstate)
     const bool useOriginalDst = Config.onoff.client_dst_passthru || !req->flags.hostVerified;
     const bool choseDirect = fs && fs->code == HIER_DIRECT;
     if (isIntercepted && useOriginalDst && choseDirect) {
-        // construct a "result" adding the ORIGINAL_DST to the set instead of DIRECT
-        Comm::ConnectionPointer p = new Comm::Connection();
-        p->remote = req->clientConnectionManager->clientConnection->local;
-        p->peerType = fs->code;
-        p->setPeer(fs->_peer);
+        // check the client is still around before using any of its details
+        if (req->clientConnectionManager.valid()) {
+            // construct a "result" adding the ORIGINAL_DST to the set instead of DIRECT
+            Comm::ConnectionPointer p = new Comm::Connection();
+            p->remote = req->clientConnectionManager->clientConnection->local;
+            p->peerType = fs->code;
+            p->setPeer(fs->_peer);
 
-        // check for a configured outgoing address for this destination...
-        getOutgoingAddress(psstate->request, p);
-        psstate->paths->push_back(p);
+            // check for a configured outgoing address for this destination...
+            getOutgoingAddress(psstate->request, p);
+            psstate->paths->push_back(p);
+        }
 
         // clear the used fs and continue
         psstate->servers = fs->next;
@@ -285,15 +290,10 @@ peerSelectDnsPaths(ps_state *psstate)
     PSC *callback = psstate->callback;
     psstate->callback = NULL;
 
-    if (psstate->paths->size() < 1) {
-        debugs(44, DBG_IMPORTANT, "Failed to select source for '" << psstate->entry->url() << "'");
-        debugs(44, DBG_IMPORTANT, "  always_direct = " << psstate->always_direct);
-        debugs(44, DBG_IMPORTANT, "   never_direct = " << psstate->never_direct);
-        debugs(44, DBG_IMPORTANT, "       timedout = " << psstate->ping.timedout);
-    } else {
-        debugs(44, 2, "Found sources for '" << psstate->entry->url() << "'");
-        debugs(44, 2, "  always_direct = " << psstate->always_direct);
-        debugs(44, 2, "   never_direct = " << psstate->never_direct);
+    debugs(44, 2, (psstate->paths->size()<1?"Failed to select source":"Found sources") << " for '" << psstate->url() << "'");
+    debugs(44, 2, "  always_direct = " << psstate->always_direct);
+    debugs(44, 2, "   never_direct = " << psstate->never_direct);
+    if (psstate->paths) {
         for (size_t i = 0; i < psstate->paths->size(); ++i) {
             if ((*psstate->paths)[i]->peerType == HIER_DIRECT)
                 debugs(44, 2, "         DIRECT = " << (*psstate->paths)[i]);
@@ -304,8 +304,8 @@ peerSelectDnsPaths(ps_state *psstate)
             else
                 debugs(44, 2, "     cache_peer = " << (*psstate->paths)[i]);
         }
-        debugs(44, 2, "       timedout = " << psstate->ping.timedout);
     }
+    debugs(44, 2, "       timedout = " << psstate->ping.timedout);
 
     psstate->ping.stop = current_time;
     psstate->request->hier.ping = psstate->ping;
@@ -352,6 +352,14 @@ peerSelectDnsResults(const ipcache_addrs *ia, const DnsLookupDetails &details, v
 
             p = new Comm::Connection();
             p->remote = ia->in_addrs[n];
+
+            // when IPv6 is disabled we cannot use it
+            if (!Ip::EnableIpv6 && p->remote.IsIPv6()) {
+                const char *host = (fs->_peer ? fs->_peer->host : psstate->request->GetHost());
+                ipcacheMarkBadAddr(host, p->remote);
+                continue;
+            }
+
             if (fs->_peer)
                 p->remote.SetPort(fs->_peer->http_port);
             else
@@ -963,6 +971,18 @@ ps_state::ps_state() : request (NULL),
         acl_checklist (NULL)
 {
     ; // no local defaults.
+}
+
+const char *
+ps_state::url() const
+{
+    if (entry)
+        return entry->url();
+
+    if (request)
+        return urlCanonical(request);
+
+    return "[no URL]";
 }
 
 ping_data::ping_data() :

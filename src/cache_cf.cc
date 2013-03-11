@@ -223,16 +223,23 @@ self_destruct(void)
 static void
 update_maxobjsize(void)
 {
-    int i;
     int64_t ms = -1;
 
-    for (i = 0; i < Config.cacheSwap.n_configured; ++i) {
+    // determine the maximum size object that can be stored to disk
+    for (int i = 0; i < Config.cacheSwap.n_configured; ++i) {
         assert (Config.cacheSwap.swapDirs[i].getRaw());
 
-        if (dynamic_cast<SwapDir *>(Config.cacheSwap.swapDirs[i].getRaw())->
-                max_objsize > ms)
-            ms = dynamic_cast<SwapDir *>(Config.cacheSwap.swapDirs[i].getRaw())->max_objsize;
+        const int64_t storeMax = dynamic_cast<SwapDir *>(Config.cacheSwap.swapDirs[i].getRaw())->maxObjectSize();
+        if (ms < storeMax)
+            ms = storeMax;
     }
+
+    // Ensure that we do not discard objects which could be stored only in memory.
+    // It is governed by maximum_object_size_in_memory (for now)
+    // TODO: update this to check each in-memory location (SMP and local memory limits differ)
+    if (ms < static_cast<int64_t>(Config.Store.maxInMemObjSize))
+        ms = Config.Store.maxInMemObjSize;
+
     store_maxobjsize = ms;
 }
 
@@ -2240,7 +2247,7 @@ parse_peer(peer ** head)
             p->sslcapath = xstrdup(token + 10);
         } else if (strncmp(token, "sslcrlfile=", 11) == 0) {
             safe_free(p->sslcrlfile);
-            p->sslcapath = xstrdup(token + 10);
+            p->sslcrlfile = xstrdup(token + 11);
         } else if (strncmp(token, "sslflags=", 9) == 0) {
             safe_free(p->sslflags);
             p->sslflags = xstrdup(token + 9);
@@ -4135,7 +4142,7 @@ dump_CpuAffinityMap(StoreEntry *const entry, const char *const name, const CpuAf
                               cpuAffinityMap->processes()[i]);
         }
         storeAppendPrintf(entry, " cores=");
-        for (size_t i = 0; i < cpuAffinityMap->processes().size(); ++i) {
+        for (size_t i = 0; i < cpuAffinityMap->cores().size(); ++i) {
             storeAppendPrintf(entry, "%s%i", (i ? "," : ""),
                               cpuAffinityMap->cores()[i]);
         }

@@ -196,6 +196,8 @@ FwdState::completed()
 
     if (entry->store_status == STORE_PENDING) {
         if (entry->isEmpty()) {
+            if (!err) // we quit (e.g., fd closed) before an error or content
+                fail(new ErrorState(ERR_READ_ERROR, HTTP_BAD_GATEWAY, request));
             assert(err);
             errorAppendEntry(entry, err);
             err = NULL;
@@ -263,11 +265,12 @@ FwdState::Start(const Comm::ConnectionPointer &clientConn, StoreEntry *entry, Ht
     if ( Config.accessList.miss && !request->client_addr.IsNoAddr() &&
             request->protocol != AnyP::PROTO_INTERNAL && request->protocol != AnyP::PROTO_CACHE_OBJECT) {
         /**
-         * Check if this host is allowed to fetch MISSES from us (miss_access)
+         * Check if this host is allowed to fetch MISSES from us (miss_access).
+         * Intentionally replace the src_addr automatically selected by the checklist code
+         * we do NOT want the indirect client address to be tested here.
          */
         ACLFilledChecklist ch(Config.accessList.miss, request, NULL);
         ch.src_addr = request->client_addr;
-        ch.my_addr = request->my_addr;
         if (ch.fastCheck() == ACCESS_DENIED) {
             err_type page_id;
             page_id = aclGetDenyInfoPage(&Config.denyInfoList, AclMatchedName, 1);
@@ -916,12 +919,9 @@ FwdState::connectStart()
     }
 
     // Use pconn to avoid opening a new connection.
-    const char *host;
-    if (serverDestinations[0]->getPeer()) {
-        host = serverDestinations[0]->getPeer()->host;
-    } else {
+    const char *host = NULL;
+    if (!serverDestinations[0]->getPeer())
         host = request->GetHost();
-    }
 
     Comm::ConnectionPointer temp;
     // Avoid pconns after races so that the same client does not suffer twice.
@@ -986,7 +986,8 @@ FwdState::connectStart()
 
     calls.connector = commCbCall(17,3, "fwdConnectDoneWrapper", CommConnectCbPtrFun(fwdConnectDoneWrapper, this));
     Comm::ConnOpener *cs = new Comm::ConnOpener(serverDestinations[0], calls.connector, ctimeout);
-    cs->setHost(host);
+    if (host)
+        cs->setHost(host);
     AsyncJob::Start(cs);
 }
 
@@ -1226,7 +1227,7 @@ void
 FwdState::pconnPush(Comm::ConnectionPointer &conn, const char *domain)
 {
     if (conn->getPeer()) {
-        fwdPconnPool->push(conn, conn->getPeer()->name);
+        fwdPconnPool->push(conn, NULL);
     } else {
         fwdPconnPool->push(conn, domain);
     }
@@ -1348,12 +1349,6 @@ tos_t
 GetTosToServer(HttpRequest * request)
 {
     ACLFilledChecklist ch(NULL, request, NULL);
-
-    if (request) {
-        ch.src_addr = request->client_addr;
-        ch.my_addr = request->my_addr;
-    }
-
     return aclMapTOS(Ip::Qos::TheConfig.tosToServer, &ch);
 }
 
@@ -1361,11 +1356,5 @@ nfmark_t
 GetNfmarkToServer(HttpRequest * request)
 {
     ACLFilledChecklist ch(NULL, request, NULL);
-
-    if (request) {
-        ch.src_addr = request->client_addr;
-        ch.my_addr = request->my_addr;
-    }
-
     return aclMapNfmark(Ip::Qos::TheConfig.nfmarkToServer, &ch);
 }

@@ -37,7 +37,8 @@ SourceIfNotEmpty /etc/sysconfig/squid
 export KRB5_KTNAME
 
 LOCKFILE=/var/lock/subsys/squid
-PIDFILE=/var/run/squid.pid
+PIDFILE="$(sed -rn '/^[[:blank:]]*pid_filename[[:blank:]]/s/^[[:blank:]]*pid_filename[[:blank:]]+([^[:blank:]])+[[:blank:]]*$/\1/' "$SQUID_CONF")"
+PIDFILE="${PIDFILE:-/var/run/squid.pid}"
 RETVAL=0
 
 start()
@@ -60,8 +61,26 @@ start()
 
 stop()
 {
-	stop_daemon --pidfile "$PIDFILE" --lockfile "$LOCKFILE" --expect-user squid -- $SQUID
-	RETVAL=$?
+	local p=$(cat "$PIDFILE" 2>/dev/null)
+	if start-stop-daemon -q --pid "$PIDFILE" --user squid --stop --test >/dev/null; then
+		msg_stopping squid
+		$SQUID -f "$SQUID_CONF" -k shutdown
+		RETVAL=$?
+		if [ $RETVAL = 0 ]; then
+			while [ "x$(LANG=C stat -c "%U %F" /proc/$p 2>/dev/null)" = "xsquid directory" ]; do
+				sleep 1
+			done
+			rm -f "$LOCKFILE"
+			success
+		else
+			failure
+		fi
+	else
+		msg_not_running squid
+		rm -f "$LOCKFILE"
+		passed
+	fi
+	echo
 	return $RETVAL
 }
 
@@ -73,7 +92,7 @@ restart()
 
 reload()
 {
-	action "Reloading squid service:" $SQUID -k reconfigure
+	action "Reloading squid service:" $SQUID -f "$SQUID_CONF" -k reconfigure
 	RETVAL=$?
 	return $RETVAL
 }

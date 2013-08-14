@@ -34,11 +34,23 @@ SQUID_CONF="/etc/squid/squid.conf"
 # Overwrite something
 SourceIfNotEmpty /etc/sysconfig/squid
 
+GetConfVal()
+{
+	[ -n "$1" ] || return
+	local d="$2"
+	set -- $(grep "^[[:blank:]]*$1[[:blank:]]" $SQUID_CONF | tail -1)
+	if [ -n "$2" ]; then
+		echo "$2"
+	elif [ -n "$d" ]; then
+		echo "$d"
+	fi
+}
+
 export KRB5_KTNAME
 
 LOCKFILE=/var/lock/subsys/squid
-PIDFILE="$(sed -rn '/^[[:blank:]]*pid_filename[[:blank:]]/s/^[[:blank:]]*pid_filename[[:blank:]]+([^[:blank:]])+[[:blank:]]*$/\1/' "$SQUID_CONF")"
-PIDFILE="${PIDFILE:-/var/run/squid.pid}"
+PIDFILE="$(GetConfVal pid_filename /var/run/squid.pid)"
+SQUID_USER="$(GetConfVal cache_effective_user squid)"
 RETVAL=0
 
 start()
@@ -62,16 +74,25 @@ start()
 stop()
 {
 	local p=$(cat "$PIDFILE" 2>/dev/null)
-	if start-stop-daemon -q --pid "$PIDFILE" --user squid --stop --test >/dev/null; then
-		msg_stopping squid
+	if start-stop-daemon -q --pid "$PIDFILE" --user $SQUID_USER --stop --test >/dev/null; then
+		local t="$(GetConfVal shutdown_lifetime 30)"
+		local step=1
+		msg_stopping $"squid"
+		echo -n $"wait about $t seconds"
 		$SQUID -f "$SQUID_CONF" -k shutdown
 		RETVAL=$?
 		if [ $RETVAL = 0 ]; then
-			while [ "x$(LANG=C stat -c "%U %F" /proc/$p 2>/dev/null)" = "xsquid directory" ]; do
-				sleep 1
+			t=$((t + 5))
+			while [ "x$(LANG=C stat -c "%U %F" /proc/$p 2>/dev/null)" = "x$SQUID_USER directory" ]; do
+				if [ $t -eq 0 ]; then
+					RETVAL=1
+					break
+				fi
+				sleep $step
+				t=$((t - step))
 			done
 			rm -f "$LOCKFILE"
-			success
+			[ $RETVAL = 0 ] && success || failure
 		else
 			failure
 		fi
@@ -120,7 +141,7 @@ case "$1" in
 		[ -e "$LOCKFILE" ] && reload
 		;;
 	status)
-		status --pidfile "$PIDFILE" --expect-user squid squid
+		status --pidfile "$PIDFILE" --expect-user $SQUID_USER squid
 		RETVAL=$?
 		;;
 	*)

@@ -73,8 +73,12 @@ start()
 
 stop()
 {
+	local t=$(GetConfVal shutdown_lifetime 30)
+	msg_stopping squid
+	printf $"Wait about %d seconds..." $t
 	stop_daemon --pidfile "$PIDFILE" --lockfile "$LOCKFILE" \
-		--retry $(($(GetConfVal shutdown_lifetime 30) + 5)) \
+		--retry $((t + 5)) \
+		--no-announce \
 		--expect-user $SQUID_USER -- $SQUID
 	RETVAL=$?
 	return $RETVAL

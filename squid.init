@@ -73,35 +73,10 @@ start()
 
 stop()
 {
-	local p=$(cat "$PIDFILE" 2>/dev/null)
-	if start-stop-daemon -q --pid "$PIDFILE" --user $SQUID_USER --stop --test >/dev/null; then
-		local t="$(GetConfVal shutdown_lifetime 30)"
-		local step=1
-		msg_stopping $"squid"
-		echo -n $"wait about $t seconds"
-		$SQUID -f "$SQUID_CONF" -k shutdown
-		RETVAL=$?
-		if [ $RETVAL = 0 ]; then
-			t=$((t + 5))
-			while [ "x$(LANG=C stat -c "%U %F" /proc/$p 2>/dev/null)" = "x$SQUID_USER directory" ]; do
-				if [ $t -eq 0 ]; then
-					RETVAL=1
-					break
-				fi
-				sleep $step
-				t=$((t - step))
-			done
-			rm -f "$LOCKFILE"
-			[ $RETVAL = 0 ] && success || failure
-		else
-			failure
-		fi
-	else
-		msg_not_running squid
-		rm -f "$LOCKFILE"
-		passed
-	fi
-	echo
+	stop_daemon --pidfile "$PIDFILE" --lockfile "$LOCKFILE" \
+		--retry $(($(GetConfVal shutdown_lifetime 30) + 5)) \
+		--expect-user $SQUID_USER -- $SQUID
+	RETVAL=$?
 	return $RETVAL
 }
 

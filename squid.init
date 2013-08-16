@@ -28,7 +28,6 @@ SourceIfNotEmpty /etc/sysconfig/network
 KRB5_KTNAME=/etc/squid/squid.keytab
 
 SQUID=/usr/sbin/squid
-SQUID_ULIMIT=4096
 SQUID_CONF="/etc/squid/squid.conf"
 
 # Overwrite something
@@ -65,7 +64,7 @@ start()
 		fi
 	done
 
-	ulimit -n $SQUID_ULIMIT 2>/dev/null ||:
+	ulimit -n ${SQUID_ULIMIT:-4096} 2>/dev/null ||:
 	start_daemon --pidfile "$PIDFILE" --lockfile "$LOCKFILE" --expect-user root -- $SQUID -f "$SQUID_CONF" $SQUID_OPTS
 	RETVAL=$?
 	return $RETVAL
@@ -73,11 +72,12 @@ start()
 
 stop()
 {
-	local t=$(GetConfVal shutdown_lifetime 30)
+	local t=${SQUID_SHUTDOWN_TIMEOUT:-$(GetConfVal shutdown_lifetime 30)}
+	local T=$((t + ${SQUID_EXTRA_SHUTDOWN_TIMEOUT:-5}))
 	msg_stopping squid
-	printf $"Wait about %d seconds..." $t
+	printf $"Wait about %d...%d seconds..." $t $T
 	stop_daemon --pidfile "$PIDFILE" --lockfile "$LOCKFILE" \
-		--retry $((t + 5)) \
+		--retry $T \
 		--no-announce \
 		--expect-user $SQUID_USER -- $SQUID
 	RETVAL=$?

@@ -11,11 +11,15 @@ SQUID_OPTS=""
 #SQUID_OPTS="-D -x /tmp/squid"
 
 # Time to wait for Squid to shut down when asked. Should not be necessary
-# most of the time.
-SQUID_SHUTDOWN_TIMEOUT=100
+# most of the time, by default using 'shutdown_lifetime' squid config value +
+# SQUID_EXTRA_SHUTDOWN_TIMEOUT value (see below).
+# SQUID_SHUTDOWN_TIMEOUT=120
 
 # default ulimit to set
 SQUID_ULIMT=16384
 
 # default squid conf file
 SQUID_CONF="/etc/squid/squid.conf"
+
+# extra timeout for stopping service (in seconds, 5 by default)
+# SQUID_EXTRA_SHUTDOWN_TIMEOUT=5

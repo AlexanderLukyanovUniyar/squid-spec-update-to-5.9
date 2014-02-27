@@ -974,7 +974,7 @@ test_cache_digest: test_cache_digest.o CacheDigest.o debug.o globals.o store_key
 cache_cf.o: cf_parser.cci
 
 # cf_gen builds the configuration files.
-cf_gen$(EXEEXT): $(cf_gen_SOURCES) $(cf_gen_DEPENDENCIES)
+cf_gen$(EXEEXT): $(cf_gen_SOURCES) $(cf_gen_DEPENDENCIES) cf_gen_defines.cci
 	$(HOSTCXX) $(CXXFLAGS) -o $@ $(srcdir)/cf_gen.cc -I$(srcdir) -I$(top_builddir)/include/ -I$(top_builddir)/src
 
 # squid.conf.default is built by cf_gen when making cf_parser.cci
@@ -984,7 +984,9 @@ squid.conf.default squid.conf.documented: cf_parser.cci
 cf_parser.cci: cf.data cf_gen$(EXEEXT)
 	./cf_gen$(EXEEXT) cf.data $(srcdir)/cf.data.depend
 
-cf_gen_defines.cci: $(srcdir)/cf_gen_defines $(srcdir)/cf.data.pre
+# The cf_gen_defines.cci is auto-generated and does not exist when the 
+# dependencies computed. We need to add its include files (autoconf.h) here
+cf_gen_defines.cci: $(srcdir)/cf_gen_defines $(srcdir)/cf.data.pre $(top_builddir)/include/autoconf.h
 	$(AWK) -f $(srcdir)/cf_gen_defines <$(srcdir)/cf.data.pre >$@ || ($(RM) -f $@ && exit 1)
 
 
@@ -1086,6 +1088,13 @@ check_PROGRAMS+=\
 	tests/testConfigParser \
 	tests/testStatHist \
 	$(STORE_TESTS)
+
+if HAVE_FS_ROCK
+check_PROGRAMS += tests/testRock
+endif
+if HAVE_FS_UFS
+check_PROGRAMS += tests/testUfs
+endif
 
 ## NP: required to run the above list. check_PROGRAMS only builds the binaries...
 TESTS += $(check_PROGRAMS)
@@ -3266,8 +3275,8 @@ tests_testRock_SOURCES = \
 	cache_cf.h \
 	YesNoNone.h \
 	tests/stub_cache_cf.cc \
-	tests/stub_cache_manager.cc \
 	client_db.h \
+	tests/stub_cache_manager.cc \
 	tests/stub_client_db.cc \
 	tests/stub_client_side_request.cc \
 	tests/stub_debug.cc \
@@ -3280,6 +3289,7 @@ tests_testRock_SOURCES = \
 	tests/stub_ipcache.cc \
 	tests/stub_libformat.cc \
 	tests/stub_libicmp.cc \
+	tests/stub_libmgr.cc \
 	tests/stub_MemStore.cc \
 	mime.h \
 	tests/stub_mime.cc \
@@ -3321,7 +3331,6 @@ tests_testRock_LDADD = \
 	acl/libstate.la \
 	eui/libeui.la \
 	ipc/libipc.la \
-	mgr/libmgr.la \
 	base/libbase.la \
 	$(SSL_LIBS) \
 	$(top_builddir)/lib/libmisccontainers.la \

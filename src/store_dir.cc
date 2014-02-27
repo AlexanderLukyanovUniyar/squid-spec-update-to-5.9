@@ -127,7 +127,7 @@ StoreController::createOneStore(Store &aStore)
      * The following is a workaround for create store directories sequentially
      * when running on native Windows port.
      */
-#if !_SQUID_MSWIN_
+#if !_SQUID_WINDOWS_
 
     if (fork())
         return;
@@ -136,7 +136,7 @@ StoreController::createOneStore(Store &aStore)
 
     aStore.create();
 
-#if !_SQUID_MSWIN_
+#if !_SQUID_WINDOWS_
 
     exit(0);
 
@@ -148,7 +148,7 @@ StoreController::create()
 {
     swapDir->create();
 
-#if !_SQUID_MSWIN_
+#if !_SQUID_WINDOWS_
 
     pid_t pid;
 
@@ -240,7 +240,7 @@ storeDirSelectSwapDirRoundRobin(const StoreEntry * e)
  * in the *tightest fit* swapdir to conserve space, along with the
  * actual swapdir usage. But for now, this hack will do while
  * testing, so you should order your swapdirs in the config file
- * from smallest maxobjsize to unlimited (-1) maxobjsize.
+ * from smallest max-size= to largest max-size=.
  *
  * We also have to choose nleast == nconf since we need to consider
  * ALL swapdirs, regardless of state. Again, this is a hack while

@@ -39,6 +39,7 @@
 #include "fd.h"
 #include "err_detail_type.h"
 #include "errorpage.h"
+#include "HttpHdrContRange.h"
 #include "HttpReply.h"
 #include "HttpRequest.h"
 #include "Server.h"
@@ -522,6 +523,11 @@ ServerStateData::haveParsedReplyHeaders()
 {
     Must(theFinalReply);
     maybePurgeOthers();
+
+    // adaptation may overwrite old offset computed using the virgin response
+    const bool partial = theFinalReply->content_range &&
+                         theFinalReply->sline.status == HTTP_PARTIAL_CONTENT;
+    currentOffset = partial ? theFinalReply->content_range->spec.offset : 0;
 }
 
 HttpRequest *
@@ -696,7 +702,8 @@ ServerStateData::handleAdaptedHeader(HttpMsg *msg)
         // subscribe to receive adapted body
         adaptedBodySource = rep->body_pipe;
         // assume that ICAP does not auto-consume on failures
-        assert(adaptedBodySource->setConsumerIfNotLate(this));
+        const bool result = adaptedBodySource->setConsumerIfNotLate(this);
+        assert(result);
     } else {
         // no body
         if (doneWithAdaptation()) // we may still be sending virgin response

@@ -34,6 +34,7 @@
 
 #include "squid.h"
 #include "base/AsyncCall.h"
+#include "cbdata.h"
 #include "comm.h"
 #include "ClientInfo.h"
 #include "CommCalls.h"
@@ -63,11 +64,12 @@
 #include "SquidTime.h"
 #include "StatCounters.h"
 #include "StoreIOBuffer.h"
+#include "tools.h"
+
 #if USE_SSL
 #include "ssl/support.h"
 #endif
 
-#include "cbdata.h"
 #if _SQUID_CYGWIN_
 #include <sys/ioctl.h>
 #endif
@@ -493,12 +495,13 @@ comm_set_v6only(int fd, int tos)
 }
 
 /**
- * Set the socket IP_TRANSPARENT option for Linux TPROXY v4 support.
+ * Set the socket IP_TRANSPARENT option for Linux TPROXY v4 support,
+ * or set the socket SO_BINDANY option for BSD divert-to support.
  */
 void
 comm_set_transparent(int fd)
 {
-#if defined(IP_TRANSPARENT)
+#if _SQUID_LINUX_ && defined(IP_TRANSPARENT)
     int tos = 1;
     if (setsockopt(fd, SOL_IP, IP_TRANSPARENT, (char *) &tos, sizeof(int)) < 0) {
         debugs(50, DBG_IMPORTANT, "comm_open: setsockopt(IP_TRANSPARENT) on FD " << fd << ": " << xstrerror());
@@ -506,6 +509,18 @@ comm_set_transparent(int fd)
         /* mark the socket as having transparent options */
         fd_table[fd].flags.transparent = 1;
     }
+
+#elif defined(SO_BINDANY)
+    int tos = 1;
+    enter_suid();
+    if (setsockopt(fd, SOL_SOCKET, SO_BINDANY, (char *) &tos, sizeof(int)) < 0) {
+        debugs(50, DBG_IMPORTANT, "comm_open: setsockopt(SO_BINDANY) on FD " << fd << ": " << xstrerror());
+    } else {
+        /* mark the socket as having transparent options */
+        fd_table[fd].flags.transparent = true;
+    }
+    leave_suid();
+
 #else
     debugs(50, DBG_CRITICAL, "WARNING: comm_open: setsockopt(IP_TRANSPARENT) not supported on this platform");
 #endif /* sockopt */
@@ -655,7 +670,7 @@ comm_apply_flags(int new_socket,
         commSetReuseAddr(new_socket);
 
     if (addr.GetPort() > (unsigned short) 0) {
-#if _SQUID_MSWIN_
+#if _SQUID_WINDOWS_
         if (sock_type != SOCK_DGRAM)
 #endif
             commSetNoLinger(new_socket);
@@ -714,7 +729,7 @@ comm_import_opened(const Comm::ConnectionPointer &conn,
         fd_table[conn->fd].flags.close_on_exec = 1;
 
     if (conn->local.GetPort() > (unsigned short) 0) {
-#if _SQUID_MSWIN_
+#if _SQUID_WINDOWS_
         if (AI->ai_socktype != SOCK_DGRAM)
 #endif
             fd_table[conn->fd].flags.nolinger = 1;
@@ -1315,7 +1330,7 @@ commSetTcpRcvbuf(int fd, int size)
 int
 commSetNonBlocking(int fd)
 {
-#if !_SQUID_MSWIN_
+#if !_SQUID_WINDOWS_
     int flags;
     int dummy = 0;
 #endif
@@ -1335,7 +1350,7 @@ commSetNonBlocking(int fd)
     } else {
 #endif
 #endif
-#if !_SQUID_MSWIN_
+#if !_SQUID_WINDOWS_
 
         if ((flags = fcntl(fd, F_GETFL, dummy)) < 0) {
             debugs(50, 0, "FD " << fd << ": fcntl F_GETFL: " << xstrerror());
@@ -1359,7 +1374,7 @@ commSetNonBlocking(int fd)
 int
 commUnsetNonBlocking(int fd)
 {
-#if _SQUID_MSWIN_
+#if _SQUID_WINDOWS_
     int nonblocking = FALSE;
 
     if (ioctlsocket(fd, FIONBIO, (unsigned long *) &nonblocking) < 0) {

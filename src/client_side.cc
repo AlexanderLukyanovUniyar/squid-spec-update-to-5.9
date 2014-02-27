@@ -618,13 +618,6 @@ prepareLogWithRequestDetails(HttpRequest * request, AccessLogEntry::Pointer &aLo
         aLogEntry->cache.requestSize += request->content_length;
     aLogEntry->cache.extuser = request->extacl_user.termedBuf();
 
-#if USE_AUTH
-    if (request->auth_user_request != NULL) {
-        if (request->auth_user_request->username())
-            aLogEntry->cache.authuser = xstrdup(request->auth_user_request->username());
-    }
-#endif
-
     // Adapted request, if any, inherits and then collects all the stats, but
     // the virgin request gets logged instead; copy the stats to log them.
     // TODO: avoid losses by keeping these stats in a shared history object?
@@ -793,9 +786,7 @@ ConnStateData::swanSong()
     }
 #endif
 
-    if (Comm::IsConnOpen(pinning.serverConnection))
-        pinning.serverConnection->close();
-    pinning.serverConnection = NULL;
+    unpinConnection();
 
     if (Comm::IsConnOpen(clientConnection))
         clientConnection->close();
@@ -2522,12 +2513,14 @@ bool ConnStateData::serveDelayedError(ClientSocketContext *context)
             debugs(33, 2, "SQUID_X509_V_ERR_DOMAIN_MISMATCH: Certificate " <<
                    "does not match domainname " << request->GetHost());
 
-            ACLFilledChecklist check(Config.ssl_client.cert_error, request, dash_str);
-            check.sslErrors = new Ssl::Errors(SQUID_X509_V_ERR_DOMAIN_MISMATCH);
-            const bool allowDomainMismatch =
-                check.fastCheck() == ACCESS_ALLOWED;
-            delete check.sslErrors;
-            check.sslErrors = NULL;
+            bool allowDomainMismatch = false;
+            if (Config.ssl_client.cert_error) {
+                ACLFilledChecklist check(Config.ssl_client.cert_error, request, dash_str);
+                check.sslErrors = new Ssl::Errors(SQUID_X509_V_ERR_DOMAIN_MISMATCH);
+                allowDomainMismatch = (check.fastCheck() == ACCESS_ALLOWED);
+                delete check.sslErrors;
+                check.sslErrors = NULL;
+            }
 
             if (!allowDomainMismatch) {
                 quitAfterError(request);
@@ -2616,10 +2609,9 @@ clientProcessRequest(ConnStateData *conn, HttpParser *hp, ClientSocketContext *c
         goto finish;
     }
 
-    /* RFC 2616 section 10.5.6 : handle unsupported HTTP versions cleanly. */
-    /* We currently only accept 0.9, 1.0, 1.1 */
+    /* RFC 2616 section 10.5.6 : handle unsupported HTTP major versions cleanly. */
+    /* We currently only support 0.9, 1.0, 1.1 properly */
     if ( (http_ver.major == 0 && http_ver.minor != 9) ||
-            (http_ver.major == 1 && http_ver.minor > 1 ) ||
             (http_ver.major > 1) ) {
 
         clientStreamNode *node = context->getClientReplyContext();
@@ -3618,8 +3610,8 @@ httpsSslBumpAccessCheckDone(allow_t answer, void *data)
         // fake a CONNECT request to force connState to tunnel
         static char ip[MAX_IPSTRLEN];
         static char reqStr[MAX_IPSTRLEN + 80];
-        connState->clientConnection->local.NtoA(ip, sizeof(ip));
-        snprintf(reqStr, sizeof(reqStr), "CONNECT %s:%d HTTP/1.1\r\nHost: %s\r\n\r\n", ip, connState->clientConnection->local.GetPort(), ip);
+        connState->clientConnection->local.ToURL(ip, sizeof(ip));
+        snprintf(reqStr, sizeof(reqStr), "CONNECT %s HTTP/1.1\r\nHost: %s\r\n\r\n", ip, ip);
         bool ret = connState->handleReadData(reqStr, strlen(reqStr));
         if (ret)
             ret = connState->clientParseRequests();
@@ -3861,8 +3853,18 @@ ConnStateData::getSslContextDone(SSL_CTX * sslContext, bool isNew)
     // Try to add generated ssl context to storage.
     if (port->generateHostCertificates && isNew) {
 
-        if (signAlgorithm == Ssl::algSignTrusted)
+        if (signAlgorithm == Ssl::algSignTrusted) {
+            // Add signing certificate to the certificates chain
+            X509 *cert = port->signingCert.get();
+            if (SSL_CTX_add_extra_chain_cert(sslContext, cert)) {
+                // increase the certificate lock
+                CRYPTO_add(&(cert->references),1,CRYPTO_LOCK_X509);
+            } else {
+                const int ssl_error = ERR_get_error();
+                debugs(33, DBG_IMPORTANT, "WARNING: can not add signing certificate to SSL context chain: " << ERR_error_string(ssl_error, NULL));
+            }
             Ssl::addChainToSslContext(sslContext, port->certsToChain.get());
+        }
         //else it is self-signed or untrusted do not attrach any certificate
 
         Ssl::LocalContextStorage & ssl_ctx_cache(Ssl::TheGlobalContextStorage.getLocalStorage(port->s));
@@ -4423,7 +4425,7 @@ ConnStateData::clientPinnedConnectionClosed(const CommCloseCbParams &io)
     pinning.closeHandler = NULL; // Comm unregisters handlers before calling
     const bool sawZeroReply = pinning.zeroReply; // reset when unpinning
     unpinConnection();
-    if (sawZeroReply) {
+    if (sawZeroReply && clientConnection != NULL) {
         debugs(33, 3, "Closing client connection on pinned zero reply.");
         clientConnection->close();
     }
@@ -4435,8 +4437,10 @@ ConnStateData::pinConnection(const Comm::ConnectionPointer &pinServer, HttpReque
     char desc[FD_DESC_SZ];
 
     if (Comm::IsConnOpen(pinning.serverConnection)) {
-        if (pinning.serverConnection->fd == pinServer->fd)
+        if (pinning.serverConnection->fd == pinServer->fd) {
+            startPinnedConnectionMonitoring();
             return;
+        }
     }
 
     unpinConnection(); // closes pinned connection, if any, and resets fields
@@ -4473,6 +4477,57 @@ ConnStateData::pinConnection(const Comm::ConnectionPointer &pinServer, HttpReque
     Params &params = GetCommParams<Params>(pinning.closeHandler);
     params.conn = pinning.serverConnection;
     comm_add_close_handler(pinning.serverConnection->fd, pinning.closeHandler);
+
+    startPinnedConnectionMonitoring();
+}
+
+/// Assign a read handler to an idle pinned connection so that we can detect connection closures.
+void
+ConnStateData::startPinnedConnectionMonitoring()
+{
+    if (pinning.readHandler != NULL)
+        return; // already monitoring
+
+    typedef CommCbMemFunT<ConnStateData, CommIoCbParams> Dialer;
+    pinning.readHandler = JobCallback(33, 3,
+                                      Dialer, this, ConnStateData::clientPinnedConnectionRead);
+    static char unusedBuf[8];
+    comm_read(pinning.serverConnection, unusedBuf, sizeof(unusedBuf), pinning.readHandler);
+}
+
+void
+ConnStateData::stopPinnedConnectionMonitoring()
+{
+    if (pinning.readHandler != NULL) {
+        comm_read_cancel(pinning.serverConnection->fd, pinning.readHandler);
+        pinning.readHandler = NULL;
+    }
+}
+
+/// Our read handler called by Comm when the server either closes an idle pinned connection or
+/// perhaps unexpectedly sends something on that idle (from Squid p.o.v.) connection.
+void
+ConnStateData::clientPinnedConnectionRead(const CommIoCbParams &io)
+{
+    pinning.readHandler = NULL; // Comm unregisters handlers before calling
+
+    if (io.flag == COMM_ERR_CLOSING)
+        return; // close handler will clean up
+
+    // We could use getConcurrentRequestCount(), but this may be faster.
+    const bool clientIsIdle = !getCurrentContext();
+
+    debugs(33, 3, "idle pinned " << pinning.serverConnection << " read " <<
+           io.size << (clientIsIdle ? " with idle client" : ""));
+
+    assert(pinning.serverConnection == io.conn);
+    pinning.serverConnection->close();
+
+    // If we are still sending data to the client, do not close now. When we are done sending,
+    // ClientSocketContext::keepaliveNextRequest() checks pinning.serverConnection and will close.
+    // However, if we are idle, then we must close to inform the idle client and minimize races.
+    if (clientIsIdle && clientConnection != NULL)
+        clientConnection->close();
 }
 
 const Comm::ConnectionPointer
@@ -4483,18 +4538,14 @@ ConnStateData::validatePinnedConnection(HttpRequest *request, const CachePeer *a
     bool valid = true;
     if (!Comm::IsConnOpen(pinning.serverConnection))
         valid = false;
-    if (pinning.auth && request && strcasecmp(pinning.host, request->GetHost()) != 0) {
+    else if (pinning.auth && pinning.host && request && strcasecmp(pinning.host, request->GetHost()) != 0)
         valid = false;
-    }
-    if (request && pinning.port != request->port) {
+    else if (request && pinning.port != request->port)
         valid = false;
-    }
-    if (pinning.peer && !cbdataReferenceValid(pinning.peer)) {
+    else if (pinning.peer && !cbdataReferenceValid(pinning.peer))
         valid = false;
-    }
-    if (aPeer != pinning.peer) {
+    else if (aPeer != pinning.peer)
         valid = false;
-    }
 
     if (!valid) {
         /* The pinning info is not safe, remove any pinning info */

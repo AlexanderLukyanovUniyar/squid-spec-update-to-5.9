@@ -659,8 +659,16 @@ ClientRequestContext::hostHeaderVerify()
     uint16_t port = 0;
     if (portStr) {
         *portStr = '\0'; // strip the ':'
-        if (*(++portStr) != '\0')
-            port = xatoi(portStr);
+        if (*(++portStr) != '\0') {
+            char *end = NULL;
+            int64_t ret = strtoll(portStr, &end, 10);
+            if (end == portStr || *end != '\0' || ret < 1 || ret > 0xFFFF) {
+                // invalid port details. Replace the ':'
+                *(--portStr) = ':';
+                portStr = NULL;
+            } else
+                port = (ret & 0xFFFF);
+        }
     }
 
     debugs(85, 3, HERE << "validate host=" << host << ", port=" << port << ", portStr=" << (portStr?portStr:"NULL"));
@@ -1047,7 +1055,7 @@ clientInterpretRequestHeaders(ClientHttpRequest * http)
 
     if (!request->flags.ignoreCc) {
         if (request->cache_control) {
-            if (request->cache_control->noCache())
+            if (request->cache_control->hasNoCache())
                 no_cache=true;
 
             // RFC 2616: treat Pragma:no-cache as if it was Cache-Control:no-cache when Cache-Control is missing
@@ -1378,7 +1386,7 @@ ClientHttpRequest::processRequest()
 #endif
         logType = LOG_TCP_MISS;
         getConn()->stopReading(); // tunnels read for themselves
-        tunnelStart(this, &out.size, &al->http.code);
+        tunnelStart(this, &out.size, &al->http.code, al);
         return;
     }
 

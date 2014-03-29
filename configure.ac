@@ -1,4 +1,4 @@
-AC_INIT([Squid Web Proxy],[3.4.3-BZR],[http://bugs.squid-cache.org/],[squid])
+AC_INIT([Squid Web Proxy],[3.4.4-BZR],[http://bugs.squid-cache.org/],[squid])
 AC_PREREQ(2.61)
 AC_CONFIG_HEADERS([include/autoconf.h])
 AC_CONFIG_AUX_DIR(cfgaux)
@@ -456,18 +456,6 @@ dnl [  --enable-xmalloc-debug  Do some simple malloc debugging],
 dnl [ if test "$enableval" = "yes" ; then
 dnl     AC_MSG_NOTICE([malloc debugging enabled])
 dnl     AC_DEFINE(XMALLOC_DEBUG,1,[Define to do simple malloc debugging])
-dnl   fi
-dnl ])
-
-dnl This is a developer only option.. developers know how to set defines
-dnl
-dnl AC_ARG_ENABLE(xmalloc-debug-trace,
-dnl [  --enable-xmalloc-debug-trace
-dnl                           Detailed trace of memory allocations],
-dnl [ if test "$enableval" = "yes" ; then
-dnl     AC_MSG_NOTICE([malloc debug trace enabled])
-dnl     AC_DEFINE(XMALLOC_TRACE,1,[Define to have a detailed trace of memory allocations])
-dnl     AC_DEFINE(XMALLOC_DEBUG,1)
 dnl   fi
 dnl ])
 
@@ -3095,7 +3083,6 @@ AC_CHECK_FUNCS(\
 	res_init \
 	__res_init \
 	rint \
-	sbrk \
 	sched_getaffinity \
 	sched_setaffinity \
 	select \
@@ -3191,6 +3178,48 @@ AC_COMPILE_IFELSE([AC_LANG_SOURCE([[
   AC_DEFINE(HAVE_CONSTANT_CMSG_SPACE, 1, [Define to 1 if CMSG_SPACE is constant])
 ], [
   AC_MSG_RESULT(no)
+])
+
+AC_CHECK_TYPE(struct cmsghdr,AC_DEFINE(HAVE_CMSGHDR,1,[The system provides struct cmsghdr]),,[
+  #if HAVE_SYS_SOCKET_H
+  #include <sys/socket.h>
+  #endif
+  #if HAVE_WINSOCK2_H
+  #include <winsock2.h>
+  #endif
+])
+
+AC_CHECK_TYPE(struct iovec,AC_DEFINE(HAVE_IOVEC,1,[The system provides struct iovec]),,[
+  #if HAVE_SYS_SOCKET_H
+  #include <sys/socket.h>
+  #endif
+  #if HAVE_WINSOCK2_H
+  #include <winsock2.h>
+  #endif
+  #if HAVE_SYS_UIO_H
+  #include <sys/uio.h>
+  #endif
+])
+
+AC_CHECK_TYPE(struct msghdr,AC_DEFINE(HAVE_MSGHDR,1,[The system provides struct msghdr]),,[
+  #if HAVE_SYS_SOCKET_H
+  #include <sys/socket.h>
+  #endif
+  #if HAVE_WINSOCK2_H
+  #include <winsock2.h>
+  #endif
+])
+
+AC_CHECK_TYPE(struct sockaddr_un,AC_DEFINE(HAVE_SOCKADDR_UN,1,[The system provides sockaddr_un]),,[
+  #if HAVE_SYS_UN_H
+  #include <sys/un.h>
+  #endif
+  #if HAVE_SYS_SOCKET_H
+  #include <sys/socket.h>
+  #endif
+  #if HAVE_WINSOCK2_H
+  #include <winsock2.h>
+  #endif
 ])
 
 SQUID_CHECK_FUNC_STRNSTR

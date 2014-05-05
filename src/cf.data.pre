@@ -3358,9 +3358,7 @@ TYPE: b_int64_t
 DEFAULT: 4 MB
 LOC: Config.Store.maxObjectSize
 DOC_START
-	Set the default value for max-size parameter on any cache_dir
-	which follow.
-	
+	Set the default value for max-size parameter on any cache_dir.
 	The value is specified in bytes, and the default is 4 MB.
 	
 	If you wish to get a high BYTES hit ratio, you should probably
@@ -3535,10 +3533,9 @@ DOC_START
 
 	max-size=n	the maximum object size in bytes this cache_dir
 			supports.
-			The value in maximum_object_size directive above
-			this cache_dir line sets a default unless more
-			specific details are available (ie a small store
-			capacity).
+			The value in maximum_object_size directive sets
+			the default unless more specific details are
+			available (ie a small store capacity).
 
 	Note: To make optimal use of the max-size limits you should order
 	the cache_dir lines with the smallest max-size value first.
@@ -3703,10 +3700,22 @@ DOC_START
 		err_code    The ID of an error response served by Squid or
 				a similar internal error identifier.
 		err_detail  Additional err_code-dependent error information.
-		note	The meta header specified by the argument. Also
+		note	The annotation specified by the argument. Also
 			logs the adaptation meta headers set by the
 			adaptation_meta configuration parameter.
-			If no argument given all meta headers logged.
+			If no argument given all annotations logged.
+			The argument may include a separator to use with
+			annotation values:
+                            name[:separator]
+			By default, multiple note values are separated with ","
+			and multiple notes are separated with "\r\n".
+			When logging named notes with %{name}note, the
+			explicitly configured separator is used between note
+			values. When logging all notes with %note, the
+			explicitly configured separator is used between
+			individual notes. There is currently no way to
+			specify both value and notes separators when logging
+			all notes with %note.
 
 	Connection related format codes:
 

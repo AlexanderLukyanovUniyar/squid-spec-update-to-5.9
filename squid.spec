@@ -43,6 +43,7 @@ BuildRequires: doxygen  graphviz fonts-ttf-freefont
 BuildRequires: gcc-c++ libcap-devel libdb4-devel libldap-devel libltdl-devel
 BuildRequires: libpam-devel libsasl2-devel libssl-devel perl-Pod-Parser
 BuildRequires: w3c-libwww-devel cppunit-devel
+BuildRequires: samba-client samba-winbind-clients
 BuildRequires: libkrb5-devel
 %{?_enable_ecap:BuildRequires: libecap-devel >= 0.2.0-alt3}
 %{?_enable_esi:BuildRequires: libxml2-devel libexpat-devel}

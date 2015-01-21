@@ -139,6 +139,7 @@ sed -i -r '1s|^(#!/usr/)local(/bin/perl)|\1\2|' {contrib,scripts}/*.pl
 	--enable-wccpv2 \
 	--enable-arp-acl \
 	--enable-ssl \
+	--enable-ssl-crtd \
 	--enable-forw-via-db \
 	--enable-useragent-log \
 	--enable-referer-log \

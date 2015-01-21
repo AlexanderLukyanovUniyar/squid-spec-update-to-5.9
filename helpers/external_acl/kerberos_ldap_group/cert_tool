@@ -65,8 +65,8 @@ QUIT
 #
 rm ${server}_[0-9]*.pem 2>/dev/null
 i=0
- ls ${server}_[0-9]*.cert | while read file; do
- i=$((i+1))
+ls ${server}_[0-9]*.cert | while read file; do
+ i=$(($i+1))
  cat  $file  >> ${server}_$i.pem
  CA=`openssl x509 -noout -text -in  ${server}_$i.pem | grep -i "CA:.*true"`
  if [ -n "$CA" ]; then

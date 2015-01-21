@@ -144,7 +144,7 @@ sed -i -r '1s|^(#!/usr/)local(/bin/perl)|\1\2|' {contrib,scripts}/*.pl
 	--enable-forw-via-db \
 	--enable-useragent-log \
 	--enable-referer-log \
-	--enable-ident-lookups \
+	--disable-ident-lookups \
 	--enable-carp \
 	--enable-cache-digests \
 	--enable-x-accelerator-vary \

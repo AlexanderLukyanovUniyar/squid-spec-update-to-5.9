@@ -157,7 +157,7 @@ sed -i -r '1s|^(#!/usr/)local(/bin/perl)|\1\2|' {contrib,scripts}/*.pl
 	--enable-ntlm-auth-helpers="fake smb_lm" \
 	--enable-digest-auth-helpers="LDAP eDirectory file" \
 	--enable-negotiate-auth-helpers="kerberos wrapper" \
-	--enable-external-acl-helpers="AD_group LDAP_group LM_group eDirectory_userip file_userip kerberos_ldap_group session unix_group wbinfo_group" \
+	--enable-external-acl-helpers="LDAP_group eDirectory_userip file_userip kerberos_ldap_group session unix_group wbinfo_group time_quota" \
 	--enable-storeio="aufs diskd rock ufs" \
 	--enable-disk-io \
 	--enable-default-err-language="English" \

@@ -4,9 +4,6 @@
 AUTOMAKE_OPTIONS = dist-bzip2 subdir-objects 1.5 foreign
 DIST_SUBDIRS	= compat lib snmplib scripts icons errors contrib doc helpers src test-suite tools
 SUBDIRS		= compat lib $(makesnmplib)
-if USE_LOADABLE_MODULES
-SUBDIRS += libltdl
-endif
 SUBDIRS += scripts icons errors doc helpers src tools test-suite
 
 DISTCLEANFILES = include/stamp-h include/stamp-h[0-9]*

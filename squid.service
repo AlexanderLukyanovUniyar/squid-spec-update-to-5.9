@@ -1,6 +1,6 @@
 [Unit]
 Description=Squid caching proxy
-After=syslog.target network.target named.service
+After=network.target nss-lookup.target
 
 [Service]
 Type=forking

@@ -5,7 +5,7 @@
 %def_with nettle
 
 Name: squid
-Version: 3.4.6
+Version: 3.4.11
 Release: alt1
 %define langpack_ver 20140220
 Summary: The Squid proxy caching server
@@ -290,6 +290,9 @@ chown -R %name:%name %_spooldir/%name >/dev/null 2>&1 ||:
 
 
 %changelog
+* Wed Jan 21 2015 Alexey Shabalin <shaba@altlinux.ru> 3.4.11-alt1
+- 3.4.11
+
 * Thu Jun 26 2014 Led <led@altlinux.ru> 3.4.6-alt1
 - 3.4.6
 

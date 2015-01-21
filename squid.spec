@@ -20,6 +20,8 @@ Source4: wbinfo_group.sh
 Source5: %name.sysconfig
 Source6: %name.pam
 Source7: %name.service
+Source8: %name.tmpfiles
+
 Patch: %name-%version-%release.patch
 Obsoletes: %name-novm %name-pinger
 PreReq: net-snmp-mibs
@@ -178,7 +180,7 @@ sed -r 's/dyn/html/g;s/CALL(|ER_GRAPH)/#/' squid3.dox | doxygen -
 install -pD -m 0755 %SOURCE2 %buildroot%_initddir/%name
 install -pD -m 0644 %SOURCE3 %buildroot%_sysconfdir/logrotate.d/%name
 
-install -d -m 0755 %buildroot{%_logdir,%_spooldir}/%name
+install -d -m 0755 %buildroot{%_logdir,%_spooldir,%_runtimedir}/%name
 
 install -p -m 0644 helpers/{external_acl/{AD,LM,kerberos_ldap}_group,negotiate_auth/kerberos}/*.8 %buildroot%_man8dir/
 
@@ -189,6 +191,7 @@ mv %buildroot%_datadir/%name/mib.txt %buildroot%_datadir/snmp/mibs/SQUID-MIB.txt
 install -pD -m 0644 %SOURCE5 %buildroot%_sysconfdir/sysconfig/%name
 install -pD -m 0644 %SOURCE6 %buildroot%_sysconfdir/pam.d/%name
 install -pD -m 0644 %SOURCE7 %buildroot%_unitdir/%name.service
+install -pD -m 0644 %SOURCE8 %buildroot%_tmpfilesdir/%name.conf
 
 install -d -m 0755 %buildroot%_docdir/%name-%version/{helpers,html/Programming-Guide,scripts}
 install -p -m 0644 doc/Programming-Guide/html/*{css,html,png} %buildroot%_docdir/%name-%version/html/Programming-Guide/
@@ -247,7 +250,8 @@ chown -R %name:%name %_spooldir/%name >/dev/null 2>&1 ||:
 %config(noreplace) %_sysconfdir/%name/*
 %config(noreplace) %_sysconfdir/sysconfig/*
 %_initddir/*
-%systemd_unitdir/%name.service
+%_unitdir/%name.service
+%_tmpfilesdir/%name.conf
 %config %_sysconfdir/logrotate.d/%name
 %dir %_datadir/%name
 %_datadir/%name/*
@@ -261,6 +265,7 @@ chown -R %name:%name %_spooldir/%name >/dev/null 2>&1 ||:
 %_libexecdir/%name/diskd
 %attr(3770,root,%name) %dir %_logdir/%name
 %attr(2770,root,%name) %dir %_spooldir/%name
+%attr(2770,root,%name) %dir %_runtimedir/%name
 %exclude %_sysconfdir/%name/msntauth.conf*
 
 

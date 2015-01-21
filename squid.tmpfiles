@@ -1,0 +1,2 @@
+d /var/run/squid 2770 root squid -
+

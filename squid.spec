@@ -45,6 +45,7 @@ BuildRequires: libpam-devel libsasl2-devel libssl-devel perl-Pod-Parser
 BuildRequires: w3c-libwww-devel cppunit-devel
 BuildRequires: samba-client samba-winbind-clients
 BuildRequires: libkrb5-devel
+BuildRequires: libnetfilter_conntrack-devel
 %{?_enable_ecap:BuildRequires: libecap-devel >= 0.2.0-alt3}
 %{?_enable_esi:BuildRequires: libxml2-devel libexpat-devel}
 %{?_with_nettle:BuildRequires: libnettle-devel}
@@ -160,6 +161,7 @@ sed -i -r '1s|^(#!/usr/)local(/bin/perl)|\1\2|' {contrib,scripts}/*.pl
 	--enable-icap-client \
 	--disable-ipfw-transparent --disable-ipf-transparent --disable-pf-transparent \
 	--enable-linux-netfilter \
+	--with-netfilter-conntrack \
 	--enable-linux-tproxy \
 	--with-large-files \
 	--with-filedescriptors=65536 \

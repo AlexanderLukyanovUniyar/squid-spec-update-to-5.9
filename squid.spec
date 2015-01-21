@@ -99,6 +99,7 @@ sed -i -r '1s|^(#!/usr/)local(/bin/perl)|\1\2|' {contrib,scripts}/*.pl
 
 %build
 %define _localstatedir %_var
+%add_optflags %optflags_shared
 ./bootstrap.sh
 %configure \
 	CPPFLAGS="$(pkg-config --cflags-only-I libxml-2.0)" \

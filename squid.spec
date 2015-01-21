@@ -302,6 +302,8 @@ chown -R %name:%name %_spooldir/%name >/dev/null 2>&1 ||:
 %changelog
 * Wed Jan 21 2015 Alexey Shabalin <shaba@altlinux.ru> 3.4.11-alt1
 - 3.4.11
+- update configure options
+- added /var/run/squid dir to host sockets in SMP configuration
 
 * Thu Jun 26 2014 Led <led@altlinux.ru> 3.4.6-alt1
 - 3.4.6

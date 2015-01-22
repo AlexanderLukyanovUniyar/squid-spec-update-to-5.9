@@ -114,6 +114,7 @@ sed -i -r '1s|^(#!/usr/)local(/bin/perl)|\1\2|' {contrib,scripts}/*.pl
 	--with-swapdir=%_localstatedir/spool/%name \
 	--enable-strict-error-checking \
 	--with-dl \
+	--with-pthreads \
 	--with-openssl \
 	--with-libcap \
 	--enable-forw-via-db \

@@ -98,6 +98,11 @@ This package contains Squid helpers for different kinds of authentication.
 
 sed -i -r '1s|^(#!/usr/)local(/bin/perl)|\1\2|' {contrib,scripts}/*.pl
 
+RELEASE_TIME=`date +%s`
+%define RELEASE_TIME %(date +%s)
+
+sed -i -e "s|%version-BZR|%version|" configure.ac
+sed -i -e "s|squid_curtime|%RELEASE_TIME|" include/version.h
 
 %build
 %define _localstatedir %_var

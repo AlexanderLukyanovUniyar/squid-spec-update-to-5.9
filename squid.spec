@@ -115,6 +115,7 @@ sed -i -r '1s|^(#!/usr/)local(/bin/perl)|\1\2|' {contrib,scripts}/*.pl
 	--enable-strict-error-checking \
 	--with-dl \
 	--with-pthreads \
+	--with-aio \
 	--with-openssl \
 	--with-libcap \
 	--enable-forw-via-db \

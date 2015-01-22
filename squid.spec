@@ -1,3 +1,5 @@
+%set_automake_version 1.11
+
 %def_disable poll
 %def_enable epoll
 %def_enable ecap

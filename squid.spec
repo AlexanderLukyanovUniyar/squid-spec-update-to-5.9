@@ -1,15 +1,16 @@
-%set_automake_version 1.11
 
 %def_disable poll
 %def_enable epoll
 %def_enable ecap
 %def_enable esi
 %def_with nettle
+# gnutls for squidclient
+%def_with gnutls
 
 Name: squid
-Version: 3.4.11
+Version: 3.5.3
 Release: alt1
-%define langpack_ver 20140220
+%define langpack_ver 20150329
 Summary: The Squid proxy caching server
 License: GPLv2
 Group: System/Servers
@@ -50,9 +51,10 @@ BuildRequires: w3c-libwww-devel cppunit-devel
 BuildRequires: samba-client samba-winbind-clients
 BuildRequires: libkrb5-devel
 BuildRequires: libnetfilter_conntrack-devel
-%{?_enable_ecap:BuildRequires: libecap-devel >= 0.2.0-alt3}
+%{?_enable_ecap:BuildRequires: libecap-devel >= 1.0}
 %{?_enable_esi:BuildRequires: libxml2-devel libexpat-devel}
 %{?_with_nettle:BuildRequires: libnettle-devel}
+%{?_with_gnutls:BuildRequires: libgnutls-devel >= 3.1.5}
 BuildRequires: perl-libnet perl-DBI
 BuildRequires: perl(Authen/Smb.pm) perl(Crypt/OpenSSL/X509.pm)
 
@@ -138,6 +140,7 @@ sed -i -e "s|squid_curtime|%RELEASE_TIME|" include/version.h
 	%{subst_enable esi} \
 	%{subst_enable ecap} \
 	%{subst_with nettle} \
+	%{subst_with gnutls} \
 	--enable-ipv6 \
 	--enable-unlinkd \
 	--enable-cachemgr-hostname=localhost \
@@ -152,7 +155,6 @@ sed -i -e "s|squid_curtime|%RELEASE_TIME|" include/version.h
 	--enable-wccp \
 	--enable-wccpv2 \
 	--enable-arp-acl \
-	--enable-ssl \
 	--enable-ssl-crtd \
 	--enable-forw-via-db \
 	--enable-useragent-log \
@@ -162,13 +164,14 @@ sed -i -e "s|squid_curtime|%RELEASE_TIME|" include/version.h
 	--enable-cache-digests \
 	--enable-x-accelerator-vary \
 	--enable-auth \
-	--enable-basic-auth-helpers="DB LDAP MSNT MSNT-multi-domain NCSA NIS PAM POP3 RADIUS SASL SMB fake getpwnam" \
-	--enable-ntlm-auth-helpers="fake smb_lm" \
-	--enable-digest-auth-helpers="LDAP eDirectory file" \
-	--enable-negotiate-auth-helpers="kerberos wrapper" \
-	--enable-external-acl-helpers="LDAP_group eDirectory_userip file_userip kerberos_ldap_group session unix_group wbinfo_group time_quota" \
+	--enable-auth-basic="DB LDAP MSNT-multi-domain NCSA NIS PAM POP3 RADIUS SASL SMB SMB_LM fake getpwnam" \
+	--enable-auth-ntlm="fake smb_lm" \
+	--enable-auth-digest="LDAP eDirectory file" \
+	--enable-auth-negotiate="kerberos wrapper" \
+	--enable-external-acl-helpers="LDAP_group delayer eDirectory_userip file_userip kerberos_ldap_group session unix_group wbinfo_group time_quota" \
 	--enable-storeio="aufs diskd rock ufs" \
 	--enable-disk-io \
+	--enable-translation \
 	--enable-default-err-language="English" \
 	--enable-icap-client \
 	--disable-ipfw-transparent --disable-ipf-transparent --disable-pf-transparent \
@@ -178,6 +181,7 @@ sed -i -e "s|squid_curtime|%RELEASE_TIME|" include/version.h
 	--with-large-files \
 	--with-filedescriptors=65536 \
 	--with-default-user="%name"
+
 
 %make_build
 sed -r 's/dyn/html/g;s/CALL(|ER_GRAPH)/#/' squid3.dox | doxygen -
@@ -310,6 +314,9 @@ chown -R %name:%name %_spooldir/%name >/dev/null 2>&1 ||:
 
 
 %changelog
+* Wed Apr 15 2015 Alexey Shabalin <shaba@altlinux.ru> 3.5.3-alt1
+- 3.5.3
+
 * Wed Jan 21 2015 Alexey Shabalin <shaba@altlinux.ru> 3.4.11-alt1
 - 3.4.11
 - update configure options

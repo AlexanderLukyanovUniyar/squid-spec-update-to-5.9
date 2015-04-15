@@ -210,13 +210,8 @@ install -d -m 0755 %buildroot%_docdir/%name-%version/{helpers,html,scripts}
 #install -d -m 0755 %buildroot%_docdir/%name-%version/html/Programming-Guide
 #install -p -m 0644 doc/Programming-Guide/html/*{css,html,png} %buildroot%_docdir/%name-%version/html/Programming-Guide/
 install -p -m 0644 doc/release-notes/*.html %buildroot%_docdir/%name-%version/html/
-install -p -m 0644 COPYRIGHT README ChangeLog QUICKSTART SPONSORS doc/debug-sections.txt %buildroot%_docdir/%name-%version/
+install -p -m 0644 COPYING README ChangeLog QUICKSTART SPONSORS doc/debug-sections.txt %buildroot%_docdir/%name-%version/
 install -p -m 0644 scripts/*.pl %buildroot%_docdir/%name-%version/scripts/
-install -p -m 0644 helpers/basic_auth/LDAP/README %buildroot%_docdir/%name-%version/helpers/README.LDAP
-install -p -m 0644 helpers/basic_auth/SMB/COPYING-2.0 %buildroot%_docdir/%name-%version/helpers/SMB.COPYING-2.0
-for i in LDAP RADIUS; do
-	install -p -m 0644 helpers/basic_auth/$i/README %buildroot%_docdir/%name-%version/helpers/README.$i
-done
 for i in LDAP_group file_userip kerberos_ldap_group; do
 	install -p -m 0644 helpers/external_acl/$i/README %buildroot%_docdir/%name-%version/helpers/README.$i
 done
@@ -224,10 +219,7 @@ for i in kerberos; do
 	install -p -m 0644 helpers/negotiate_auth/$i/README %buildroot%_docdir/%name-%version/helpers/README.$i
 done
 install -p -m 0644 helpers/basic_auth/SMB/ChangeLog %buildroot%_docdir/%name-%version/helpers/ChangeLog.$i
-install -p -m 0644 helpers/basic_auth/MSNT/README.html %buildroot%_docdir/%name-%version/helpers/README.MSNT.html
-install -p -m 0644 helpers/basic_auth/MSNT-multi-domain/README.txt %buildroot%_docdir/%name-%version/helpers/README.MSNT-multi-domain
-install -p -m 0644 helpers/basic_auth/MSNT/msntauth.conf.default %buildroot%_docdir/%name-%version/helpers/
-
+install -p -m 0644 helpers/basic_auth/SMB_LM/msntauth.conf.default %buildroot%_docdir/%name-%version/helpers/
 
 %check
 %make_build check
@@ -258,7 +250,7 @@ chown -R %name:%name %_spooldir/%name >/dev/null 2>&1 ||:
 
 %files
 %doc %dir %_docdir/%name-%version
-%doc %_docdir/%name-%version/COPYRIGHT
+%doc %_docdir/%name-%version/COPYING
 %attr(750,root,%name) %dir %_sysconfdir/%name
 %attr(750,root,%name) %dir %_libexecdir/%name
 %config(noreplace) %_sysconfdir/%name/*
@@ -280,8 +272,6 @@ chown -R %name:%name %_spooldir/%name >/dev/null 2>&1 ||:
 %attr(3770,root,%name) %dir %_logdir/%name
 %attr(2770,root,%name) %dir %_spooldir/%name
 %attr(2770,root,%name) %dir %_runtimedir/%name
-%exclude %_sysconfdir/%name/msntauth.conf*
-
 
 %files doc
 %doc %dir %_docdir/%name-%version
@@ -297,8 +287,6 @@ chown -R %name:%name %_spooldir/%name >/dev/null 2>&1 ||:
 %files helpers
 %doc %dir %_docdir/%name-%version
 %doc %_docdir/%name-%version/scripts
-%config(noreplace) %_sysconfdir/%name/msntauth.conf
-%config(noreplace) %_sysconfdir/%name/msntauth.conf.default
 %_libexecdir/%name/*
 %attr(640,root,auth) %config(noreplace) %_sysconfdir/pam.d/%name
 # fixing #6321, step 2/2

@@ -1,5 +1,6 @@
 
 <html><head>
+<meta type="copyright" content="Copyright (C) 1996-2015 The Squid Software Foundation and contributors">
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
 <title></title>
 <style type="text/css"><!-- 
@@ -24,10 +25,10 @@ body
 </blockquote>
 
 <div id="sysmsg">
-<p>The system returned:</p>
+<p></p>
 <blockquote id="data">
-<pre>%E (TLS code: %x)</pre>
-<p>%D</p>
+<pre></pre>
+<p></p>
 </blockquote>
 </div>
 

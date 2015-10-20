@@ -11,6 +11,7 @@
 #ifndef SQUID_CLIENTSIDE_H
 #define SQUID_CLIENTSIDE_H
 
+#include "base/RunnersRegistry.h"
 #include "clientStreamForward.h"
 #include "comm.h"
 #include "helper/forward.h"
@@ -169,7 +170,7 @@ class ServerBump;
  *
  * If the above can be confirmed accurate we can call this object PipelineManager or similar
  */
-class ConnStateData : public BodyProducer, public HttpControlMsgSink
+class ConnStateData : public BodyProducer, public HttpControlMsgSink, public RegisteredRunner
 {
 
 public:
@@ -363,6 +364,8 @@ public:
         else
             assert(sslServerBump == srvBump);
     }
+    const SBuf &sslCommonName() const {return sslCommonName_;}
+    void resetSslCommonName(const char *name) {sslCommonName_ = name;}
     /// Fill the certAdaptParams with the required data for certificate adaptation
     /// and create the key for storing/retrieve the certificate to/from the cache
     void buildSslCertGenerationParams(Ssl::CertificateProperties &certProperties);
@@ -396,6 +399,14 @@ public:
 
     /// stop parsing the request and create context for relaying error info
     ClientSocketContext *abortRequestParsing(const char *const errUri);
+
+    /// generate a fake CONNECT request with the given payload
+    /// at the beginning of the client I/O buffer
+    void fakeAConnectRequest(const char *reason, const SBuf &payload);
+
+    /* Registered Runner API */
+    virtual void startShutdown();
+    virtual void endingShutdown();
 
 protected:
     void startDechunkingRequest();
@@ -448,7 +459,7 @@ private:
     bool switchedToHttps_;
     /// The SSL server host name appears in CONNECT request or the server ip address for the intercepted requests
     String sslConnectHostOrIp; ///< The SSL server host name as passed in the CONNECT request
-    String sslCommonName; ///< CN name for SSL certificate generation
+    SBuf sslCommonName_; ///< CN name for SSL certificate generation
     String sslBumpCertKey; ///< Key to use to store/retrieve generated certificate
 
     /// HTTPS server cert. fetching state for bump-ssl-server-first

@@ -5,12 +5,12 @@
 ## Please see the COPYING and CONTRIBUTORS files for details.
 ##
 
-AC_INIT([Squid Web Proxy],[3.5.3-BZR],[http://bugs.squid-cache.org/],[squid])
+AC_INIT([Squid Web Proxy],[3.5.10-BZR],[http://bugs.squid-cache.org/],[squid])
 AC_PREREQ(2.61)
 AC_CONFIG_HEADERS([include/autoconf.h])
 AC_CONFIG_AUX_DIR(cfgaux)
 AC_CONFIG_SRCDIR([src/main.cc])
-AM_INIT_AUTOMAKE([tar-ustar nostdinc])
+AM_INIT_AUTOMAKE([tar-ustar nostdinc subdir-objects])
 AC_REVISION($Revision$)dnl
 AC_PREFIX_DEFAULT(/usr/local/squid)
 AM_MAINTAINER_MODE
@@ -55,7 +55,7 @@ AC_ARG_ENABLE(arch-native,
   SQUID_YESNO([$enableval],
     [Unrecognized argument to --disable-arch-native: $enableval])
 ])
-AC_MSG_NOTICE([CPU -march=native optimization enabled: ${enable_arch_native:=auto}])
+AC_MSG_NOTICE([CPU arch native optimization enabled: ${enable_arch_native:=auto}])
 if test "x${enable_arch_native}" != "xno"; then
   SQUID_CC_CHECK_ARGUMENT([squid_cv_check_marchnative],[-march=native])
 fi
@@ -132,6 +132,7 @@ if test "x$ac_cv_path_PERL" = "xnone"; then
   AC_MSG_FAILURE([Perl is required to compile Squid. Please install Perl and then re-run configure ])
 fi
 AC_PATH_PROG(POD2MAN, pod2man, $FALSE)
+AM_CONDITIONAL(ENABLE_POD2MAN_DOC, test "x${ac_cv_path_POD2MAN}" != "x$FALSE")
 
 dnl set $(AR) if not provided by the build environment
 if test "x$AR" = "x"; then
@@ -139,6 +140,9 @@ if test "x$AR" = "x"; then
 fi
 AR_R="$AR r"
 AC_SUBST(AR_R)
+
+AC_PATH_PROG(LINUXDOC, linuxdoc, $FALSE)
+AM_CONDITIONAL(ENABLE_RELEASE_DOCS, test "x${ac_cv_path_LINUXDOC}" != "x$FALSE")
 
 # pre-define DEFAULT_PREFIX, some modules need it.
 if test "${prefix}" = "NONE" ; then
@@ -425,7 +429,7 @@ export enable_inline
 # Check for atomic operations support in the compiler
 AC_CACHE_CHECK([for GNU atomic operations support],[squid_cv_gnu_atomics],[
 AC_RUN_IFELSE([AC_LANG_PROGRAM([[
-#include <cstdint>
+#include <stdint.h>
     int32_t n_32 = 0;
     uint64_t n_64 = 0;
 ]],[[
@@ -1390,6 +1394,7 @@ case "$with_mit_krb5" in
     with_mit_krb5=yes
 esac
 ])
+AH_TEMPLATE(USE_APPLE_KRB5,[Apple Kerberos support is available])
 AH_TEMPLATE(USE_MIT_KRB5,[MIT Kerberos support is available])
 AH_TEMPLATE(USE_SOLARIS_KRB5,[Solaris Kerberos support is available])
 
@@ -1480,6 +1485,7 @@ elif test $ac_with_krb5_count -eq 0 ; then
       krb5confpath="`dirname $ac_cv_path_krb5_config`"
       ac_heimdal="`$ac_cv_path_krb5_config --version 2>/dev/null | grep -c -i heimdal`"
       ac_solaris="`$ac_cv_path_krb5_config --version 2>/dev/null | grep -c -i solaris`"
+      ac_apple="`$ac_cv_path_krb5_config --vendor 2>/dev/null | grep -c -i apple`"
       if test $ac_heimdal -gt 0 ; then
 	with_heimdal_krb5=yes
         ac_with_krb5_count=1
@@ -1488,7 +1494,11 @@ elif test $ac_with_krb5_count -eq 0 ; then
 	with_solaris_krb5=yes
         ac_with_krb5_count=1
       fi
-      if test $ac_heimdal -eq 0 && test $ac_solaris -eq 0 ; then
+      if test $ac_apple -gt 0 ; then
+	with_apple_krb5=yes
+        ac_with_krb5_count=1
+      fi
+      if test $ac_heimdal -eq 0 && test $ac_solaris -eq 0 && test $ac_apple -eq 0; then
 	with_mit_krb5=yes
         ac_with_krb5_count=1
       fi
@@ -1498,7 +1508,7 @@ elif test $ac_with_krb5_count -eq 0 ; then
   fi
 fi
 
-if test "x$with_mit_krb5" = "xyes"; then
+if test "x$with_mit_krb5" = "xyes" || test "x$with_apple_krb5" = "xyes" ; then
   SQUID_STATE_SAVE([squid_krb5_save])
   LIBS="$LIBS $LIB_KRB5_PATH"
 
@@ -1549,10 +1559,15 @@ if test "x$with_mit_krb5" = "xyes"; then
   ])
 
   if test "x$LIB_KRB5_LIBS" != "x"; then
+    if test "x$with_apple_krb5" = "xyes" ; then
+      AC_DEFINE(USE_APPLE_KRB5,1,[Apple Kerberos support is available])
+      KRB5_FLAVOUR="Apple" 
+    else
+      AC_DEFINE(USE_MIT_KRB5,1,[MIT Kerberos support is available])
+      KRB5_FLAVOUR="MIT" 
+    fi
     KRB5LIBS="$LIB_KRB5_PATH $LIB_KRB5_LIBS $KRB5LIBS"
     KRB5INCS="$LIB_KRB5_CFLAGS"
-    AC_DEFINE(USE_MIT_KRB5,1,[MIT Kerberos support is available])
-    KRB5_FLAVOUR="MIT" 
     
     # check for other specific broken implementations
     CXXFLAGS="$CXXFLAGS $KRB5INCS"
@@ -3823,6 +3838,7 @@ AC_CONFIG_FILES([
 	test-suite/Makefile
 	doc/Makefile
 	doc/manuals/Makefile
+	doc/release-notes/Makefile
 	helpers/Makefile
 	helpers/basic_auth/Makefile
 	helpers/basic_auth/DB/Makefile

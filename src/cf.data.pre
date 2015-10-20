@@ -322,6 +322,49 @@ DOC_START
 DOC_END
 
 COMMENT_START
+ OPTIONS FOR SMP
+ -----------------------------------------------------------------------------
+COMMENT_END
+
+NAME: workers
+TYPE: int
+LOC: Config.workers
+DEFAULT: 1
+DEFAULT_DOC: SMP support disabled.
+DOC_START
+	Number of main Squid processes or "workers" to fork and maintain.
+	0: "no daemon" mode, like running "squid -N ..."
+	1: "no SMP" mode, start one main Squid process daemon (default)
+	N: start N main Squid process daemons (i.e., SMP mode)
+
+	In SMP mode, each worker does nearly all what a single Squid daemon
+	does (e.g., listen on http_port and forward HTTP requests).
+DOC_END
+
+NAME: cpu_affinity_map
+TYPE: CpuAffinityMap
+LOC: Config.cpuAffinityMap
+DEFAULT: none
+DEFAULT_DOC: Let operating system decide.
+DOC_START
+	Usage: cpu_affinity_map process_numbers=P1,P2,... cores=C1,C2,...
+
+	Sets 1:1 mapping between Squid processes and CPU cores. For example,
+
+	    cpu_affinity_map process_numbers=1,2,3,4 cores=1,3,5,7
+
+	affects processes 1 through 4 only and places them on the first
+	four even cores, starting with core #1.
+
+	CPU cores are numbered starting from 1. Requires support for
+	sched_getaffinity(2) and sched_setaffinity(2) system calls.
+
+	Multiple cpu_affinity_map options are merged.
+
+	See also: workers
+DOC_END
+
+COMMENT_START
  OPTIONS FOR AUTHENTICATION
  -----------------------------------------------------------------------------
 COMMENT_END
@@ -656,6 +699,12 @@ DOC_START
 	FORMAT specifications
 
 	  %LOGIN	Authenticated user login name
+	  %un		A user name. Expands to the first available name
+	  		from the following list of information sources:
+			- authenticated user name, like %ul or %LOGIN
+			- user name sent by an external ACL, like %EXT_USER
+			- SSL client name, like %us in logformat
+			- ident user name, like %ui in logformat
 	  %EXT_USER	Username from previous external acl
 	  %EXT_LOG	Log details from previous external acl
 	  %EXT_TAG	Tag from previous external acl
@@ -852,15 +901,17 @@ DOC_START
 	acl aclname localip ip-address/mask ... # IP address the client connected to [fast]
 
 	acl aclname arp      mac-address ... (xx:xx:xx:xx:xx:xx notation)
-	  # The arp ACL requires the special configure option --enable-arp-acl.
-	  # Furthermore, the ARP ACL code is not portable to all operating systems.
-	  # It works on Linux, Solaris, Windows, FreeBSD, and some
-	  # other *BSD variants.
 	  # [fast]
+	  # The 'arp' ACL code is not portable to all operating systems.
+	  # It works on Linux, Solaris, Windows, FreeBSD, and some other
+	  # BSD variants.
 	  #
-	  # NOTE: Squid can only determine the MAC address for clients that are on
-	  # the same subnet. If the client is on a different subnet,
-	  # then Squid cannot find out its MAC address.
+	  # NOTE: Squid can only determine the MAC/EUI address for IPv4
+	  # clients that are on the same subnet. If the client is on a
+	  # different subnet, then Squid cannot find out its address.
+	  #
+	  # NOTE 2: IPv6 protocol does not contain ARP. MAC/EUI is either
+	  # encoded directly in the IPv6 address or not available.
 
 	acl aclname srcdomain   .foo.com ...
 	  # reverse lookup, from client IP [slow]
@@ -1020,11 +1071,11 @@ DOC_START
 
 	acl aclname user_cert attribute values...
 	  # match against attributes in a user SSL certificate
-	  # attribute is one of DN/C/O/CN/L/ST [fast]
+	  # attribute is one of DN/C/O/CN/L/ST or a numerical OID [fast]
 
 	acl aclname ca_cert attribute values...
 	  # match against attributes a users issuing CA SSL certificate
-	  # attribute is one of DN/C/O/CN/L/ST [fast]
+	  # attribute is one of DN/C/O/CN/L/ST or a numerical OID  [fast]
 
 	acl aclname ext_user username ...
 	acl aclname ext_user_regex [-i] pattern ...
@@ -1103,6 +1154,18 @@ IF USE_OPENSSL
 	  #   SslBump1: After getting TCP-level and HTTP CONNECT info.
 	  #   SslBump2: After getting SSL Client Hello info.
 	  #   SslBump3: After getting SSL Server Hello info.
+
+	acl aclname ssl::server_name .foo.com ...
+	  # matches server name obtained from various sources [fast]
+	  #
+	  # The server name is obtained during Ssl-Bump steps from such sources
+	  # as CONNECT request URI, client SNI, and SSL server certificate CN.
+	  # During each Ssl-Bump step, Squid may improve its understanding of a
+	  # "true server name". Unlike dstdomain, this ACL does not perform
+	  # DNS lookups.
+
+	acl aclname ssl::server_name_regex [-i] \.foo\.com ...
+	  # regex matches server name obtained from various sources [fast]
 ENDIF
 	acl aclname any-of acl1 acl2 ...
 	  # match any one of the acls [fast or slow]
@@ -1319,7 +1382,7 @@ DOC_START
 
 	SECURITY WARNING: Usage of this option is dangerous
 	and should not be used trivially. Correct configuration
-	of follow_x_forewarded_for with a limited set of trusted
+	of follow_x_forwarded_for with a limited set of trusted
 	sources is required to prevent abuse of your proxy.
 DOC_END
 
@@ -1518,7 +1581,7 @@ LOC: Config.accessList.miss
 DEFAULT: none
 DEFAULT_DOC: Allow, unless rules exist in squid.conf.
 DOC_START
-	Determins whether network access is permitted when satisfying a request.
+	Determines whether network access is permitted when satisfying a request.
 
 	For example;
 	    to force your neighbors to use you as a sibling instead of
@@ -1643,13 +1706,13 @@ DOC_START
 
 	Modes:
 
-	   intercept	Support for IP-Layer interception of
-			outgoing requests without browser settings.
-			NP: disables authentication and IPv6 on the port.
+	   intercept	Support for IP-Layer NAT interception delivering
+			traffic to this Squid port.
+			NP: disables authentication on the port.
 
-	   tproxy	Support Linux TPROXY for spoofing outgoing
-			connections using the client IP address.
-			NP: disables authentication and maybe IPv6 on the port.
+	   tproxy	Support Linux TPROXY (or BSD divert-to) with spoofing
+			of outgoing connections using the client IP address.
+			NP: disables authentication on the port.
 
 	   accel	Accelerator / reverse proxy mode
 
@@ -2075,9 +2138,10 @@ DOC_START
 	RFC2475, and RFC3260.
 
 	The TOS/DSCP byte must be exactly that - a octet value  0 - 255, or
-	"default" to use whatever default your host has. Note that in
-	practice often only multiples of 4 is usable as the two rightmost bits
-	have been redefined for use by ECN (RFC 3168 section 23.1).
+	"default" to use whatever default your host has.
+	Note that only multiples of 4 are usable as the two rightmost bits have
+	been redefined for use by ECN (RFC 3168 section 23.1).
+	The squid parser will enforce this by masking away the ECN bits.
 
 	Processing proceeds in the order specified, and stops at first fully
 	matching line.
@@ -2090,7 +2154,7 @@ TYPE: acl_tos
 DEFAULT: none
 LOC: Ip::Qos::TheConfig.tosToClient
 DOC_START
-	Allows you to select a TOS/Diffserv value for packets being transmitted
+	Allows you to select a TOS/DSCP value for packets being transmitted
 	on the client-side, based on an ACL.
 
 	clientside_tos ds-field [!]aclname ...
@@ -2105,6 +2169,13 @@ DOC_START
 
 	Note: This feature is incompatible with qos_flows. Any TOS values set here
 	will be overwritten by TOS values in qos_flows.
+
+	The TOS/DSCP byte must be exactly that - a octet value  0 - 255, or
+	"default" to use whatever default your host has.
+	Note that only multiples of 4 are usable as the two rightmost bits have
+	been redefined for use by ECN (RFC 3168 section 23.1).
+	The squid parser will enforce this by masking away the ECN bits.
+
 DOC_END
 
 NAME: tcp_outgoing_mark
@@ -2176,9 +2247,10 @@ DOC_START
 	know what you're specifying. For more information, see RFC2474,
 	RFC2475, and RFC3260.
 
-	The TOS/DSCP byte must be exactly that - a octet value  0 - 255. Note that
-	in practice often only multiples of 4 is usable as the two rightmost bits
-	have been redefined for use by ECN (RFC 3168 section 23.1).
+	The TOS/DSCP byte must be exactly that - a octet value  0 - 255.
+	Note that only multiples of 4 are usable as the two rightmost bits have
+	been redefined for use by ECN (RFC 3168 section 23.1).
+	The squid parser will enforce this by masking away the ECN bits.
 
 	Mark values can be any unsigned 32-bit integer value.
 
@@ -2432,7 +2504,8 @@ DEFAULT: none
 LOC: Config.ssl_client.options
 TYPE: string
 DOC_START
-	SSL implementation options to use when proxying https:// URLs
+	Colon (:) or comma (,) separated list of SSL implementation options
+	to use when proxying https:// URLs
 	
 	The most important being:
 
@@ -2454,6 +2527,9 @@ DOC_START
 	
 	See the OpenSSL SSL_CTX_set_options documentation for a
 	complete list of possible options.
+	
+	WARNING: This directive takes a single token. If a space is used
+		 the value(s) after that space are SILENTLY IGNORED.
 DOC_END
 
 NAME: sslproxy_cipher
@@ -3818,18 +3894,26 @@ TYPE: int
 DEFAULT: 90
 LOC: Config.Swap.lowWaterMark
 DOC_START
-	The low-water mark for cache object replacement.
-	Replacement begins when the swap (disk) usage is above the
-	low-water mark and attempts to maintain utilization near the
-	low-water mark.  As swap utilization gets close to high-water
-	mark object eviction becomes more aggressive.  If utilization is
-	close to the low-water mark less replacement is done each time.
+	The low-water mark for AUFS/UFS/diskd cache object eviction by
+	the cache_replacement_policy algorithm.
+
+	Removal begins when the swap (disk) usage of a cache_dir is
+	above this low-water mark and attempts to maintain utilization
+	near the low-water mark.
+
+	As swap utilization increases towards the high-water mark set
+	by cache_swap_high object eviction becomes more agressive.
+
+	The value difference in percentages between low- and high-water
+	marks represent an eviction rate of 300 objects per second and
+	the rate continues to scale in agressiveness by multiples of
+	this above the high-water mark.
 
 	Defaults are 90% and 95%. If you have a large cache, 5% could be
 	hundreds of MB. If this is the case you may wish to set these
 	numbers closer together.
 
-	See also cache_swap_high
+	See also cache_swap_high and cache_replacement_policy
 DOC_END
 
 NAME: cache_swap_high
@@ -3838,18 +3922,26 @@ TYPE: int
 DEFAULT: 95
 LOC: Config.Swap.highWaterMark
 DOC_START
-	The high-water mark for cache object replacement.
-	Replacement begins when the swap (disk) usage is above the
-	low-water mark and attempts to maintain utilization near the
-	low-water mark.  As swap utilization gets close to high-water
-	mark object eviction becomes more aggressive.  If utilization is
-	close to the low-water mark less replacement is done each time.
+	The high-water mark for AUFS/UFS/diskd cache object eviction by
+	the cache_replacement_policy algorithm.
+
+	Removal begins when the swap (disk) usage of a cache_dir is
+	above the low-water mark set by cache_swap_low and attempts to
+	maintain utilization near the low-water mark.
+
+	As swap utilization increases towards this high-water mark object
+	eviction becomes more agressive.
+
+	The value difference in percentages between low- and high-water
+	marks represent an eviction rate of 300 objects per second and
+	the rate continues to scale in agressiveness by multiples of
+	this above the high-water mark.
 
 	Defaults are 90% and 95%. If you have a large cache, 5% could be
 	hundreds of MB. If this is the case you may wish to set these
 	numbers closer together.
 
-	See also cache_swap_low
+	See also cache_swap_low and cache_replacement_policy
 DOC_END
 
 COMMENT_START
@@ -3968,7 +4060,12 @@ DOC_START
 		ul	User name from authentication
 		ue	User name from external acl helper
 		ui	User name from ident
-		us	User name from SSL
+		un	A user name. Expands to the first available name
+			from the following list of information sources:
+			- authenticated user name, like %ul
+			- user name supplied by an external ACL, like %ue
+			- SSL client name, like %us
+			- ident user name, like %ui
 		credentials Client credentials. The exact meaning depends on
 			the authentication scheme: For Basic authentication,
 			it is the password; for Digest, the realm sent by the
@@ -5289,7 +5386,7 @@ DOC_START
 
 	Basically a cached object is:
 
-		FRESH if expires < now, else STALE
+		FRESH if expire > now, else STALE
 		STALE if age > max
 		FRESH if lm-factor < percent, else STALE
 		FRESH if age < min
@@ -9240,44 +9337,6 @@ DOC_START
 
 	Note: Changing this requires a restart of Squid. Also
 	not all I/O types supports large values (eg on Windows).
-DOC_END
-
-NAME: workers
-TYPE: int
-LOC: Config.workers
-DEFAULT: 1
-DEFAULT_DOC: SMP support disabled.
-DOC_START
-	Number of main Squid processes or "workers" to fork and maintain.
-	0: "no daemon" mode, like running "squid -N ..."
-	1: "no SMP" mode, start one main Squid process daemon (default)
-	N: start N main Squid process daemons (i.e., SMP mode)
-
-	In SMP mode, each worker does nearly all what a single Squid daemon
-	does (e.g., listen on http_port and forward HTTP requests).
-DOC_END
-
-NAME: cpu_affinity_map
-TYPE: CpuAffinityMap
-LOC: Config.cpuAffinityMap
-DEFAULT: none
-DEFAULT_DOC: Let operating system decide.
-DOC_START
-	Usage: cpu_affinity_map process_numbers=P1,P2,... cores=C1,C2,...
-
-	Sets 1:1 mapping between Squid processes and CPU cores. For example,
-
-	    cpu_affinity_map process_numbers=1,2,3,4 cores=1,3,5,7
-
-	affects processes 1 through 4 only and places them on the first
-	four even cores, starting with core #1.
-
-	CPU cores are numbered starting from 1. Requires support for
-	sched_getaffinity(2) and sched_setaffinity(2) system calls.
-
-	Multiple cpu_affinity_map options are merged.
-
-	See also: workers
 DOC_END
 
 EOF

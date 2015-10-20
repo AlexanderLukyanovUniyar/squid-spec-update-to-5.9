@@ -66,7 +66,7 @@ typedef enum {
     HDR_FORWARDED,                      /**< RFC 7239 */
     HDR_FROM,                           /**< RFC 7231 */
     HDR_HOST,                           /**< RFC 7230 */
-    HDR_HTTP2_SETTINGS,                 /**< HTTP/2.0 upgrade header. see draft-ietf-httpbis-http2-13 */
+    HDR_HTTP2_SETTINGS,                 /**< RFC 7540 */
     /*HDR_IF,*/                         /* RFC 2518 */
     HDR_IF_MATCH,                       /**< RFC 7232 */
     HDR_IF_MODIFIED_SINCE,              /**< RFC 7232 */
@@ -233,6 +233,7 @@ public:
     String getList(http_hdr_type id) const;
     bool getList(http_hdr_type id, String *s) const;
     String getStrOrList(http_hdr_type id) const;
+    bool conflictingContentLength() const { return conflictingContentLength_; }
     String getByName(const char *name) const;
     /// sets value and returns true iff a [possibly empty] named field is there
     bool getByNameIfPresent(const char *name, String &value) const;
@@ -280,6 +281,7 @@ protected:
 
 private:
     HttpHeaderEntry *findLastEntry(http_hdr_type id) const;
+    bool conflictingContentLength_; ///< found different Content-Length fields
 };
 
 int httpHeaderParseQuotedString(const char *start, const int len, String *val);

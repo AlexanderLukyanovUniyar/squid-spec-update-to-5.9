@@ -126,8 +126,13 @@ protected:
     void checkForPeekAndSplice();
 
     /// Callback function for ssl_bump acl check in step3  SSL bump step.
+    void checkForPeekAndSpliceDone(allow_t answer);
+
     /// Handles the final bumping decision.
-    void checkForPeekAndSpliceDone(Ssl::BumpMode const);
+    void checkForPeekAndSpliceMatched(const Ssl::BumpMode finalMode);
+
+    /// Guesses the final bumping decision when no ssl_bump rules match.
+    Ssl::BumpMode checkForPeekAndSpliceGuess() const;
 
     /// Called when the SSL negotiation step aborted because data needs to
     /// be transferred to/from SSL server or on error. In the first case
@@ -154,6 +159,14 @@ private:
     /// Check SSL errors returned from cert validator against sslproxy_cert_error access list
     Ssl::CertErrors *sslCrtvdCheckForErrors(Ssl::CertValidationResponse const &, Ssl::ErrorDetail *&);
 
+    /// Updates associated client connection manager members
+    /// if the server certificate was received from the server.
+    void handleServerCertificate();
+
+    /// Runs after the server certificate verified to update client
+    /// connection manager members
+    void serverCertificateVerified();
+
     /// Callback function called when squid receive message from cert validator helper
     static void sslCrtvdHandleReplyWrapper(void *data, Ssl::CertValidationResponse const &);
 
@@ -171,6 +184,8 @@ private:
     time_t negotiationTimeout; ///< the ssl connection timeout to use
     time_t startTime; ///< when the peer connector negotiation started
     bool splice; ///< Whether we are going to splice or not
+    bool resumingSession; ///< whether it is an SSL resuming session connection
+    bool serverCertificateHandled; ///< whether handleServerCertificate() succeeded
 
     CBDATA_CLASS2(PeerConnector);
 };

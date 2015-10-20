@@ -203,6 +203,18 @@ private:
             EventLoop::Running->stop();
     }
 
+    static void FinalShutdownRunners(void *) {
+        RunRegisteredHere(RegisteredRunner::endingShutdown);
+
+        // XXX: this should be a Runner.
+#if USE_AUTH
+        /* detach the auth components (only do this on full shutdown) */
+        Auth::Scheme::FreeAll();
+#endif
+
+        eventAdd("SquidTerminate", &StopEventLoop, NULL, 0, 1, false);
+    }
+
     void doShutdown(time_t wait);
 };
 
@@ -212,8 +224,10 @@ SignalEngine::checkEvents(int timeout)
     PROF_start(SignalEngine_checkEvents);
 
     if (do_reconfigure) {
-        mainReconfigureStart();
-        do_reconfigure = 0;
+        if (!reconfiguring && configured_once) {
+            mainReconfigureStart();
+            do_reconfigure = 0;
+        } // else wait until previous reconfigure is done
     } else if (do_rotate) {
         mainRotate();
         do_rotate = 0;
@@ -244,13 +258,8 @@ SignalEngine::doShutdown(time_t wait)
 
     /* run the closure code which can be shared with reconfigure */
     serverConnectionsClose();
-#if USE_AUTH
-    /* detach the auth components (only do this on full shutdown) */
-    Auth::Scheme::FreeAll();
-#endif
-
     RunRegisteredHere(RegisteredRunner::startShutdown);
-    eventAdd("SquidShutdown", &StopEventLoop, this, (double) (wait + 1), 1, false);
+    eventAdd("SquidShutdown", &FinalShutdownRunners, this, (double) (wait + 1), 1, false);
 }
 
 static void
@@ -774,10 +783,18 @@ mainReconfigureFinish(void *)
 
     // parse the config returns a count of errors encountered.
     const int oldWorkers = Config.workers;
-    if ( parseConfigFile(ConfigFile) != 0) {
+    try {
+        if (parseConfigFile(ConfigFile) != 0) {
+            // for now any errors are a fatal condition...
+            self_destruct();
+        }
+    } catch (...) {
         // for now any errors are a fatal condition...
+        debugs(1, DBG_CRITICAL, "FATAL: Unhandled exception parsing config file. " <<
+               " Run squid -k parse and check for errors.");
         self_destruct();
     }
+
     if (oldWorkers != Config.workers) {
         debugs(1, DBG_CRITICAL, "WARNING: Changing 'workers' (from " <<
                oldWorkers << " to " << Config.workers <<
@@ -874,6 +891,10 @@ mainReconfigureFinish(void *)
     writePidFile();     /* write PID file */
 
     reconfiguring = 0;
+
+    // ignore any pending re-reconfigure signals if shutdown received
+    if (do_shutdown)
+        do_reconfigure = 0;
 }
 
 static void
@@ -976,6 +997,7 @@ mainInitialize(void)
 
     squid_signal(SIGPIPE, SIG_IGN, SA_RESTART);
     squid_signal(SIGCHLD, sig_child, SA_NODEFER | SA_RESTART);
+    squid_signal(SIGHUP, reconfigure, SA_RESTART);
 
     setEffectiveUser();
 
@@ -1140,8 +1162,6 @@ mainInitialize(void)
     squid_signal(SIGUSR2, sigusr2_handle, SA_RESTART);
 
 #endif
-
-    squid_signal(SIGHUP, reconfigure, SA_RESTART);
 
     squid_signal(SIGTERM, shut_down, SA_NODEFER | SA_RESETHAND | SA_RESTART);
 
@@ -1386,7 +1406,15 @@ SquidMain(int argc, char **argv)
 
         Format::Token::Init(); // XXX: temporary. Use a runners registry of pre-parse runners instead.
 
-        parse_err = parseConfigFile(ConfigFile);
+        try {
+            do_reconfigure = 0; // ignore any early (boot/startup) reconfigure signals
+            parse_err = parseConfigFile(ConfigFile);
+        } catch (...) {
+            // for now any errors are a fatal condition...
+            debugs(1, DBG_CRITICAL, "FATAL: Unhandled exception parsing config file." <<
+                   (opt_parse_cfg_only ? " Run squid -k parse and check for errors." : ""));
+            parse_err = 1;
+        }
 
         Mem::Report();
 

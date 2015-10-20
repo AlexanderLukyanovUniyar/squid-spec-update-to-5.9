@@ -786,7 +786,7 @@ clientReplyContext::blockedHit() const
         return false; // internal content "hits" cannot be blocked
 
     if (const HttpReply *rep = http->storeEntry()->getReply()) {
-        std::auto_ptr<ACLFilledChecklist> chl(clientAclChecklistCreate(Config.accessList.sendHit, http));
+        std::unique_ptr<ACLFilledChecklist> chl(clientAclChecklistCreate(Config.accessList.sendHit, http));
         chl->reply = const_cast<HttpReply*>(rep); // ACLChecklist API bug
         HTTPMSGLOCK(chl->reply);
         return chl->fastCheck() != ACCESS_ALLOWED; // when in doubt, block
@@ -1215,6 +1215,11 @@ clientReplyContext::replyStatus()
         if (!http->request->flags.proxyKeepalive && expectedBodySize < 0) {
             debugs(88, 5, "clientReplyStatus: closing, content_length < 0");
             return STREAM_FAILED;
+        }
+
+        if (EBIT_TEST(http->storeEntry()->flags, ENTRY_BAD_LENGTH)) {
+            debugs(88, 5, "clientReplyStatus: truncated response body");
+            return STREAM_UNPLANNED_COMPLETE;
         }
 
         if (!done) {

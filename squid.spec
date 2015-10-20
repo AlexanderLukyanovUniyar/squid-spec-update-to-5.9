@@ -43,7 +43,7 @@ Obsoletes: %name-conf-default
 
 BuildConflicts: bind-devel
 BuildPreReq: rpm-build >= 4.0.4-alt10
-BuildRequires: doxygen  graphviz fonts-ttf-freefont
+BuildRequires: doxygen  graphviz fonts-ttf-freefont linuxdoc-tools
 #BuildRequires: fonts-otf-drehatlas-widelands fonts-ttf-msimonson-anonymouspro
 BuildRequires: gcc-c++ libcap-devel libdb4-devel libldap-devel libltdl-devel
 BuildRequires: libpam-devel libsasl2-devel libssl-devel perl-Pod-Parser

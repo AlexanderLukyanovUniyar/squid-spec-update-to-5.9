@@ -8,9 +8,9 @@
 %def_with gnutls
 
 Name: squid
-Version: 3.5.3
-Release: alt1.1
-%define langpack_ver 20150329
+Version: 3.5.10
+Release: alt1
+%define langpack_ver 20150704
 Summary: The Squid proxy caching server
 License: GPLv2
 Group: System/Servers
@@ -302,6 +302,10 @@ chown -R %name:%name %_spooldir/%name >/dev/null 2>&1 ||:
 
 
 %changelog
+* Tue Oct 20 2015 Alexey Shabalin <shaba@altlinux.ru> 3.5.10-alt1
+- 3.5.10
+- fixed CVE-2015-5400
+
 * Tue Oct 20 2015 Anton V. Boyarshinov <boyarsh@altlinux.ru> 3.5.3-alt1.1
 - rebuild with c++11 abi
 

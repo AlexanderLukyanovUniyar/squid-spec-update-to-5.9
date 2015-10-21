@@ -209,7 +209,7 @@ install -pD -m 0644 %SOURCE8 %buildroot%_tmpfilesdir/%name.conf
 install -d -m 0755 %buildroot%_docdir/%name-%version/{helpers,html,scripts}
 #install -d -m 0755 %buildroot%_docdir/%name-%version/html/Programming-Guide
 #install -p -m 0644 doc/Programming-Guide/html/*{css,html,png} %buildroot%_docdir/%name-%version/html/Programming-Guide/
-install -p -m 0644 doc/release-notes/*.html %buildroot%_docdir/%name-%version/html/
+#install -p -m 0644 doc/release-notes/*.html %buildroot%_docdir/%name-%version/html/
 install -p -m 0644 COPYING README ChangeLog QUICKSTART SPONSORS doc/debug-sections.txt %buildroot%_docdir/%name-%version/
 install -p -m 0644 scripts/*.pl %buildroot%_docdir/%name-%version/scripts/
 for i in LDAP_group file_userip kerberos_ldap_group; do

@@ -8,7 +8,7 @@
 %def_with gnutls
 
 Name: squid
-Version: 3.5.13
+Version: 3.5.14
 Release: alt1
 %define langpack_ver 20150704
 Summary: The Squid proxy caching server
@@ -302,6 +302,9 @@ chown -R %name:%name %_spooldir/%name >/dev/null 2>&1 ||:
 
 
 %changelog
+* Sat Feb 20 2016 Alexey Shabalin <shaba@altlinux.ru> 3.5.14-alt1
+- 3.5.14
+
 * Fri Jan 22 2016 Alexey Shabalin <shaba@altlinux.ru> 3.5.13-alt1
 - 3.5.13
 

@@ -54,7 +54,12 @@ public:
     virtual void maybeReadVirginBody() = 0;
 
     /// abnormal transaction termination; reason is for debugging only
-    virtual void abortTransaction(const char *reason) = 0;
+    virtual void abortAll(const char *reason) = 0;
+
+    /// abnormal data transfer termination
+    /// \retval true the transaction will be terminated (abortAll called)
+    /// \retval false the transaction will survive
+    virtual bool abortOnData(const char *reason);
 
     /// a hack to reach HttpStateData::orignal_request
     virtual  HttpRequest *originalRequest();
@@ -170,6 +175,10 @@ protected:
     bool startedAdaptation;
 #endif
     bool receivedWholeRequestBody; ///< handleRequestBodyProductionEnded called
+
+    /// whether we should not be talking to FwdState; XXX: clear fwd instead
+    /// points to a string literal which is used only for debugging
+    const char *doneWithFwd;
 
 private:
     void sendBodyIsTooLargeError();

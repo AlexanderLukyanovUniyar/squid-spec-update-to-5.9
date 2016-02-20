@@ -153,7 +153,10 @@ void FwdState::start(Pointer aSelf)
     // We hope that either the store entry aborts or peer is selected.
     // Otherwise we are going to leak our object.
 
-    entry->registerAbort(FwdState::abort, this);
+    // Ftp::Relay needs to preserve control connection on data aborts
+    // so it registers its own abort handler that calls ours when needed.
+    if (!request->flags.ftpNative)
+        entry->registerAbort(FwdState::abort, this);
 
 #if STRICT_ORIGINAL_DST
     // Bug 3243: CVE 2009-0801
@@ -716,7 +719,7 @@ FwdState::connectedToPeer(Ssl::PeerConnectorAnswer &answer)
         answer.error.clear(); // preserve error for errorSendComplete()
         if (CachePeer *p = serverConnection()->getPeer())
             peerConnectFailed(p);
-        retryOrBail();
+        serverConnection()->close();
         return;
     }
 

@@ -242,6 +242,10 @@ install -p -m 0644 helpers/basic_auth/SMB_LM/msntauth.conf.default %buildroot%_d
 chown %name:%name %_logdir/%name/*.log >/dev/null 2>&1 ||:
 chmod 660 %_logdir/%name/*.log >/dev/null 2>&1 ||:
 
+# fix conflict between symlink and dir
+if [ $1 -eq 2 ]; then
+    [ -d /usr/share/squid/errors/zh-cn ] && rm -rf /usr/share/squid/errors/zh-cn
+fi
 
 %triggerpostun -- squid < 2.4.STABLE4-alt1
 [ $2 -gt 0 ] || exit 0

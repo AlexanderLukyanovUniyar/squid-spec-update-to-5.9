@@ -8,7 +8,7 @@
 %def_with gnutls
 
 Name: squid
-Version: 3.5.14
+Version: 3.5.15
 Release: alt1
 %define langpack_ver 20150704
 Summary: The Squid proxy caching server
@@ -224,14 +224,11 @@ install -p -m 0644 helpers/basic_auth/SMB_LM/msntauth.conf.default %buildroot%_d
 %check
 %make_build check
 
-
 %post
 %post_service %name
 
-
 %preun
 %preun_service %name
-
 
 %pre
 %_sbindir/groupadd -r -f %name 2>/dev/null ||:
@@ -250,7 +247,6 @@ fi
 %triggerpostun -- squid < 2.4.STABLE4-alt1
 [ $2 -gt 0 ] || exit 0
 chown -R %name:%name %_spooldir/%name >/dev/null 2>&1 ||:
-
 
 %files
 %doc %dir %_docdir/%name-%version
@@ -304,8 +300,11 @@ chown -R %name:%name %_spooldir/%name >/dev/null 2>&1 ||:
 %exclude %_man8dir/squid.*
 %exclude %_man8dir/cachemgr.cgi.*
 
-
 %changelog
+* Tue Mar 15 2016 Alexey Shabalin <shaba@altlinux.ru> 3.5.15-alt1
+- 3.5.15
+- fix files conflict for upgrade langpack (ALT#31812)
+
 * Sat Feb 20 2016 Alexey Shabalin <shaba@altlinux.ru> 3.5.14-alt1
 - 3.5.14
 

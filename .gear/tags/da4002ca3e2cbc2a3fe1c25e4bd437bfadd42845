@@ -1,0 +1,6 @@
+object 69f7ce84e11fd483fa04a07a0135dabec5fe7ac2
+type commit
+tag 3.5.20
+tagger Gleb Fotengauer-Malinovskiy <glebfm@altlinux.org> 1467722275 +0300
+
+squid 3.5.20

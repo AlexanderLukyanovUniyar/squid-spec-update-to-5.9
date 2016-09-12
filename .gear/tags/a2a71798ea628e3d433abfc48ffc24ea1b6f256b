@@ -1,6 +1,0 @@
-object e46b19f360c6e4eb0594d05fda60d9a486524b9b
-type commit
-tag 3.5.20-alt
-tagger Gleb Fotengauer-Malinovskiy <glebfm@altlinux.org> 1467722402 +0300
-
-squid-alt 3.5.20

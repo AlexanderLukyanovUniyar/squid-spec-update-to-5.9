@@ -82,7 +82,7 @@ To create any disk cache_dir configured:
     % /usr/sbin/squid -z
 
 To start squid:
-    % /usr/sbin/squid 
+    % /usr/sbin/squid
 
 Check in the cache.log (/var/log/squid/cache.log) that
 everything is all right.
@@ -98,7 +98,7 @@ typically have to modify something in a /etc/rc_something).
 ==============================================================================
 
 /*
- * Copyright (C) 1996-2016 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2017 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.

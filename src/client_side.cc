@@ -4376,7 +4376,12 @@ void httpsSslBumpStep2AccessCheckDone(allow_t answer, void *data)
         fd_table[connState->clientConnection->fd].read_method = &default_read_method;
         fd_table[connState->clientConnection->fd].write_method = &default_write_method;
 
+        ClientSocketContext::Pointer context = connState->getCurrentContext();
+        Must(context != NULL);
         if (connState->transparent()) {
+            // If we are going to fake the second CONNECT, clear the first one.
+            context->connIsFinished();
+
             // fake a CONNECT request to force connState to tunnel
             // XXX: copy from MemBuf reallocates, not a regression since old code did too
             SBuf temp;
@@ -4385,7 +4390,6 @@ void httpsSslBumpStep2AccessCheckDone(allow_t answer, void *data)
         } else {
             // in.buf still has the "CONNECT ..." request data, reset it to SSL hello message
             connState->in.buf.append(rbuf.content(), rbuf.contentSize());
-            ClientSocketContext::Pointer context = connState->getCurrentContext();
             ClientHttpRequest *http = context->http;
             tunnelStart(http, &http->out.size, &http->al->http.code, http->al);
         }

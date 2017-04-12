@@ -561,6 +561,7 @@ ClientRequestContext::hostHeaderVerifyFailed(const char *A, const char *B)
     debugs(85, DBG_IMPORTANT, "SECURITY ALERT: on URL: " << urlCanonical(http->request));
 
     // IP address validation for Host: failed. reject the connection.
+    http->getConn()->quitAfterError(http->request);
     clientStreamNode *node = (clientStreamNode *)http->client_stream.tail->prev->data;
     clientReplyContext *repContext = dynamic_cast<clientReplyContext *>(node->data.getRaw());
     assert (repContext);
@@ -1450,6 +1451,13 @@ ClientRequestContext::sslBumpAccessCheck()
         return false;
     }
 
+    if (error) {
+        debugs(85, 5, "SslBump applies. Force bump action on error " << err_type_str[(error->type >= ERR_NONE && error->type < ERR_MAX) ? error->type : ERR_NONE]);
+        http->sslBumpNeed(Ssl::bumpBump);
+        http->al->ssl.bumpMode = Ssl::bumpBump;
+        return false;
+    }
+
     debugs(85, 5, HERE << "SslBump possible, checking ACL");
 
     ACLFilledChecklist *aclChecklist = clientAclChecklistCreate(Config.accessList.ssl_bump, http);
@@ -1781,8 +1789,9 @@ ClientHttpRequest::doCallouts()
     }
 
 #if USE_OPENSSL
-    // We need to check for SslBump even if the calloutContext->error is set
-    // because bumping may require delaying the error until after CONNECT.
+    // Even with calloutContext->error, we call sslBumpAccessCheck() to decide
+    // whether SslBump applies to this transaction. If it applies, we will
+    // attempt to bump the client to serve the error.
     if (!calloutContext->sslBumpCheckDone) {
         calloutContext->sslBumpCheckDone = true;
         if (calloutContext->sslBumpAccessCheck())

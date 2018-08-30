@@ -194,8 +194,6 @@ install -pD -m 0644 %SOURCE3 %buildroot%_sysconfdir/logrotate.d/%name
 
 install -d -m 0755 %buildroot{%_logdir,%_spooldir,%_runtimedir}/%name
 
-install -p -m 0644 helpers/{external_acl/{AD,LM,kerberos_ldap}_group,negotiate_auth/kerberos}/*.8 %buildroot%_man8dir/
-
 install -p -m 0755 %SOURCE4 %buildroot%_libexecdir/%name/
 install -d -m 0755 %buildroot%_datadir/snmp/mibs
 mv %buildroot%_datadir/%name/mib.txt %buildroot%_datadir/snmp/mibs/SQUID-MIB.txt
@@ -205,20 +203,12 @@ install -pD -m 0644 %SOURCE6 %buildroot%_sysconfdir/pam.d/%name
 install -pD -m 0644 %SOURCE7 %buildroot%_unitdir/%name.service
 install -pD -m 0644 %SOURCE8 %buildroot%_tmpfilesdir/%name.conf
 
-install -d -m 0755 %buildroot%_docdir/%name-%version/{helpers,html,scripts}
+install -d -m 0755 %buildroot%_docdir/%name-%version/{html,scripts}
 #install -d -m 0755 %buildroot%_docdir/%name-%version/html/Programming-Guide
 #install -p -m 0644 doc/Programming-Guide/html/*{css,html,png} %buildroot%_docdir/%name-%version/html/Programming-Guide/
 #install -p -m 0644 doc/release-notes/*.html %buildroot%_docdir/%name-%version/html/
 install -p -m 0644 COPYING README ChangeLog QUICKSTART SPONSORS doc/debug-sections.txt %buildroot%_docdir/%name-%version/
 install -p -m 0644 scripts/*.pl %buildroot%_docdir/%name-%version/scripts/
-for i in LDAP_group file_userip kerberos_ldap_group; do
-	install -p -m 0644 helpers/external_acl/$i/README %buildroot%_docdir/%name-%version/helpers/README.$i
-done
-for i in kerberos; do
-	install -p -m 0644 helpers/negotiate_auth/$i/README %buildroot%_docdir/%name-%version/helpers/README.$i
-done
-install -p -m 0644 helpers/basic_auth/SMB/ChangeLog %buildroot%_docdir/%name-%version/helpers/ChangeLog.$i
-install -p -m 0644 helpers/basic_auth/SMB_LM/msntauth.conf.default %buildroot%_docdir/%name-%version/helpers/
 
 %check
 %make_build check
@@ -285,7 +275,6 @@ chown -R %name:%name %_spooldir/%name >/dev/null 2>&1 ||:
 %doc %_docdir/%name-%version/SPONSORS
 %doc %_docdir/%name-%version/debug-sections.txt
 %doc %_docdir/%name-%version/html
-%doc %_docdir/%name-%version/helpers
 
 
 %files helpers

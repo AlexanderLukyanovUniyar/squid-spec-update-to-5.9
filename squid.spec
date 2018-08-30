@@ -164,7 +164,7 @@ sed -i -e "s|squid_curtime|$RELEASE_TIME|" include/version.h
 	--enable-x-accelerator-vary \
 	--enable-auth \
 	--enable-auth-basic="DB LDAP NCSA PAM RADIUS SASL SMB SMB_LM fake getpwnam" \
-	--enable-auth-ntlm="fake smb_lm" \
+	--enable-auth-ntlm="fake SMB_LM" \
 	--enable-auth-digest="LDAP eDirectory file" \
 	--enable-auth-negotiate="kerberos wrapper" \
 	--enable-external-acl-helpers="LDAP_group delayer eDirectory_userip file_userip kerberos_ldap_group session unix_group wbinfo_group time_quota" \

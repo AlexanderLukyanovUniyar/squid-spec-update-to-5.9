@@ -56,7 +56,7 @@ BuildRequires: libnetfilter_conntrack-devel
 %{?_with_nettle:BuildRequires: libnettle-devel}
 %{?_with_gnutls:BuildRequires: libgnutls-devel >= 3.1.5}
 BuildRequires: perl-libnet perl-DBI
-BuildRequires: perl(Authen/Smb.pm) perl(Crypt/OpenSSL/X509.pm)
+BuildRequires: perl(Authen/Smb.pm) perl(Crypt/OpenSSL/X509.pm) perl(Digest/SHA.pm) perl(URI/URL.pm)
 
 %description
 Squid is a high-performance proxy caching server for Web clients,

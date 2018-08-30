@@ -8,8 +8,8 @@
 %def_with gnutls
 
 Name: squid
-Version: 3.5.26
-Release: alt3
+Version: 4.2
+Release: alt1
 %define langpack_ver 20170901 
 Summary: The Squid proxy caching server
 License: GPLv2
@@ -104,7 +104,7 @@ sed -i -r '1s|^(#!/usr/)local(/bin/perl)|\1\2|' {contrib,scripts}/*.pl
 
 RELEASE_TIME="$(date +%%s)"
 
-sed -i -e "s|%version-BZR|%version|" configure.ac
+sed -i -e "s|%version-VCS|%version|" configure.ac
 sed -i -e "s|squid_curtime|$RELEASE_TIME|" include/version.h
 
 %build
@@ -305,6 +305,9 @@ chown -R %name:%name %_spooldir/%name >/dev/null 2>&1 ||:
 %exclude %_man8dir/cachemgr.cgi.*
 
 %changelog
+* Thu Aug 30 2018 Alexey Shabalin <shaba@altlinux.org> 4.2-alt1
+- 4.2
+
 * Wed Jan 17 2018 Aleksei Nikiforov <darktemplar@altlinux.org> 3.5.26-alt3
 - Rebuilt without NIS support.
 

@@ -10,7 +10,7 @@
 Name: squid
 Version: 3.5.26
 Release: alt3
-%define langpack_ver 20150704
+%define langpack_ver 20170901 
 Summary: The Squid proxy caching server
 License: GPLv2
 Group: System/Servers

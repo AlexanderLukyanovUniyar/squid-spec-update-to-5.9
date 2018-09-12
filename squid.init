@@ -49,7 +49,6 @@ export KRB5_KTNAME
 
 LOCKFILE=/var/lock/subsys/squid
 PIDFILE="$(GetConfVal pid_filename /var/run/squid.pid)"
-SQUID_USER="$(GetConfVal cache_effective_user squid)"
 RETVAL=0
 
 start()
@@ -59,7 +58,7 @@ start()
 	([ -s "$SQUID_CONF" ] && grep '^[[:blank:]]*cache_dir[[:blank:]]' "$SQUID_CONF"; echo "cache_dir type /var/spool/squid") |
 	while read tag type adir dummy; do
 		if [ ! -d $adir/00 ]; then
-			$SQUID -z -F 2>/dev/null
+			$SQUID --foreground -z -F 2>/dev/null
 			break
 		fi
 	done
@@ -79,7 +78,7 @@ stop()
 	stop_daemon --pidfile "$PIDFILE" --lockfile "$LOCKFILE" \
 		--retry $T \
 		--no-announce \
-		--expect-user $SQUID_USER -- $SQUID
+		--expect-user root -- $SQUID
 	RETVAL=$?
 	return $RETVAL
 }
@@ -120,7 +119,7 @@ case "$1" in
 		[ -e "$LOCKFILE" ] && reload
 		;;
 	status)
-		status --pidfile "$PIDFILE" --expect-user $SQUID_USER squid
+		status --pidfile "$PIDFILE" --expect-user root squid
 		RETVAL=$?
 		;;
 	*)

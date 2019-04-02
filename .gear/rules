@@ -1,4 +1,4 @@
 tar: @version@:.
 tar: @name@-langpack-20170901:. name=@name@-langpack-20170901 base=errors
-diff: @version@:. @version@-alt:.
+diff: @version@:. alt/4:.
 copy: *.init *.logrotate *.sh *.pam *.sysconfig *.service *.tmpfiles

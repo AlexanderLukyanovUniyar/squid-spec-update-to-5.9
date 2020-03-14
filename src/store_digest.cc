@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2019 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2020 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -414,7 +414,7 @@ storeDigestRewriteStart(void *datanotused)
 
     const char *url = internalLocalUri("/squid-internal-periodic/", SBuf(StoreDigestFileName));
     const MasterXaction::Pointer mx = new MasterXaction(XactionInitiator::initCacheDigest);
-    auto req = HttpRequest::FromUrl(url, mx);
+    auto req = HttpRequest::FromUrlXXX(url, mx);
 
     RequestFlags flags;
     flags.cachable = true;

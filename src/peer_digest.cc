@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2019 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2020 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -327,7 +327,7 @@ peerDigestRequest(PeerDigest * pd)
     debugs(72, 2, url);
 
     const MasterXaction::Pointer mx = new MasterXaction(XactionInitiator::initCacheDigest);
-    req = HttpRequest::FromUrl(url, mx);
+    req = HttpRequest::FromUrlXXX(url, mx);
 
     assert(req);
 

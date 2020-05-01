@@ -1,14 +1,17 @@
 [Unit]
-Description=Squid caching proxy
-After=network.target nss-lookup.target
+Description=Squid Web Proxy Server
+Documentation=man:squid(8)
+After=network.target network-online.target nss-lookup.target
 
 [Service]
-Type=forking
+Type=notify
 LimitNOFILE=16384
 EnvironmentFile=/etc/sysconfig/squid
-ExecStart=/usr/sbin/squid $SQUID_OPTS -f $SQUID_CONF
-ExecReload=/usr/sbin/squid $SQUID_OPTS -k reconfigure -f $SQUID_CONF
-ExecStop=/usr/sbin/squid -k shutdown -f $SQUID_CONF
+ExecStartPre=/usr/sbin/squid --foreground -z
+ExecStart=/usr/sbin/squid --foreground -sYC $SQUID_OPTS -f $SQUID_CONF
+ExecReload=/bin/kill -HUP $MAINPID
+KillMode=mixed
+NotifyAccess=all
 
 [Install]
 WantedBy=multi-user.target

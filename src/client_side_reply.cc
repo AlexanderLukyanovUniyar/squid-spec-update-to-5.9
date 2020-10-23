@@ -367,6 +367,10 @@ clientReplyContext::sendClientUpstreamResponse()
 {
     StoreIOBuffer tempresult;
     removeStoreReference(&old_sc, &old_entry);
+
+    if (collapsedRevalidation)
+        http->storeEntry()->clearPublicKeyScope();
+
     /* here the data to send is the data we just received */
     tempBuffer.offset = 0;
     old_reqsize = 0;
@@ -480,10 +484,6 @@ clientReplyContext::handleIMSReply(StoreIOBuffer result)
             http->logType = LOG_TCP_REFRESH_MODIFIED;
             debugs(88, 3, "origin replied " << status <<
                    ", replacing existing entry and forwarding to client");
-
-            if (collapsedRevalidation)
-                http->storeEntry()->clearPublicKeyScope();
-
             sendClientUpstreamResponse();
         }
     }
@@ -907,7 +907,7 @@ purgeEntriesByUrl(HttpRequest * req, const char *url)
             const cache_key *key = storeKeyPublic(url, m);
             debugs(88, 5, m << ' ' << url << ' ' << storeKeyText(key));
 #if USE_HTCP
-            neighborsHtcpClear(nullptr, url, req, m, HTCP_CLR_INVALIDATION);
+            neighborsHtcpClear(nullptr, req, m, HTCP_CLR_INVALIDATION);
 #endif
             Store::Root().evictIfFound(key);
         }
@@ -1040,7 +1040,7 @@ clientReplyContext::purgeDoPurgeGet(StoreEntry *newEntry)
         /* Release the cached URI */
         debugs(88, 4, "clientPurgeRequest: GET '" << newEntry->url() << "'" );
 #if USE_HTCP
-        neighborsHtcpClear(newEntry, NULL, http->request, HttpRequestMethod(Http::METHOD_GET), HTCP_CLR_PURGE);
+        neighborsHtcpClear(newEntry, http->request, HttpRequestMethod(Http::METHOD_GET), HTCP_CLR_PURGE);
 #endif
         newEntry->release(true);
         purgeStatus = Http::scOkay;
@@ -1056,7 +1056,7 @@ clientReplyContext::purgeDoPurgeHead(StoreEntry *newEntry)
     if (newEntry && !newEntry->isNull()) {
         debugs(88, 4, "HEAD " << newEntry->url());
 #if USE_HTCP
-        neighborsHtcpClear(newEntry, NULL, http->request, HttpRequestMethod(Http::METHOD_HEAD), HTCP_CLR_PURGE);
+        neighborsHtcpClear(newEntry, http->request, HttpRequestMethod(Http::METHOD_HEAD), HTCP_CLR_PURGE);
 #endif
         newEntry->release(true);
         purgeStatus = Http::scOkay;
@@ -1072,7 +1072,7 @@ clientReplyContext::purgeDoPurgeHead(StoreEntry *newEntry)
         if (entry) {
             debugs(88, 4, "Vary GET " << entry->url());
 #if USE_HTCP
-            neighborsHtcpClear(entry, NULL, http->request, HttpRequestMethod(Http::METHOD_GET), HTCP_CLR_PURGE);
+            neighborsHtcpClear(entry, http->request, HttpRequestMethod(Http::METHOD_GET), HTCP_CLR_PURGE);
 #endif
             entry->release(true);
             purgeStatus = Http::scOkay;
@@ -1083,12 +1083,15 @@ clientReplyContext::purgeDoPurgeHead(StoreEntry *newEntry)
         if (entry) {
             debugs(88, 4, "Vary HEAD " << entry->url());
 #if USE_HTCP
-            neighborsHtcpClear(entry, NULL, http->request, HttpRequestMethod(Http::METHOD_HEAD), HTCP_CLR_PURGE);
+            neighborsHtcpClear(entry, http->request, HttpRequestMethod(Http::METHOD_HEAD), HTCP_CLR_PURGE);
 #endif
             entry->release(true);
             purgeStatus = Http::scOkay;
         }
     }
+
+    if (purgeStatus == Http::scNone)
+        purgeStatus = Http::scNotFound;
 
     /*
      * Make a new entry to hold the reply to be written

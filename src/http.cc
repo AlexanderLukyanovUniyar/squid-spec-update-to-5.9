@@ -249,7 +249,7 @@ httpMaybeRemovePublic(StoreEntry * e, Http::StatusCode status)
     if (pe != NULL) {
         assert(e != pe);
 #if USE_HTCP
-        neighborsHtcpClear(e, NULL, e->mem_obj->request, e->mem_obj->method, HTCP_CLR_INVALIDATION);
+        neighborsHtcpClear(e, e->mem_obj->request, e->mem_obj->method, HTCP_CLR_INVALIDATION);
 #endif
         pe->release(true);
     }
@@ -266,7 +266,7 @@ httpMaybeRemovePublic(StoreEntry * e, Http::StatusCode status)
     if (pe != NULL) {
         assert(e != pe);
 #if USE_HTCP
-        neighborsHtcpClear(e, NULL, e->mem_obj->request, HttpRequestMethod(Http::METHOD_HEAD), HTCP_CLR_INVALIDATION);
+        neighborsHtcpClear(e, e->mem_obj->request, HttpRequestMethod(Http::METHOD_HEAD), HTCP_CLR_INVALIDATION);
 #endif
         pe->release(true);
     }
@@ -1290,6 +1290,9 @@ HttpStateData::continueAfterParsingHeader()
                 fwd->dontRetry(true);
                 error = ERR_TOO_BIG;
             } else if (vrep->header.conflictingContentLength()) {
+                fwd->dontRetry(true);
+                error = ERR_INVALID_RESP;
+            } else if (vrep->header.unsupportedTe()) {
                 fwd->dontRetry(true);
                 error = ERR_INVALID_RESP;
             } else {

@@ -1,6 +1,6 @@
-
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
 <html><head>
-<meta type="copyright" content="">
+<meta type="copyright" content="Copyright (C) 1996-2021 The Squid Software Foundation and contributors">
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
 <title>错误: 不能获取请求的 URL</title>
 <style type="text/css"><!-- 
@@ -26,7 +26,7 @@ body
 
 <p>DNS 服务器返回了：</p>
 <blockquote id="data">
-<pre></pre>
+<pre>%z</pre>
 </blockquote>
 
 <p>这表示 缓存服务器无法解析您输入网址（URL）中的主机名称， 请检查该名称是否正确。</p>

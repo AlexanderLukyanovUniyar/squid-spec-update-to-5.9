@@ -1,6 +1,6 @@
-
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
 <html><head>
-<meta type="copyright" content="">
+<meta type="copyright" content="Copyright (C) 1996-2021 The Squid Software Foundation and contributors">
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
 <title>错误: 不能获取请求的 URL</title>
 <style type="text/css"><!-- 
@@ -23,13 +23,13 @@ body
 <p>本缓存服务器发出以下 FTP 命令：</p>
 
 <blockquote id="data">
-<pre></pre>
+<pre>%f</pre>
 </blockquote>
 
 <p>服务器回应了：</p>
 <blockquote id="sysmsg">
-<pre></pre>
-<pre></pre>
+<pre>%F</pre>
+<pre>%g</pre>
 </blockquote>
 
 <p>缓存服务器的管理员 <a href="mailto:%w%W">%w</a>.</p>

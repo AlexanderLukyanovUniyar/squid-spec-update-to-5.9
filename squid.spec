@@ -9,9 +9,9 @@
 %def_with systemd
 
 Name: squid
-Version: 5.7
+Version: 5.9
 Release: alt2
-%define langpack_ver 20220905
+%define langpack_ver 20230225
 Summary: The Squid proxy caching server
 License: GPLv2
 Group: System/Servers
@@ -26,7 +26,6 @@ Source6: %name.pam
 Source7: %name.service
 Source8: %name.tmpfiles
 
-Patch: %name-%version-%release.patch
 Obsoletes: %name-novm < %EVR
 Obsoletes: %name-pinger < %EVR
 Requires: net-snmp-mibs
@@ -97,7 +96,6 @@ This package contains Squid helpers for different kinds of authentication.
 
 %prep
 %setup -q %{?langpack_ver:-a 1}
-%patch -p1
 
 sed -i -r '1s|^(#!/usr/)local(/bin/perl)|\1\2|' {contrib,scripts}/*.pl
 
@@ -298,6 +296,10 @@ chown -R %name:%name %_spooldir/%name >/dev/null 2>&1 ||:
 %exclude %_man8dir/cachemgr.cgi.*
 
 %changelog
+* Sun Jun 11 2023 Alexander Lukyanov <a.lukyanov@stud.uniyar.ac.ru> 5.9-alt2
+- 5.9
+- update langpack to 20230225
+
 * Mon Jan 09 2023 Alexey Shabalin <shaba@altlinux.org> 5.7-alt2
 - Fixed FTBFS: fix deprecation htmlDefaultSAXHandlerInit() -> xmlInitParser()
 
